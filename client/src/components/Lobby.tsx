@@ -1,14 +1,25 @@
 import { useState } from "react";
-import socket from "../socket";
+import { useGameContext } from "../contexts/GameContext";
 
-const Lobby = () => {
+interface LobbyProps {
+  onJoinRoom: (roomId: string, playerName: string) => void;
+}
+
+const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const [name, setName] = useState("");
   const [roomId, setRoomId] = useState("");
+  const { setPlayerName } = useGameContext();
 
   const handleJoin = () => {
     if (!name || !roomId) return alert("Enter both name and room ID");
+    
+    setPlayerName(name);
+    onJoinRoom(roomId, name);
+  };
 
-    socket.emit("join-room", { name, roomId });
+  const generateRandomRoomId = () => {
+    const randomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    setRoomId(randomId);
   };
 
   return (
@@ -22,13 +33,23 @@ const Lobby = () => {
         onChange={(e) => setName(e.target.value)}
         className="p-2 border rounded w-64"
       />
-      <input
-        type="text"
-        placeholder="Room ID"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
-        className="p-2 border rounded w-64"
-      />
+      
+      <div className="flex w-64">
+        <input
+          type="text"
+          placeholder="Room ID"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
+          className="p-2 border rounded w-full"
+        />
+        <button
+          onClick={generateRandomRoomId}
+          className="ml-2 px-2 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+          title="Generate random room ID"
+        >
+          🎲
+        </button>
+      </div>
 
       <button
         onClick={handleJoin}

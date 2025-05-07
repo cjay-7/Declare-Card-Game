@@ -1,60 +1,57 @@
+// client/src/components/Hand.tsx
 import React from "react";
 import Card from "./Card";
-
-interface CardType {
-  id: string;
-  suit: "hearts" | "diamonds" | "clubs" | "spades";
-  rank:
-    | "A"
-    | "2"
-    | "3"
-    | "4"
-    | "5"
-    | "6"
-    | "7"
-    | "8"
-    | "9"
-    | "10"
-    | "J"
-    | "Q"
-    | "K";
-  isRevealed: boolean;
-  position: number;
-}
+import { useGameContext } from "../contexts/GameContext";
+import type { Card as CardType } from "../utils/cardUtils";
 
 interface HandProps {
   cards: CardType[];
-  onCardClick: (card: CardType) => void;
+  playerId: string;
+  isCurrentPlayer: boolean;
 }
 
-const Hand: React.FC<HandProps> = ({ cards, onCardClick }) => {
+const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
+  const { handleSelectCard, selectedCard, handleCardClick } = useGameContext();
+
   if (cards.length === 0) {
     return (
       <div className="flex justify-center gap-2">
-        <div className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center">
-          <span className="text-gray-400">Empty</span>
-        </div>
-        <div className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center">
-          <span className="text-gray-400">Empty</span>
-        </div>
-        <div className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center">
-          <span className="text-gray-400">Empty</span>
-        </div>
-        <div className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center">
-          <span className="text-gray-400">Empty</span>
-        </div>
+        {[...Array(4)].map((_, index) => (
+          <div 
+            key={index} 
+            className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center"
+          >
+            <span className="text-gray-400">Empty</span>
+          </div>
+        ))}
       </div>
     );
   }
 
+  // Sort cards by position
+  const sortedCards = [...cards].sort((a, b) => 
+    (a.position || 0) - (b.position || 0)
+  );
+
   return (
     <div className="flex justify-center gap-2">
-      {cards.map((card) => (
+      {sortedCards.map((card, index) => (
         <div
           key={card.id}
-          onClick={() => onCardClick(card)}
+          onClick={() => {
+            if (isCurrentPlayer) {
+              handleSelectCard(card);
+            } else {
+              handleCardClick(playerId, index);
+            }
+          }}
         >
-          <Card />
+          <Card 
+            suit={card.isRevealed ? card.suit : undefined}
+            rank={card.isRevealed ? card.rank : undefined}
+            isRevealed={card.isRevealed}
+            isSelected={selectedCard?.cardId === card.id && isCurrentPlayer}
+          />
         </div>
       ))}
     </div>

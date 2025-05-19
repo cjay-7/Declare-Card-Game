@@ -8,7 +8,8 @@ import DiscardPile from "./DiscardPile";
 import ActionPanel from "./ActionPanel";
 import { useGameContext } from "../contexts/GameContext";
 import Player from "./Player";
-import type { Card } from "../utils/cardUtils";
+import Card from "./Card";
+import type { Card as CardType } from "../utils/cardUtils";
 
 interface GameBoardProps {
   initialRoomId: string;
@@ -30,6 +31,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     handleDiscardCard,
     handleDeclare,
     drawnCard,
+    handleSelectCard,
+    selectedCard,
   } = useGameContext();
 
   useEffect(() => {
@@ -70,10 +73,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   // Get remaining deck size
   const deckSize = gameState?.deck.length || 0;
 
-  function handleSelectCard(drawnCard: Card): void {
-    throw new Error("Function not implemented.");
-  }
-
   return (
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto">
@@ -87,10 +86,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               <button
                 onClick={handleStartGame}
                 className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                //disabled={gameState?.players.length < 2}
               >
                 Start Game
-                {/* {gameState?.players.length < 2 && " (Need at least 2 players)"} */}
               </button>
             )}
           </div>
@@ -156,12 +153,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <h3 className="text-center mb-2">Drawn Card</h3>
                 <div className="flex justify-center">
                   <div onClick={() => handleSelectCard(drawnCard)}>
-                    {/* <Card 
+                    <Card
                       suit={drawnCard.suit}
                       rank={drawnCard.rank}
                       isRevealed={true}
                       isSelected={selectedCard?.cardId === drawnCard.id}
-                    /> */}
+                    />
                   </div>
                 </div>
               </div>

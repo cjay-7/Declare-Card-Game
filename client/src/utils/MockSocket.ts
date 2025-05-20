@@ -10,6 +10,7 @@ import type { Card } from "./cardUtils";
 import type { GameState, Player } from "./gameLogic";
 
 class MockSocket extends EventEmitter {
+  private static instance: MockSocket;
   private connected = true;
   private id = `mock-${Math.random().toString(36).substring(2, 9)}`;
   private rooms: Record<string, GameState> = {};
@@ -20,23 +21,69 @@ class MockSocket extends EventEmitter {
     console.log("MockSocket initialized with ID:", this.id);
   }
 
-  emit(event: string, data: any): boolean {
-    console.log(`Mock emitting: ${event}`, data);
-    this.handleClientEvents(event, data);
-    return true;
+  // Create a singleton instance
+  public static getInstance(): MockSocket {
+    if (!MockSocket.instance) {
+      MockSocket.instance = new MockSocket();
+    }
+    return MockSocket.instance;
+  }
+
+  getId(): string {
+    return this.id;
+  }
+
+  // For test purposes - allows us to force a specific ID
+  setId(id: string): void {
+    this.id = id;
+    console.log("MockSocket ID set to:", this.id);
+  }
+
+  emit(event: string, data: any): this {
+    console.log(`[${this.id}] Mock emitting: ${event}`, data);
+
+    // Special case for emit to server
+    if (
+      event === "join-room" ||
+      event === "leave-room" ||
+      event === "start-game" ||
+      event === "draw-card" ||
+      event === "discard-card" ||
+      event === "swap-card" ||
+      event === "declare" ||
+      event === "view-opponent-card" ||
+      event === "view-own-card"
+    ) {
+      this.handleClientEvents(event, data);
+      return this;
+    }
+
+    // This is an "emit to client" that would normally come from server
+    // Let's broadcast it to all instances
+    setTimeout(() => {
+      this.emitToAll(event, data);
+    }, 10);
+
+    return this;
+  }
+
+  // Broadcast to all sockets
+  private emitToAll(event: string, data: any): void {
+    super.emit(event, data);
   }
 
   on(event: string, listener: (...args: any[]) => void): this {
-    console.log(`Mock registering listener for: ${event}`);
+    console.log(`[${this.id}] Mock registering listener for: ${event}`);
     return super.on(event, listener);
   }
 
   off(event: string, listener: (...args: any[]) => void): this {
-    console.log(`Mock removing listener for: ${event}`);
+    console.log(`[${this.id}] Mock removing listener for: ${event}`);
     return super.off(event, listener);
   }
 
   private handleClientEvents(event: string, data: any): void {
+    console.log(`[${this.id}] Handling event: ${event}`, data);
     switch (event) {
       case "join-room":
         this.handleJoinRoom(data);
@@ -77,6 +124,10 @@ class MockSocket extends EventEmitter {
     roomId: string;
     playerName: string;
   }): void {
+    console.log(
+      `[${this.id}] Handling join room. Room: ${roomId}, Player: ${playerName}`
+    );
+
     if (!this.rooms[roomId]) {
       // Create new room
       this.rooms[roomId] = {
@@ -95,25 +146,36 @@ class MockSocket extends EventEmitter {
       this.playersByRoom[roomId] = [];
     }
 
-    // Add player to the room
-    const isHost = this.rooms[roomId].players.length === 0;
-    const newPlayer: Player = {
-      id: this.id,
-      name: playerName,
-      isHost,
-      hand: [],
-      score: 0,
-      knownCards: [],
-      skippedTurn: false,
-    };
+    // Check if player with this socket ID already exists
+    const existingPlayerIndex = this.rooms[roomId].players.findIndex(
+      (p) => p.id === this.id
+    );
 
-    this.rooms[roomId].players.push(newPlayer);
-    this.playersByRoom[roomId].push(newPlayer);
+    if (existingPlayerIndex >= 0) {
+      console.log(
+        `Player with ID ${this.id} already in room, updating name to ${playerName}`
+      );
+      this.rooms[roomId].players[existingPlayerIndex].name = playerName;
+    } else {
+      // Add player to the room
+      const isHost = this.rooms[roomId].players.length === 0;
+      const newPlayer: Player = {
+        id: this.id,
+        name: playerName,
+        isHost,
+        hand: [],
+        score: 0,
+        knownCards: [],
+        skippedTurn: false,
+      };
 
-    // Send game state to all players
-    setTimeout(() => {
-      this.emit("game-state-update", this.rooms[roomId]);
-    }, 100);
+      console.log(`Adding new player to room ${roomId}:`, newPlayer);
+      this.rooms[roomId].players.push(newPlayer);
+      this.playersByRoom[roomId].push(newPlayer);
+    }
+
+    // Send updated game state to all connected clients
+    this.emitToAll("game-state-update", this.rooms[roomId]);
   }
 
   private handleLeaveRoom({
@@ -143,24 +205,49 @@ class MockSocket extends EventEmitter {
         this.rooms[roomId].players[0].isHost = true;
       }
 
-      // Send updated game state
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
-      }, 100);
+      // Send updated game state to all connected clients
+      this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
 
   private handleStartGame({ roomId }: { roomId: string }): void {
-    if (!this.rooms[roomId]) return;
+    console.log(`[${this.id}] Start game requested for room ${roomId}`);
+
+    if (!this.rooms[roomId]) {
+      console.error(`No room found with ID ${roomId}`);
+      return;
+    }
 
     const gameState = this.rooms[roomId];
     const playerCount = gameState.players.length;
+
+    console.log(`Starting game with ${playerCount} players`);
+
+    // Force at least 2 players for testing
+    if (playerCount < 2) {
+      // Add a bot player if needed
+      const botPlayer: Player = {
+        id: `bot-${Math.random().toString(36).substring(2, 9)}`,
+        name: "Bot Player",
+        isHost: false,
+        hand: [],
+        score: 0,
+        knownCards: [],
+        skippedTurn: false,
+      };
+
+      gameState.players.push(botPlayer);
+      console.log("Added bot player to make minimum 2 players");
+    }
 
     // Create and shuffle the deck
     const deck = shuffleDeck(createDeck());
 
     // Deal cards to players
-    const { playerHands, remainingDeck } = dealCards(deck, playerCount);
+    const { playerHands, remainingDeck } = dealCards(
+      deck,
+      gameState.players.length
+    );
 
     // Update game state
     gameState.deck = remainingDeck;
@@ -175,10 +262,8 @@ class MockSocket extends EventEmitter {
     // Update game state
     this.rooms[roomId] = gameState;
 
-    // Send updated game state to all players
-    setTimeout(() => {
-      this.emit("game-state-update", this.rooms[roomId]);
-    }, 100);
+    // Send updated game state to all connected clients
+    this.emitToAll("game-state-update", this.rooms[roomId]);
   }
 
   private handleDrawCard({
@@ -194,7 +279,12 @@ class MockSocket extends EventEmitter {
 
     // Check if it's player's turn
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (currentPlayer.id !== playerId) return;
+    if (currentPlayer.id !== playerId) {
+      console.log(
+        `Not ${playerId}'s turn, current player is ${currentPlayer.id}`
+      );
+      return;
+    }
 
     // Draw a card from the deck
     if (gameState.deck.length > 0) {
@@ -202,15 +292,19 @@ class MockSocket extends EventEmitter {
       drawnCard.isRevealed = true;
 
       // Send the drawn card to the player
-      setTimeout(() => {
+      if (playerId === this.id) {
         this.emit("card-drawn", drawnCard);
-      }, 100);
+      } else {
+        // This is a broadcast to all, for test purposes
+        this.emitToAll("card-drawn", {
+          playerId,
+          card: drawnCard,
+        });
+      }
 
       // Update game state
       this.rooms[roomId] = gameState;
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
-      }, 100);
+      this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
 
@@ -248,9 +342,7 @@ class MockSocket extends EventEmitter {
 
       // Update game state
       this.rooms[roomId] = gameState;
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
-      }, 100);
+      this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
 
@@ -300,9 +392,7 @@ class MockSocket extends EventEmitter {
 
       // Update game state
       this.rooms[roomId] = gameState;
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
-      }, 100);
+      this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
 
@@ -337,13 +427,11 @@ class MockSocket extends EventEmitter {
 
     // Update game state
     this.rooms[roomId] = gameState;
-    setTimeout(() => {
-      this.emit("game-state-update", this.rooms[roomId]);
-      this.emit("game-ended", {
-        winner: playerId,
-        score: 100, // Mock score
-      });
-    }, 100);
+    this.emitToAll("game-state-update", this.rooms[roomId]);
+    this.emitToAll("game-ended", {
+      winner: playerId,
+      score: 100, // Mock score
+    });
   }
 
   private handleViewOpponentCard({
@@ -391,17 +479,15 @@ class MockSocket extends EventEmitter {
 
       // Update game state
       this.rooms[roomId] = gameState;
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
+      this.emitToAll("game-state-update", this.rooms[roomId]);
 
-        // Hide the card again after 3 seconds
-        setTimeout(() => {
-          if (this.rooms[roomId]) {
-            card.isRevealed = false;
-            this.emit("game-state-update", this.rooms[roomId]);
-          }
-        }, 3000);
-      }, 100);
+      // Hide the card again after 3 seconds
+      setTimeout(() => {
+        if (this.rooms[roomId]) {
+          card.isRevealed = false;
+          this.emitToAll("game-state-update", this.rooms[roomId]);
+        }
+      }, 3000);
     }
   }
 
@@ -431,9 +517,7 @@ class MockSocket extends EventEmitter {
 
       // Update game state
       this.rooms[roomId] = gameState;
-      setTimeout(() => {
-        this.emit("game-state-update", this.rooms[roomId]);
-      }, 100);
+      this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
 }

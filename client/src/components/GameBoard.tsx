@@ -36,10 +36,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   } = useGameContext();
 
   useEffect(() => {
+    // Set player name and room ID in context
     setPlayerName(initialPlayerName);
     setRoomId(initialRoomId);
 
     // Join the room
+    console.log(`Joining room ${initialRoomId} as ${initialPlayerName}`);
     socket.emit("join-room", {
       roomId: initialRoomId,
       playerName: initialPlayerName,
@@ -47,11 +49,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
     // Cleanup on unmount
     return () => {
-      socket.emit("leave-room", { roomId: initialRoomId, playerId: socket.id });
+      socket.emit("leave-room", {
+        roomId: initialRoomId,
+        playerId: socket.getId(),
+      });
     };
   }, [initialPlayerName, initialRoomId, setPlayerName, setRoomId]);
 
   const handleStartGame = () => {
+    console.log(`Starting game in room ${initialRoomId}`);
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
@@ -65,7 +71,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   // Check if current player is host
   const isHost =
-    gameState?.players.find((p) => p.id === socket.id)?.isHost || false;
+    gameState?.players.find((p) => p.id === socket.getId())?.isHost || false;
 
   // Check if game has started
   const gameStarted = gameState?.gameStatus === "playing";
@@ -133,6 +139,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   <DiscardPile
                     topCard={topDiscardCard}
                     count={gameState?.discardPile.length || 0}
+                    onDiscardClick={undefined}
                   />
                 </div>
               </div>

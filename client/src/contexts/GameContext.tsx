@@ -55,127 +55,239 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCard, setSelectedCard] = useState<CardSelection | null>(null);
   const [drawnCard, setDrawnCard] = useState<Card | null>(null);
-  const [targetPlayerForSwap, setTargetPlayerForSwap] = useState<string | null>(null);
-  
+  const [targetPlayerForSwap, setTargetPlayerForSwap] = useState<string | null>(
+    null
+  );
+
   // Compute if it's the current player's turn
-  const myPlayer = gameState?.players.find(p => p.name === playerName) || null;
+  const myPlayer =
+    gameState?.players.find((p) => p.id === socket.getId()) || null;
   const currentPlayer = gameState?.players[gameState?.currentPlayerIndex || 0];
-  const isPlayerTurn = !!myPlayer && !!currentPlayer && myPlayer.id === currentPlayer.id;
+  const isPlayerTurn =
+    !!myPlayer && !!currentPlayer && myPlayer.id === currentPlayer.id;
 
+  // Set up socket event listeners
   useEffect(() => {
-    if (!socket) return;
-
-    // Handle game state updates from server
-    socket.on("game-state-update", (updatedState: GameState) => {
+    // Handle game state updates from server/mock
+    const handleGameStateUpdate = (updatedState: GameState) => {
+      console.log("Received game state update:", updatedState);
       setGameState(updatedState);
-    });
+    };
 
     // Handle card drawn event
-    socket.on("card-drawn", (card: Card) => {
-      setDrawnCard(card);
-    });
+    const handleCardDrawn = (
+      cardData: Card | { playerId: string; card: Card }
+    ) => {
+      console.log("Card drawn event received:", cardData);
+
+      // Check if this is the new format with playerId
+      if ("playerId" in cardData && "card" in cardData) {
+        if (cardData.playerId === socket.getId()) {
+          console.log("Setting drawn card for this player:", cardData.card);
+          setDrawnCard(cardData.card);
+        }
+      } else {
+        // Legacy format - just a card
+        console.log("Setting drawn card (legacy format):", cardData);
+        setDrawnCard(cardData as Card);
+      }
+    };
 
     // Handle game ended event
-    socket.on("game-ended", (result: any) => {
-      // Handle game end
-      console.log("Game ended", result);
-    });
+    const handleGameEnded = (result: any) => {
+      console.log("Game ended:", result);
+
+      let winnerName = "Unknown";
+      if (gameState?.players) {
+        const winner = gameState.players.find((p) => p.id === result.winner);
+        if (winner) {
+          winnerName = winner.name;
+        }
+      }
+
+      setTimeout(() => {
+        alert(`Game ended! Winner: ${winnerName} with score: ${result.score}`);
+      }, 500);
+    };
+
+    socket.on("game-state-update", handleGameStateUpdate);
+    socket.on("card-drawn", handleCardDrawn);
+    socket.on("game-ended", handleGameEnded);
 
     return () => {
-      socket.off("game-state-update");
-      socket.off("card-drawn");
-      socket.off("game-ended");
+      socket.off("game-state-update", handleGameStateUpdate);
+      socket.off("card-drawn", handleCardDrawn);
+      socket.off("game-ended", handleGameEnded);
     };
-  }, [socket]);
+  }, [gameState]);
 
   // Game action handlers
   const handleDrawCard = () => {
-    if (!isPlayerTurn || !roomId || !myPlayer) return;
-    
+    if (!isPlayerTurn || !roomId || !myPlayer) {
+      console.log("Cannot draw card:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+      });
+      return;
+    }
+
+    console.log("Drawing card...");
     socket.emit("draw-card", { roomId, playerId: myPlayer.id });
   };
 
   const handleSwapCard = () => {
-    if (!isPlayerTurn || !roomId || !myPlayer || !selectedCard || !targetPlayerForSwap) return;
-    
-    socket.emit("swap-card", { 
-      roomId, 
+    if (
+      !isPlayerTurn ||
+      !roomId ||
+      !myPlayer ||
+      !selectedCard ||
+      !targetPlayerForSwap
+    ) {
+      console.log("Cannot swap card:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+        selectedCard,
+        targetPlayerForSwap,
+      });
+      return;
+    }
+
+    console.log("Swapping card...");
+    socket.emit("swap-card", {
+      roomId,
       playerId: myPlayer.id,
       cardId: selectedCard.cardId,
-      targetPlayerId: targetPlayerForSwap
+      targetPlayerId: targetPlayerForSwap,
     });
-    
+
     // Reset selections
     setSelectedCard(null);
     setTargetPlayerForSwap(null);
+    setDrawnCard(null);
   };
 
   const handleDiscardCard = () => {
-    if (!isPlayerTurn || !roomId || !myPlayer || !selectedCard) return;
-    
-    socket.emit("discard-card", { 
-      roomId, 
+    if (
+      !isPlayerTurn ||
+      !roomId ||
+      !myPlayer ||
+      (!selectedCard && !drawnCard)
+    ) {
+      console.log("Cannot discard card:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+        selectedCard,
+        drawnCard,
+      });
+      return;
+    }
+
+    console.log("Discarding card...");
+    socket.emit("discard-card", {
+      roomId,
       playerId: myPlayer.id,
-      cardId: selectedCard.cardId
+      // If drawn card is selected, discard it; otherwise discard selected card from hand
+      cardId: drawnCard ? drawnCard.id : selectedCard!.cardId,
     });
-    
-    // Reset selection
+
+    // Reset selections
     setSelectedCard(null);
+    setDrawnCard(null);
   };
 
   const handleDeclare = () => {
-    if (!isPlayerTurn || !roomId || !myPlayer) return;
-    
-    socket.emit("declare", { 
-      roomId, 
-      playerId: myPlayer.id
+    if (!isPlayerTurn || !roomId || !myPlayer) {
+      console.log("Cannot declare:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+      });
+      return;
+    }
+
+    console.log("Declaring...");
+    socket.emit("declare", {
+      roomId,
+      playerId: myPlayer.id,
     });
   };
 
   const handleSelectCard = (card: Card) => {
-    if (!card.id) return;
-    
+    if (!card.id) {
+      console.log("Card has no ID:", card);
+      return;
+    }
+
     if (selectedCard && selectedCard.cardId === card.id) {
       // Deselect if already selected
+      console.log("Deselecting card:", card);
       setSelectedCard(null);
     } else {
       // Select new card
+      console.log("Selecting card:", card);
       setSelectedCard({ cardId: card.id, isSelected: true });
     }
   };
 
   const handleCardClick = (playerId: string, cardIndex: number) => {
-    if (!isPlayerTurn || !roomId || !myPlayer) return;
-    
+    if (!isPlayerTurn || !roomId || !myPlayer) {
+      console.log("Cannot handle card click:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+      });
+      return;
+    }
+
     // King allows looking at opponent's card
     if (drawnCard?.rank === "K" && playerId !== myPlayer.id) {
+      console.log("Viewing opponent's card with King...");
       socket.emit("view-opponent-card", {
         roomId,
         playerId: myPlayer.id,
         targetPlayerId: playerId,
-        cardIndex
+        cardIndex,
       });
+
+      // Discard the King after use
+      setTimeout(() => {
+        if (drawnCard) {
+          handleDiscardCard();
+        }
+      }, 3500);
     }
-    
+
     // Queen allows looking at your own card
     else if (drawnCard?.rank === "Q" && playerId === myPlayer.id) {
+      console.log("Viewing own card with Queen...");
       socket.emit("view-own-card", {
         roomId,
         playerId: myPlayer.id,
-        cardIndex
+        cardIndex,
       });
+
+      // Discard the Queen after use
+      setTimeout(() => {
+        if (drawnCard) {
+          handleDiscardCard();
+        }
+      }, 1000);
     }
-    
+
     // Select player for swap
     else if (playerId !== myPlayer.id && selectedCard) {
+      console.log("Setting target player for swap:", playerId);
       setTargetPlayerForSwap(playerId);
     }
   };
 
   return (
-    <GameContext.Provider 
-      value={{ 
-        playerName, 
+    <GameContext.Provider
+      value={{
+        playerName,
         setPlayerName,
         gameState,
         isPlayerTurn,
@@ -193,7 +305,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         handleDiscardCard,
         handleDeclare,
         handleSelectCard,
-        handleCardClick
+        handleCardClick,
       }}
     >
       {children}

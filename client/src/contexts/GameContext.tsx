@@ -1,4 +1,4 @@
-// client/src/contexts/GameContext.tsx
+// client/src/contexts/EnhancedGameContext.tsx
 import React, {
   createContext,
   useState,
@@ -11,6 +11,7 @@ import { type Card, type CardSelection } from "../utils/cardUtils";
 import type { GameState, Player, GameAction } from "../utils/gameLogic";
 
 interface GameContextType {
+  // Basic state
   playerName: string;
   setPlayerName: (name: string) => void;
   gameState: GameState | null;
@@ -24,6 +25,22 @@ interface GameContextType {
   setRoomId: (id: string) => void;
   targetPlayerForSwap: string | null;
   setTargetPlayerForSwap: (playerId: string | null) => void;
+
+  // Animation states
+  cardAnimation: string | null;
+  setCardAnimation: (animation: string | null) => void;
+  animatingCardId: string | null;
+
+  // Enhanced state
+  selectedPower: string | null;
+  powerInstructions: string | null;
+  lastAction: GameAction | null;
+  hasDrawnFirstCard: boolean;
+
+  // Temporary reveal state
+  temporaryRevealedCards: number[];
+  setTemporaryRevealedCards: (indices: number[]) => void;
+
   // Game actions
   handleDrawCard: () => void;
   handleSwapCard: () => void;
@@ -31,6 +48,13 @@ interface GameContextType {
   handleDeclare: () => void;
   handleSelectCard: (card: Card) => void;
   handleCardClick: (playerId: string, cardIndex: number) => void;
+  handleViewBottomCards: () => void;
+
+  // Game instructions
+  getInstructionsForCard: (card: Card) => string;
+
+  // Reset game
+  resetGame: () => void;
 }
 
 const defaultGameState: GameState = {
@@ -45,6 +69,7 @@ const defaultGameState: GameState = {
   roundNumber: 1,
   declarer: null,
   lastAction: null,
+  type: "view",
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -59,6 +84,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     null
   );
 
+  // Animation states
+  const [cardAnimation, setCardAnimation] = useState<string | null>(null);
+  const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
+
+  // Enhanced states
+  const [selectedPower, setSelectedPower] = useState<string | null>(null);
+  const [powerInstructions, setPowerInstructions] = useState<string | null>(
+    null
+  );
+  const [lastAction, setLastAction] = useState<GameAction | null>(null);
+  const [hasDrawnFirstCard, setHasDrawnFirstCard] = useState(false);
+
+  // Temporary revealed cards (for viewing bottom cards at game start)
+  const [temporaryRevealedCards, setTemporaryRevealedCards] = useState<
+    number[]
+  >([]);
+
   // Compute if it's the current player's turn
   const myPlayer =
     gameState?.players.find((p) => p.id === socket.getId()) || null;
@@ -66,12 +108,50 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const isPlayerTurn =
     !!myPlayer && !!currentPlayer && myPlayer.id === currentPlayer.id;
 
+  // Helper to get instructions for special cards
+  const getInstructionsForCard = (card: Card): string => {
+    switch (card.rank) {
+      case "J":
+        return "Jack: Discard to skip the next player's turn.";
+      case "Q":
+        return "Queen: Click on one of your cards to reveal it permanently.";
+      case "K":
+        return "King: Click on another player's card to peek at it.";
+      default:
+        return "";
+    }
+  };
+
+  // Reset hasDrawnFirstCard when game status changes to waiting
+  useEffect(() => {
+    if (gameState?.gameStatus === "waiting") {
+      setHasDrawnFirstCard(false);
+      setTemporaryRevealedCards([]);
+    }
+  }, [gameState?.gameStatus]);
+
+  // Handle hiding temporary revealed cards after 5 seconds
+  useEffect(() => {
+    if (temporaryRevealedCards.length > 0) {
+      const timer = setTimeout(() => {
+        setTemporaryRevealedCards([]);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [temporaryRevealedCards]);
+
   // Set up socket event listeners
   useEffect(() => {
     // Handle game state updates from server/mock
     const handleGameStateUpdate = (updatedState: GameState) => {
       console.log("Received game state update:", updatedState);
       setGameState(updatedState);
+
+      // Update last action
+      if (updatedState.lastAction) {
+        setLastAction(updatedState.lastAction);
+      }
     };
 
     // Handle card drawn event
@@ -85,41 +165,81 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (cardData.playerId === socket.getId()) {
           console.log("Setting drawn card for this player:", cardData.card);
           setDrawnCard(cardData.card);
+
+          // Set hasDrawnFirstCard to true on first draw
+          setHasDrawnFirstCard(true);
+
+          // Set animation for drawn card
+          setCardAnimation("draw");
+          setAnimatingCardId(cardData.card.id);
+
+          // Set power instructions if special card
+          if (["J", "Q", "K"].includes(cardData.card.rank)) {
+            setSelectedPower(cardData.card.rank);
+            setPowerInstructions(getInstructionsForCard(cardData.card));
+          } else {
+            setSelectedPower(null);
+            setPowerInstructions(null);
+          }
         }
       } else {
         // Legacy format - just a card
         console.log("Setting drawn card (legacy format):", cardData);
         setDrawnCard(cardData as Card);
+
+        // Set hasDrawnFirstCard to true on first draw
+        setHasDrawnFirstCard(true);
+
+        // Set animation
+        setCardAnimation("draw");
+        setAnimatingCardId((cardData as Card).id);
+
+        // Set power instructions if special card
+        if (["J", "Q", "K"].includes((cardData as Card).rank)) {
+          setSelectedPower((cardData as Card).rank);
+          setPowerInstructions(getInstructionsForCard(cardData as Card));
+        } else {
+          setSelectedPower(null);
+          setPowerInstructions(null);
+        }
       }
+    };
+
+    // Handle card revealed event
+    const handleCardRevealed = (data: any) => {
+      setCardAnimation("reveal");
+      setAnimatingCardId(data.card.id);
     };
 
     // Handle game ended event
     const handleGameEnded = (result: any) => {
       console.log("Game ended:", result);
-
-      let winnerName = "Unknown";
-      if (gameState?.players) {
-        const winner = gameState.players.find((p) => p.id === result.winner);
-        if (winner) {
-          winnerName = winner.name;
-        }
-      }
-
-      setTimeout(() => {
-        alert(`Game ended! Winner: ${winnerName} with score: ${result.score}`);
-      }, 500);
     };
 
     socket.on("game-state-update", handleGameStateUpdate);
     socket.on("card-drawn", handleCardDrawn);
+    socket.on("card-revealed", handleCardRevealed);
     socket.on("game-ended", handleGameEnded);
 
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
       socket.off("card-drawn", handleCardDrawn);
+      socket.off("card-revealed", handleCardRevealed);
       socket.off("game-ended", handleGameEnded);
     };
-  }, [gameState]);
+  }, []);
+
+  // Reset animation after it completes
+  useEffect(() => {
+    if (cardAnimation) {
+      const timer = setTimeout(() => {
+        setCardAnimation(null);
+        setAnimatingCardId(null);
+      }, 500); // Match with animation duration
+
+      return () => clearTimeout(timer);
+    }
+  }, [cardAnimation, animatingCardId]);
 
   // Game action handlers
   const handleDrawCard = () => {
@@ -155,6 +275,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
 
     console.log("Swapping card...");
+
+    // Set animation
+    setCardAnimation("swap");
+    setAnimatingCardId(selectedCard.cardId);
+
     socket.emit("swap-card", {
       roomId,
       playerId: myPlayer.id,
@@ -166,6 +291,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSelectedCard(null);
     setTargetPlayerForSwap(null);
     setDrawnCard(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
   };
 
   const handleDiscardCard = () => {
@@ -186,16 +313,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
 
     console.log("Discarding card...");
+
+    // Get the card ID to discard
+    const cardId = drawnCard ? drawnCard.id : selectedCard!.cardId;
+
+    // Set animation
+    setCardAnimation("discard");
+    setAnimatingCardId(cardId);
+
     socket.emit("discard-card", {
       roomId,
       playerId: myPlayer.id,
-      // If drawn card is selected, discard it; otherwise discard selected card from hand
-      cardId: drawnCard ? drawnCard.id : selectedCard!.cardId,
+      cardId,
     });
 
     // Reset selections
     setSelectedCard(null);
     setDrawnCard(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
   };
 
   const handleDeclare = () => {
@@ -213,6 +349,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       roomId,
       playerId: myPlayer.id,
     });
+
+    // Reset selections
+    setSelectedCard(null);
+    setDrawnCard(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
   };
 
   const handleSelectCard = (card: Card) => {
@@ -284,6 +426,38 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Function to view the bottom two cards at the start of the game
+  const handleViewBottomCards = () => {
+    if (!myPlayer || hasDrawnFirstCard) {
+      console.log("Cannot view bottom cards:", {
+        myPlayerId: myPlayer?.id,
+        hasDrawnFirstCard,
+      });
+      return;
+    }
+
+    // Get the indices of the bottom two cards (assuming 4 cards total, so indices 2 and 3)
+    const bottomCardIndices = [2, 3];
+
+    // Temporarily reveal these cards
+    setTemporaryRevealedCards(bottomCardIndices);
+
+    console.log("Viewing bottom cards:", bottomCardIndices);
+  };
+
+  // Reset game state
+  const resetGame = () => {
+    setSelectedCard(null);
+    setDrawnCard(null);
+    setTargetPlayerForSwap(null);
+    setCardAnimation(null);
+    setAnimatingCardId(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
+    setHasDrawnFirstCard(false);
+    setTemporaryRevealedCards([]);
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -300,12 +474,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setRoomId,
         targetPlayerForSwap,
         setTargetPlayerForSwap,
+        cardAnimation,
+        setCardAnimation,
+        animatingCardId,
+        selectedPower,
+        powerInstructions,
+        lastAction,
+        hasDrawnFirstCard,
+        temporaryRevealedCards,
+        setTemporaryRevealedCards,
         handleDrawCard,
         handleSwapCard,
         handleDiscardCard,
         handleDeclare,
         handleSelectCard,
         handleCardClick,
+        handleViewBottomCards,
+        getInstructionsForCard,
+        resetGame,
       }}
     >
       {children}

@@ -33,7 +33,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
   if (!topCard) {
     return (
       <div
-        className="w-16 h-24 bg-gray-700 border border-gray-600 rounded shadow flex items-center justify-center"
+        className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
         onClick={onDiscardClick}
       >
         <span className="text-gray-400">Empty</span>
@@ -59,7 +59,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
 
   return (
     <div
-      className="w-16 h-24 bg-white border border-gray-600 rounded shadow relative flex flex-col justify-between p-1"
+      className="w-16 h-24 bg-white rounded shadow relative flex flex-col justify-between p-1"
       onClick={onDiscardClick}
     >
       <div className="absolute top-1 right-1 text-xs text-gray-500 font-bold">

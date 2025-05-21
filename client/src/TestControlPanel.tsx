@@ -1,319 +1,233 @@
-// client/src/TestControlPanel.tsx
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useGameContext } from "./contexts/GameContext";
 import socket from "./socket";
-import MockSocket from "./utils/MockSocket";
-import type { GameState } from "./utils/gameLogic";
 
-// This component is for testing purposes only - to simulate multiple players
 const TestControlPanel: React.FC = () => {
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [roomId, setRoomId] = useState("");
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [expanded, setExpanded] = useState(true);
-  const [botSockets, setBotSockets] = useState<
-    { socket: MockSocket; id: string; name: string }[]
-  >([]);
+  const { gameState, roomId, playerName, setDrawnCard, drawnCard, myPlayer } =
+    useGameContext();
 
-  // Listen for game state updates
-  useEffect(() => {
-    const handleGameStateUpdate = (updatedState: GameState) => {
-      console.log("Test panel received game state update:", updatedState);
-      setGameState(updatedState);
+  // Generate a test card
+  const generateTestCard = () => {
+    const suits = ["hearts", "diamonds", "clubs", "spades"] as const;
+    const ranks = [
+      "A",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "J",
+      "Q",
+      "K",
+    ] as const;
 
-      // Make sure room ID is set from game state
-      if (updatedState && !roomId) {
-        // Try to find room ID from somewhere in the game state
-        const possibleRoomId = document
-          .querySelector("h1")
-          ?.textContent?.replace("Room: ", "");
-        if (possibleRoomId) {
-          console.log("Setting room ID from DOM:", possibleRoomId);
-          setRoomId(possibleRoomId);
-        }
-      }
+    const randomSuit = suits[Math.floor(Math.random() * suits.length)];
+    const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
+
+    const value =
+      randomRank === "A"
+        ? 1
+        : randomRank === "J"
+        ? 11
+        : randomRank === "Q"
+        ? 12
+        : randomRank === "K"
+        ? randomSuit === "hearts" || randomSuit === "diamonds"
+          ? 0
+          : 13
+        : parseInt(randomRank);
+
+    return {
+      id: `test-${Math.random().toString(36).substring(2, 9)}`,
+      suit: randomSuit,
+      rank: randomRank,
+      value,
+      isRevealed: true,
     };
-
-    socket.on("game-state-update", handleGameStateUpdate);
-
-    return () => {
-      socket.off("game-state-update", handleGameStateUpdate);
-    };
-  }, [roomId]);
-
-  // Add a bot player to the current room
-  const addBotPlayer = () => {
-    if (!newPlayerName || !roomId) {
-      alert("Please enter a bot name and room ID");
-      return;
-    }
-
-    // Create a new bot socket
-    const botSocket = new MockSocket();
-    const botId = `bot-${Math.random().toString(36).substring(2, 9)}`;
-    botSocket.setId(botId);
-
-    // Add to state
-    setBotSockets([
-      ...botSockets,
-      {
-        socket: botSocket,
-        id: botId,
-        name: newPlayerName,
-      },
-    ]);
-
-    // Join room as a bot
-    botSocket.emit("join-room", {
-      roomId,
-      playerName: `🤖 ${newPlayerName}`,
-    });
-
-    setNewPlayerName("");
   };
 
-  // Add random players
-  const addRandomPlayers = (count: number) => {
-    if (!roomId) {
-      alert("Please enter a room ID first");
-      return;
-    }
+  // Add a random card to player's hand
+  const addRandomCard = () => {
+    if (!roomId || !myPlayer) return;
 
-    const names = [
-      "Alice",
-      "Bob",
-      "Charlie",
-      "Dave",
-      "Eve",
-      "Frank",
-      "Grace",
-      "Hank",
-    ];
+    const newCard = generateTestCard();
 
-    const newBots = [];
+    if (gameState && myPlayer) {
+      const playerIndex = gameState.players.findIndex(
+        (p) => p.id === myPlayer.id
+      );
 
-    for (let i = 0; i < count; i++) {
-      if (i < names.length) {
-        const botSocket = new MockSocket();
-        const botId = `bot-${Math.random().toString(36).substring(2, 9)}`;
-        botSocket.setId(botId);
-
-        // Join room
-        botSocket.emit("join-room", {
-          roomId,
-          playerName: `🤖 ${names[i]}`,
+      if (playerIndex !== -1) {
+        const updatedGameState = { ...gameState };
+        updatedGameState.players[playerIndex].hand.push({
+          ...newCard,
+          position: updatedGameState.players[playerIndex].hand.length,
         });
 
-        newBots.push({
-          socket: botSocket,
-          id: botId,
-          name: names[i],
-        });
+        // Emit updated game state (for testing)
+        socket.emit("game-state-update", updatedGameState);
       }
     }
-
-    setBotSockets([...botSockets, ...newBots]);
   };
 
-  // Simulate actions for a specific player
-  const simulateAction = (
-    botSocket: MockSocket,
-    botId: string,
-    action: string
-  ) => {
-    if (!gameState || !roomId) {
-      alert("Game not started yet");
-      return;
-    }
+  // Simulate drawing a card
+  const simulateDrawCard = () => {
+    const drawnCard = generateTestCard();
+    setDrawnCard(drawnCard);
+  };
 
-    switch (action) {
-      case "draw":
-        console.log(`Bot ${botId} is drawing a card`);
-        botSocket.emit("draw-card", {
-          roomId,
-          playerId: botId,
+  // Simulate game end
+  const simulateGameEnd = () => {
+    if (!roomId) return;
+
+    // Update game state to ended and reveal all cards
+    if (gameState) {
+      const updatedGameState = { ...gameState };
+      updatedGameState.gameStatus = "ended";
+
+      // Reveal all cards and assign random scores
+      updatedGameState.players.forEach((player) => {
+        player.hand.forEach((card) => {
+          card.isRevealed = true;
         });
-        break;
+        player.score = Math.floor(Math.random() * 50);
+      });
 
-      case "discard":
-        // Find bot player in game state
-        const player = gameState.players.find((p) => p.id === botId);
-        if (player && player.hand.length > 0) {
-          console.log(`Bot ${botId} is discarding card ${player.hand[0].id}`);
-          botSocket.emit("discard-card", {
-            roomId,
-            playerId: botId,
-            cardId: player.hand[0].id,
-          });
-        } else {
-          console.log(`Bot ${botId} has no cards to discard`);
-        }
-        break;
+      // Set a random declarer
+      const randomPlayerIndex = Math.floor(
+        Math.random() * updatedGameState.players.length
+      );
+      updatedGameState.declarer =
+        updatedGameState.players[randomPlayerIndex].id;
 
-      case "declare":
-        console.log(`Bot ${botId} is declaring`);
-        botSocket.emit("declare", {
-          roomId,
-          playerId: botId,
-        });
-        break;
+      // Emit game ended and updated state
+      socket.emit("game-ended", {
+        winner: updatedGameState.declarer,
+        score: updatedGameState.players[randomPlayerIndex].score,
+      });
+
+      socket.emit("game-state-update", updatedGameState);
     }
   };
 
-  // Start game
-  const startGameTest = () => {
-    if (!roomId) {
-      alert("Please enter a room ID first");
-      return;
-    }
+  // Toggle current player turn
+  const togglePlayerTurn = () => {
+    if (!gameState) return;
 
-    console.log("Starting game in room:", roomId);
-    socket.emit("start-game", { roomId });
+    const updatedGameState = { ...gameState };
+    if (myPlayer) {
+      const playerIndex = updatedGameState.players.findIndex(
+        (p) => p.id === myPlayer.id
+      );
+
+      if (playerIndex !== -1) {
+        updatedGameState.currentPlayerIndex =
+          updatedGameState.currentPlayerIndex === playerIndex
+            ? (playerIndex + 1) % updatedGameState.players.length
+            : playerIndex;
+
+        socket.emit("game-state-update", updatedGameState);
+      }
+    }
+  };
+
+  // Reveal all cards in player's hand
+  const revealAllCards = () => {
+    if (!gameState || !myPlayer) return;
+
+    const updatedGameState = { ...gameState };
+    const playerIndex = updatedGameState.players.findIndex(
+      (p) => p.id === myPlayer.id
+    );
+
+    if (playerIndex !== -1) {
+      updatedGameState.players[playerIndex].hand.forEach((card) => {
+        card.isRevealed = true;
+      });
+
+      socket.emit("game-state-update", updatedGameState);
+    }
+  };
+
+  // Add test player
+  const addTestPlayer = () => {
+    if (!gameState || !roomId) return;
+
+    const updatedGameState = { ...gameState };
+    const playerCount = updatedGameState.players.length;
+
+    // Create a test player
+    const testPlayer = {
+      id: `test-player-${playerCount + 1}`,
+      name: `Test Player ${playerCount + 1}`,
+      isHost: false,
+      hand: Array(4)
+        .fill(null)
+        .map(() => ({
+          ...generateTestCard(),
+          isRevealed: false,
+        })),
+      score: 0,
+      knownCards: [],
+      skippedTurn: false,
+    };
+
+    updatedGameState.players.push(testPlayer);
+    socket.emit("game-state-update", updatedGameState);
   };
 
   return (
-    <div
-      className={`fixed bottom-0 left-0 p-4 bg-gray-800 border border-gray-700 rounded-tr-lg z-50 text-white transition-all ${
-        expanded ? "w-80" : "w-10"
-      }`}
-    >
-      {/* Toggle button */}
-      <button
-        className="absolute top-2 right-2 text-xs text-gray-400 hover:text-white"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded ? "◀" : "▶"}
-      </button>
+    <div className="fixed bottom-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg opacity-80 hover:opacity-100 z-50 transition-opacity text-sm">
+      <h3 className="text-white font-bold mb-2 text-center">Test Controls</h3>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={simulateDrawCard}
+          className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+        >
+          Simulate Draw
+        </button>
+        <button
+          onClick={addRandomCard}
+          className="px-2 py-1 bg-green-600 text-white rounded text-xs"
+        >
+          Add Card
+        </button>
+        <button
+          onClick={togglePlayerTurn}
+          className="px-2 py-1 bg-yellow-600 text-white rounded text-xs"
+        >
+          Toggle Turn
+        </button>
+        <button
+          onClick={revealAllCards}
+          className="px-2 py-1 bg-purple-600 text-white rounded text-xs"
+        >
+          Reveal Cards
+        </button>
+        <button
+          onClick={addTestPlayer}
+          className="px-2 py-1 bg-indigo-600 text-white rounded text-xs"
+        >
+          Add Player
+        </button>
+        <button
+          onClick={simulateGameEnd}
+          className="px-2 py-1 bg-red-600 text-white rounded text-xs"
+        >
+          End Game
+        </button>
+      </div>
 
-      {expanded ? (
-        <>
-          <h3 className="text-sm font-bold mb-2">Test Control Panel</h3>
-
-          <div className="mb-3">
-            <p className="text-xs">Room Configuration:</p>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Room ID"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                className="px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded"
-              />
-              <button
-                onClick={startGameTest}
-                className="px-2 py-1 text-xs bg-green-600 rounded hover:bg-green-700"
-              >
-                Start Game
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <p className="text-xs">Add Bot Player:</p>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Bot Name"
-                value={newPlayerName}
-                onChange={(e) => setNewPlayerName(e.target.value)}
-                className="px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded"
-              />
-              <button
-                onClick={addBotPlayer}
-                className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-              >
-                Add Bot
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => addRandomPlayers(1)}
-                className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-              >
-                +1 Random
-              </button>
-              <button
-                onClick={() => addRandomPlayers(3)}
-                className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-              >
-                +3 Random
-              </button>
-            </div>
-          </div>
-
-          {gameState && gameState.players && gameState.players.length > 0 && (
-            <div>
-              <p className="text-xs mb-1">Players:</p>
-              {gameState.players.map((player, index) => {
-                const botInfo = botSockets.find((b) => b.id === player.id);
-                return (
-                  <div
-                    key={player.id}
-                    className="flex items-center gap-1 mb-1"
-                  >
-                    <span
-                      className={`text-xs ${
-                        gameState.currentPlayerIndex === index
-                          ? "text-yellow-400"
-                          : ""
-                      }`}
-                    >
-                      {player.name}
-                      {gameState.currentPlayerIndex === index ? " (Turn)" : ""}
-                    </span>
-                    {botInfo && (
-                      <>
-                        <button
-                          onClick={() =>
-                            simulateAction(botInfo.socket, botInfo.id, "draw")
-                          }
-                          className="px-1 py-0.5 text-xs bg-blue-600 rounded hover:bg-blue-700"
-                          disabled={gameState.currentPlayerIndex !== index}
-                        >
-                          Draw
-                        </button>
-                        <button
-                          onClick={() =>
-                            simulateAction(
-                              botInfo.socket,
-                              botInfo.id,
-                              "discard"
-                            )
-                          }
-                          className="px-1 py-0.5 text-xs bg-red-600 rounded hover:bg-red-700"
-                          disabled={gameState.currentPlayerIndex !== index}
-                        >
-                          Discard
-                        </button>
-                        <button
-                          onClick={() =>
-                            simulateAction(
-                              botInfo.socket,
-                              botInfo.id,
-                              "declare"
-                            )
-                          }
-                          className="px-1 py-0.5 text-xs bg-green-600 rounded hover:bg-green-700"
-                          disabled={gameState.currentPlayerIndex !== index}
-                        >
-                          Declare
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <p className="text-xs mt-2 text-gray-400">
-            This panel is for testing only
-          </p>
-        </>
-      ) : (
-        <span className="text-xs text-gray-400 transform -rotate-90 inline-block mt-10">
-          Test Panel
-        </span>
-      )}
+      <div className="mt-2 text-xs text-gray-300">
+        <p>Room: {roomId || "None"}</p>
+        <p>Player: {playerName || "None"}</p>
+        <p>Status: {gameState?.gameStatus || "Unknown"}</p>
+        <p>Cards in hand: {myPlayer?.hand.length || 0}</p>
+      </div>
     </div>
   );
 };

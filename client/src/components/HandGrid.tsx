@@ -1,16 +1,19 @@
-// client/src/components/Hand.tsx
 import React from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
 import type { Card as CardType } from "../utils/cardUtils";
 
-interface HandProps {
+interface HandGridProps {
   cards: CardType[];
   playerId: string;
   isCurrentPlayer: boolean;
 }
 
-const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
+const HandGrid: React.FC<HandGridProps> = ({
+  cards,
+  playerId,
+  isCurrentPlayer,
+}) => {
   const {
     handleSelectCard,
     selectedCard,
@@ -20,11 +23,11 @@ const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
 
   if (cards.length === 0) {
     return (
-      <div className="flex justify-center gap-2">
+      <div className="grid grid-cols-2 gap-2 max-w-xs w-1/2 mx-auto">
         {[...Array(4)].map((_, index) => (
           <div
             key={index}
-            className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
+            className="w-16 h-24 bg-gray-700  rounded shadow flex items-center justify-center"
           >
             <span className="text-gray-400">Empty</span>
           </div>
@@ -39,7 +42,7 @@ const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
   );
 
   return (
-    <div className="flex justify-center gap-2">
+    <div className="grid grid-cols-2 gap-2 max-w-xs w-1/3 mx-auto">
       {sortedCards.map((card, index) => {
         // Determine if this card should be revealed:
         // 1. Card is permanently revealed (isRevealed=true)
@@ -58,6 +61,7 @@ const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
                 handleCardClick(playerId, index);
               }
             }}
+            className="flex justify-center"
           >
             <Card
               suit={shouldReveal ? card.suit : undefined}
@@ -75,4 +79,4 @@ const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
   );
 };
 
-export default Hand;
+export default HandGrid;

@@ -89,7 +89,7 @@ const Card: React.FC<CardProps> = ({
 
   // Define selection styles
   const selectionStyles = isSelected
-    ? "border-2 border-yellow-400 translate-y-[-8px]"
+    ? "border-1 border-yellow-400"
     : "";
 
   // Define highlight styles

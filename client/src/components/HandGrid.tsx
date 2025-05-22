@@ -23,7 +23,7 @@ const HandGrid: React.FC<HandGridProps> = ({
 
   if (cards.length === 0) {
     return (
-      <div className="grid grid-cols-2 gap-2 max-w-xs w-1/2 mx-auto">
+      <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
         {[...Array(4)].map((_, index) => (
           <div
             key={index}
@@ -42,7 +42,7 @@ const HandGrid: React.FC<HandGridProps> = ({
   );
 
   return (
-    <div className="grid grid-cols-2 gap-2 max-w-xs w-1/3 mx-auto">
+    <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
       {sortedCards.map((card, index) => {
         // Determine if this card should be revealed:
         // 1. Card is permanently revealed (isRevealed=true)

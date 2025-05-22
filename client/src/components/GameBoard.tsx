@@ -216,7 +216,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {gameEnded && <GameEndScreen onPlayAgain={handlePlayAgain} />}
 
       <div className="flex max-w-md mx-auto">
-        <div className="flex justify-between items-center mb-6">
+        <div className=" absolute top-0 left-0 mb-6">
           <div>
             <h4 className="text-xl font-bold">Room: {initialRoomId}</h4>
             <h5 className="text-sm">You: {initialPlayerName}</h5>
@@ -236,7 +236,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         {/* Main Game Board Layout */}
         <div className="flex flex-col gap-6 w-full">
           {/* Opponent's Cards Section */}
-          <div className="bg-gray-800 p-4 rounded-lg">
+          <div className="bg-gray-800 p-4 w-1/2 mx-auto  rounded-lg">
             {opponent ? (
               <>
                 <div className="mb-3">
@@ -288,7 +288,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           </div>
 
           {/* My Cards Section */}
-          <div className="bg-gray-800 p-4 rounded-lg">
+          <div className="bg-gray-800 p-4 w-1/2 mx-auto rounded-lg">
             <div className="mb-3">
               <PlayerInfo
                 name={myPlayer?.name || initialPlayerName}

@@ -59,7 +59,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
 
   return (
     <div
-      className="w-16 h-24 bg-white rounded shadow relative flex flex-col justify-between p-1"
+      className="w-96 h-96 bg-white rounded shadow relative flex flex-col justify-between p-1"
       onClick={onDiscardClick}
     >
       <div className="absolute top-1 right-1 text-xs text-gray-500 font-bold">

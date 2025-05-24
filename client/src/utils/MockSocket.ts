@@ -15,6 +15,7 @@ class MockSocket extends BrowserEventEmitter {
   private id = `mock-${Math.random().toString(36).substring(2, 9)}`;
   private rooms: Record<string, GameState> = {};
   private playersByRoom: Record<string, Player[]> = {};
+  private drawnCards: Record<string, Card> = {}; // Track drawn cards by player ID
 
   constructor() {
     super();
@@ -48,8 +49,9 @@ class MockSocket extends BrowserEventEmitter {
       event === "leave-room" ||
       event === "start-game" ||
       event === "draw-card" ||
-      event === "discard-card" ||
-      event === "swap-card" ||
+      event === "eliminate-card" ||
+      event === "discard-drawn-card" ||
+      event === "swap-drawn-card" ||
       event === "declare" ||
       event === "view-opponent-card" ||
       event === "view-own-card"
@@ -99,11 +101,14 @@ class MockSocket extends BrowserEventEmitter {
       case "draw-card":
         this.handleDrawCard(data);
         break;
-      case "discard-card":
-        this.handleDiscardCard(data);
+      case "eliminate-card":
+        this.handleEliminateCard(data);
         break;
-      case "swap-card":
-        this.handleSwapCard(data);
+      case "discard-drawn-card":
+        this.handleDiscardDrawnCard(data);
+        break;
+      case "swap-drawn-card":
+        this.handleSwapDrawnCard(data);
         break;
       case "declare":
         this.handleDeclare(data);
@@ -227,6 +232,14 @@ class MockSocket extends BrowserEventEmitter {
     const gameState = this.rooms[roomId];
     const playerCount = gameState.players.length;
 
+    // Check if the requesting player is the host
+    const requestingPlayer = gameState.players.find((p) => p.id === this.id);
+    if (!requestingPlayer?.isHost) {
+      console.log("Only host can start the game");
+      this.emit("error", { message: "Only host can start the game" });
+      return;
+    }
+
     console.log(`Starting game with ${playerCount} players`);
 
     // Force at least 2 players for testing
@@ -260,16 +273,23 @@ class MockSocket extends BrowserEventEmitter {
     gameState.gameStatus = "playing";
     gameState.currentPlayerIndex = 0;
 
-    // Assign hands to players - all cards start face down
+    // Assign hands to players - all cards start hidden, but players will see their own bottom 2
     gameState.players.forEach((player, index) => {
-      // Get the hand for this player and make sure all cards are face down
       const hand = playerHands[index];
-      hand.forEach((card) => {
-        card.isRevealed = false;
+      // Set position for each card - all start hidden
+      hand.forEach((card, cardIndex) => {
+        card.position = cardIndex;
+        card.isRevealed = false; // All cards start hidden in the game state
       });
 
       player.hand = hand;
+      player.score = 0; // Reset scores
+      player.knownCards = []; // Reset known cards
+      player.skippedTurn = false; // Reset skip status
     });
+
+    // Clear any stored drawn cards from previous games
+    this.drawnCards = {};
 
     // Update game state
     this.rooms[roomId] = gameState;
@@ -279,6 +299,10 @@ class MockSocket extends BrowserEventEmitter {
 
     // Send updated game state to all connected clients
     this.emitToAll("game-state-update", this.rooms[roomId]);
+
+    console.log(
+      `Game successfully started in room ${roomId} with ${gameState.players.length} players`
+    );
   }
 
   private handleDrawCard({
@@ -306,6 +330,9 @@ class MockSocket extends BrowserEventEmitter {
       const drawnCard = gameState.deck.pop()!;
       drawnCard.isRevealed = true;
 
+      // Store the drawn card for this player
+      this.drawnCards[playerId] = drawnCard;
+
       // Create a last action record
       gameState.lastAction = {
         type: "draw",
@@ -330,7 +357,7 @@ class MockSocket extends BrowserEventEmitter {
     }
   }
 
-  private handleDiscardCard({
+  private handleEliminateCard({
     roomId,
     playerId,
     cardId,
@@ -347,35 +374,71 @@ class MockSocket extends BrowserEventEmitter {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (currentPlayer.id !== playerId) return;
 
-    // Find the card in player's hand
+    // Find the player and card
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
       (c) => c.id === cardId
     );
 
-    if (cardIndex !== -1) {
-      // Remove card from hand and add to discard pile
-      const card = gameState.players[playerIndex].hand.splice(cardIndex, 1)[0];
-      gameState.discardPile.push(card);
+    if (playerIndex !== -1 && cardIndex !== -1) {
+      const cardToEliminate = gameState.players[playerIndex].hand[cardIndex];
+
+      // Check if elimination is valid (matches top discard card rank)
+      const topDiscardCard =
+        gameState.discardPile.length > 0
+          ? gameState.discardPile[gameState.discardPile.length - 1]
+          : null;
+
+      const canEliminate =
+        !topDiscardCard || topDiscardCard.rank === cardToEliminate.rank;
+
+      if (canEliminate) {
+        // Valid elimination - remove card from hand and add to discard pile
+        const eliminatedCard = gameState.players[playerIndex].hand.splice(
+          cardIndex,
+          1
+        )[0];
+        gameState.discardPile.push(eliminatedCard);
+
+        console.log("Card eliminated successfully:", eliminatedCard.rank);
+
+        // Move to next player after successful elimination
+        gameState.currentPlayerIndex =
+          (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      } else {
+        // Invalid elimination - card stays in hand (face down) and give penalty card
+        console.log(
+          "Invalid elimination - card returned face down + penalty card"
+        );
+
+        // Make the attempted card face down
+        cardToEliminate.isRevealed = false;
+
+        // Give penalty card if deck has cards
+        if (gameState.deck.length > 0) {
+          const penaltyCard = gameState.deck.pop()!;
+          penaltyCard.isRevealed = false; // Penalty card is face down
+          gameState.players[playerIndex].hand.push(penaltyCard);
+
+          this.emitToAll("penalty-card", {
+            playerId,
+            penaltyCard,
+            reason: "Invalid elimination attempt",
+          });
+        }
+
+        // Move to next player even after failed elimination
+        gameState.currentPlayerIndex =
+          (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      }
 
       // Create a last action record
       gameState.lastAction = {
-        type: "discard",
+        type: "discard", // Use "discard" instead of "eliminate" for now
         playerId,
         cardId,
         timestamp: Date.now(),
       };
-
-      // Special power: Jack skips the next player
-      if (card.rank === "J") {
-        const nextPlayerIndex =
-          (gameState.currentPlayerIndex + 1) % gameState.players.length;
-        gameState.players[nextPlayerIndex].skippedTurn = true;
-      }
-
-      // Move to next player
-      gameState.currentPlayerIndex =
-        (gameState.currentPlayerIndex + 1) % gameState.players.length;
 
       // Update game state
       this.rooms[roomId] = gameState;
@@ -383,16 +446,14 @@ class MockSocket extends BrowserEventEmitter {
     }
   }
 
-  private handleSwapCard({
+  private handleDiscardDrawnCard({
     roomId,
     playerId,
     cardId,
-    targetPlayerId,
   }: {
     roomId: string;
     playerId: string;
     cardId: string;
-    targetPlayerId: string;
   }): void {
     if (!this.rooms[roomId]) return;
 
@@ -402,33 +463,106 @@ class MockSocket extends BrowserEventEmitter {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (currentPlayer.id !== playerId) return;
 
-    // Find the cards
+    // Get the actual drawn card for this player
+    const drawnCard = this.drawnCards[playerId];
+    if (!drawnCard) {
+      console.error("No drawn card found for player:", playerId);
+      return;
+    }
+
+    // Verify the card ID matches (optional safety check)
+    if (drawnCard.id !== cardId) {
+      console.warn("Card ID mismatch - using stored drawn card anyway");
+    }
+
+    // Add the actual drawn card to discard pile
+    gameState.discardPile.push(drawnCard);
+    console.log(`Discarded ${drawnCard.rank} of ${drawnCard.suit}`);
+
+    // Apply special card powers
+    if (drawnCard.rank === "J") {
+      // Jack: Skip the next player's turn
+      const nextPlayerIndex =
+        (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      gameState.players[nextPlayerIndex].skippedTurn = true;
+      console.log("Jack played - next player's turn skipped");
+    }
+
+    // Clear the drawn card from storage
+    delete this.drawnCards[playerId];
+
+    // Create a last action record
+    gameState.lastAction = {
+      type: "discard",
+      playerId,
+      cardId,
+      timestamp: Date.now(),
+    };
+
+    // Move to next player
+    gameState.currentPlayerIndex =
+      (gameState.currentPlayerIndex + 1) % gameState.players.length;
+
+    // Update game state
+    this.rooms[roomId] = gameState;
+    this.emitToAll("game-state-update", this.rooms[roomId]);
+  }
+
+  private handleSwapDrawnCard({
+    roomId,
+    playerId,
+    drawnCardId,
+    handCardId,
+  }: {
+    roomId: string;
+    playerId: string;
+    drawnCardId: string;
+    handCardId: string;
+  }): void {
+    if (!this.rooms[roomId]) return;
+
+    const gameState = this.rooms[roomId];
+
+    // Check if it's player's turn
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.id !== playerId) return;
+
+    // Find the player and the card in their hand
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
-    const targetPlayerIndex = gameState.players.findIndex(
-      (p) => p.id === targetPlayerId
-    );
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c.id === cardId
+      (c) => c.id === handCardId
     );
 
-    if (playerIndex !== -1 && targetPlayerIndex !== -1 && cardIndex !== -1) {
-      // For simplicity in mock, just swap with first card of target player
-      const targetCardIndex = 0;
+    if (playerIndex !== -1 && cardIndex !== -1) {
+      // Get the actual drawn card for this player
+      const drawnCard = this.drawnCards[playerId];
+      if (!drawnCard) {
+        console.error("No drawn card found for player:", playerId);
+        return;
+      }
 
-      // Swap the cards
-      const playerCard = gameState.players[playerIndex].hand[cardIndex];
-      const targetCard =
-        gameState.players[targetPlayerIndex].hand[targetCardIndex];
+      // Get the hand card that will be discarded
+      const handCard = gameState.players[playerIndex].hand[cardIndex];
 
-      gameState.players[playerIndex].hand[cardIndex] = targetCard;
-      gameState.players[targetPlayerIndex].hand[targetCardIndex] = playerCard;
+      // Put the drawn card into the hand position (face down)
+      drawnCard.isRevealed = false; // Make it face down when it goes into hand
+      gameState.players[playerIndex].hand[cardIndex] = drawnCard;
+
+      // Put the hand card into the discard pile
+      gameState.discardPile.push(handCard);
+
+      // Clear the drawn card from storage
+      delete this.drawnCards[playerId];
+
+      console.log(
+        `Swapped: drawn card ${drawnCard.rank} → hand (face down), hand card ${handCard.rank} → discard pile`
+      );
 
       // Create a last action record
       gameState.lastAction = {
         type: "swap",
         playerId,
-        cardId,
-        targetPlayerId,
+        cardId: handCardId,
         timestamp: Date.now(),
       };
 
@@ -445,9 +579,11 @@ class MockSocket extends BrowserEventEmitter {
   private handleDeclare({
     roomId,
     playerId,
+    declaredRanks,
   }: {
     roomId: string;
     playerId: string;
+    declaredRanks: string[];
   }): void {
     if (!this.rooms[roomId]) return;
 
@@ -456,6 +592,22 @@ class MockSocket extends BrowserEventEmitter {
     // Check if it's player's turn
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (currentPlayer.id !== playerId) return;
+
+    // Find the player
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+    if (playerIndex === -1) return;
+
+    // For testing, we'll validate the declaration (simplified)
+    const actualRanks = gameState.players[playerIndex].hand.map(
+      (card) => card.rank
+    );
+    const isValidDeclaration = declaredRanks.every(
+      (rank, index) => actualRanks[index] === rank
+    );
+
+    console.log("Declared ranks:", declaredRanks);
+    console.log("Actual ranks:", actualRanks);
+    console.log("Is valid:", isValidDeclaration);
 
     // Mark game as ended and set declarer
     gameState.gameStatus = "ended";
@@ -468,7 +620,7 @@ class MockSocket extends BrowserEventEmitter {
       timestamp: Date.now(),
     };
 
-    // For testing purposes, calculate random scores
+    // Calculate scores
     gameState.players.forEach((player) => {
       // Reveal all cards
       player.hand.forEach((card) => {
@@ -478,6 +630,11 @@ class MockSocket extends BrowserEventEmitter {
       // Calculate score - use actual card values for realism
       player.score = player.hand.reduce((sum, card) => sum + card.value, 0);
     });
+
+    // If declaration was invalid, add penalty to declarer
+    if (!isValidDeclaration) {
+      gameState.players[playerIndex].score += 20; // Penalty for wrong declaration
+    }
 
     // Find winner(s) - lowest score wins
     const minScore = Math.min(...gameState.players.map((p) => p.score));
@@ -491,6 +648,7 @@ class MockSocket extends BrowserEventEmitter {
     this.emitToAll("game-ended", {
       declarer: playerId,
       winners,
+      isValidDeclaration,
     });
   }
 

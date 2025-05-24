@@ -2,18 +2,14 @@ import React from "react";
 
 interface ActionPanelProps {
   isPlayerTurn: boolean;
-  onDraw: () => void;
-  onSwap: () => void;
-  onDiscard: () => void;
   onDeclare: () => void;
+  drawnCard: any;
 }
 
 const ActionPanel: React.FC<ActionPanelProps> = ({
   isPlayerTurn,
-  onDraw,
-  onSwap,
-  onDiscard,
   onDeclare,
+  drawnCard,
 }) => {
   if (!isPlayerTurn) {
     return (
@@ -26,31 +22,34 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   return (
     <div className="p-4 bg-gray-800 rounded-lg">
       <h3 className="text-center mb-2 font-semibold text-white">Your Turn</h3>
-      <div className="flex justify-center gap-2">
-        <button
-          onClick={onDraw}
-          className="px-3 py-1 bg-blue-600 rounded hover:bg-blue-700 text-white"
-        >
-          Draw
-        </button>
-        <button
-          onClick={onSwap}
-          className="px-3 py-1 bg-yellow-600 rounded hover:bg-yellow-700 text-white"
-        >
-          Swap
-        </button>
-        <button
-          onClick={onDiscard}
-          className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
-        >
-          Discard
-        </button>
+
+      {/* Instructions */}
+      <div className="text-xs text-gray-300 text-center mb-3">
+        {drawnCard
+          ? "Click your cards to swap • Click discard pile to discard drawn card"
+          : "Click deck to draw • Click ❌ on cards to eliminate • Declare when ready"}
+      </div>
+
+      <div className="flex justify-center">
         <button
           onClick={onDeclare}
-          className="px-3 py-1 bg-green-600 rounded hover:bg-green-700 text-white"
+          className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm"
+          title="Declare your hand (must name all ranks)"
         >
           Declare
         </button>
+      </div>
+
+      {/* Action hints */}
+      <div className="mt-2 text-xs text-center text-gray-300">
+        {drawnCard ? (
+          <span className="text-blue-300">
+            Drawn card ready - click hand card to swap or discard pile to
+            discard
+          </span>
+        ) : (
+          <span>Draw from deck or eliminate cards by clicking ❌</span>
+        )}
       </div>
     </div>
   );

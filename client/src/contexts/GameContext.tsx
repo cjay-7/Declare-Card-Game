@@ -23,8 +23,6 @@ interface GameContextType {
   setDrawnCard: (card: Card | null) => void;
   roomId: string | null;
   setRoomId: (id: string) => void;
-  targetPlayerForSwap: string | null;
-  setTargetPlayerForSwap: (playerId: string | null) => void;
 
   // Animation states
   cardAnimation: string | null;
@@ -43,12 +41,21 @@ interface GameContextType {
 
   // Game actions
   handleDrawCard: () => void;
-  handleSwapCard: () => void;
-  handleDiscardCard: () => void;
+  handleSwapWithDrawnCard: (handCardId: string) => void;
+  handleDiscardDrawnCard: () => void;
+  handleEliminateCard: (cardId: string) => void;
   handleDeclare: () => void;
+  handleConfirmDeclare: (declaredRanks: string[]) => void;
   handleSelectCard: (card: Card) => void;
   handleCardClick: (playerId: string, cardIndex: number) => void;
   handleViewBottomCards: () => void;
+
+  // UI state
+  showDeclareModal: boolean;
+  setShowDeclareModal: (show: boolean) => void;
+
+  // Game rules helpers
+  canDiscardDrawnCard: boolean;
 
   // Game instructions
   getInstructionsForCard: (card: Card) => string;
@@ -80,9 +87,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCard, setSelectedCard] = useState<CardSelection | null>(null);
   const [drawnCard, setDrawnCard] = useState<Card | null>(null);
-  const [targetPlayerForSwap, setTargetPlayerForSwap] = useState<string | null>(
-    null
-  );
 
   // Animation states
   const [cardAnimation, setCardAnimation] = useState<string | null>(null);
@@ -96,6 +100,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [lastAction, setLastAction] = useState<GameAction | null>(null);
   const [hasDrawnFirstCard, setHasDrawnFirstCard] = useState(false);
 
+  // UI states
+  const [showDeclareModal, setShowDeclareModal] = useState(false);
+
   // Temporary revealed cards (for viewing bottom cards at game start)
   const [temporaryRevealedCards, setTemporaryRevealedCards] = useState<
     number[]
@@ -107,6 +114,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const currentPlayer = gameState?.players[gameState?.currentPlayerIndex || 0];
   const isPlayerTurn =
     !!myPlayer && !!currentPlayer && myPlayer.id === currentPlayer.id;
+
+  // Game rules helpers
+  const canDiscardDrawnCard = !!drawnCard;
 
   // Helper to get instructions for special cards
   const getInstructionsForCard = (card: Card): string => {
@@ -216,16 +226,30 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       console.log("Game ended:", result);
     };
 
+    // Handle penalty card event
+    const handlePenaltyCard = (data: {
+      playerId: string;
+      penaltyCard: Card;
+    }) => {
+      if (data.playerId === socket.getId()) {
+        console.log("Received penalty card:", data.penaltyCard);
+        // Add penalty card to hand
+        // This would be handled by the server updating the game state
+      }
+    };
+
     socket.on("game-state-update", handleGameStateUpdate);
     socket.on("card-drawn", handleCardDrawn);
     socket.on("card-revealed", handleCardRevealed);
     socket.on("game-ended", handleGameEnded);
+    socket.on("penalty-card", handlePenaltyCard);
 
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
       socket.off("card-drawn", handleCardDrawn);
       socket.off("card-revealed", handleCardRevealed);
       socket.off("game-ended", handleGameEnded);
+      socket.off("penalty-card", handlePenaltyCard);
     };
   }, []);
 
@@ -256,75 +280,87 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     socket.emit("draw-card", { roomId, playerId: myPlayer.id });
   };
 
-  const handleSwapCard = () => {
-    if (
-      !isPlayerTurn ||
-      !roomId ||
-      !myPlayer ||
-      !selectedCard ||
-      !targetPlayerForSwap
-    ) {
-      console.log("Cannot swap card:", {
+  const handleSwapWithDrawnCard = (handCardId: string) => {
+    if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
+      console.log("Cannot swap with drawn card:", {
         isPlayerTurn,
         roomId,
         myPlayerId: myPlayer?.id,
-        selectedCard,
-        targetPlayerForSwap,
-      });
-      return;
-    }
-
-    console.log("Swapping card...");
-
-    // Set animation
-    setCardAnimation("swap");
-    setAnimatingCardId(selectedCard.cardId);
-
-    socket.emit("swap-card", {
-      roomId,
-      playerId: myPlayer.id,
-      cardId: selectedCard.cardId,
-      targetPlayerId: targetPlayerForSwap,
-    });
-
-    // Reset selections
-    setSelectedCard(null);
-    setTargetPlayerForSwap(null);
-    setDrawnCard(null);
-    setSelectedPower(null);
-    setPowerInstructions(null);
-  };
-
-  const handleDiscardCard = () => {
-    if (
-      !isPlayerTurn ||
-      !roomId ||
-      !myPlayer ||
-      (!selectedCard && !drawnCard)
-    ) {
-      console.log("Cannot discard card:", {
-        isPlayerTurn,
-        roomId,
-        myPlayerId: myPlayer?.id,
-        selectedCard,
         drawnCard,
       });
       return;
     }
 
-    console.log("Discarding card...");
+    console.log("Swapping drawn card with hand card:", handCardId);
 
-    // Get the card ID to discard
-    const cardId = drawnCard ? drawnCard.id : selectedCard!.cardId;
+    // Set animation
+    setCardAnimation("swap");
+    setAnimatingCardId(handCardId);
+
+    socket.emit("swap-drawn-card", {
+      roomId,
+      playerId: myPlayer.id,
+      drawnCardId: drawnCard.id,
+      handCardId: handCardId,
+    });
+
+    // Reset selections
+    setSelectedCard(null);
+    setDrawnCard(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
+  };
+
+  const handleDiscardDrawnCard = () => {
+    if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
+      console.log("Cannot discard drawn card:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+        drawnCard,
+      });
+      return;
+    }
+
+    console.log("Discarding drawn card...");
+
+    // Set animation
+    setCardAnimation("discard");
+    setAnimatingCardId(drawnCard.id);
+
+    socket.emit("discard-drawn-card", {
+      roomId,
+      playerId: myPlayer.id,
+      cardId: drawnCard.id,
+    });
+
+    // Reset selections
+    setSelectedCard(null);
+    setDrawnCard(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
+  };
+
+  const handleEliminateCard = (cardId: string) => {
+    if (!isPlayerTurn || !roomId || !myPlayer) {
+      console.log("Cannot eliminate card:", {
+        isPlayerTurn,
+        roomId,
+        myPlayerId: myPlayer?.id,
+      });
+      return;
+    }
+
+    console.log("Eliminating card:", cardId);
 
     // Set animation
     setCardAnimation("discard");
     setAnimatingCardId(cardId);
 
-    socket.emit("discard-card", {
+    socket.emit("eliminate-card", {
       roomId,
       playerId: myPlayer.id,
-      cardId,
+      cardId: cardId,
     });
 
     // Reset selections
@@ -344,10 +380,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    console.log("Declaring...");
+    setShowDeclareModal(true);
+  };
+
+  const handleConfirmDeclare = (declaredRanks: string[]) => {
+    if (!isPlayerTurn || !roomId || !myPlayer) return;
+
+    console.log("Confirming declare with ranks:", declaredRanks);
+
     socket.emit("declare", {
       roomId,
       playerId: myPlayer.id,
+      declaredRanks,
     });
 
     // Reset selections
@@ -355,6 +399,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setDrawnCard(null);
     setSelectedPower(null);
     setPowerInstructions(null);
+    setShowDeclareModal(false);
   };
 
   const handleSelectCard = (card: Card) => {
@@ -363,6 +408,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // If there's a drawn card, clicking a hand card should swap them
+    if (drawnCard) {
+      console.log("Swapping drawn card with selected card:", card);
+      handleSwapWithDrawnCard(card.id);
+      return;
+    }
+
+    // Otherwise, select/deselect for elimination
     if (selectedCard && selectedCard.cardId === card.id) {
       // Deselect if already selected
       console.log("Deselecting card:", card);
@@ -397,7 +450,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // Discard the King after use
       setTimeout(() => {
         if (drawnCard) {
-          handleDiscardCard();
+          handleDiscardDrawnCard();
         }
       }, 3500);
     }
@@ -414,15 +467,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // Discard the Queen after use
       setTimeout(() => {
         if (drawnCard) {
-          handleDiscardCard();
+          handleDiscardDrawnCard();
         }
       }, 1000);
-    }
-
-    // Select player for swap
-    else if (playerId !== myPlayer.id && selectedCard) {
-      console.log("Setting target player for swap:", playerId);
-      setTargetPlayerForSwap(playerId);
     }
   };
 
@@ -449,13 +496,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const resetGame = () => {
     setSelectedCard(null);
     setDrawnCard(null);
-    setTargetPlayerForSwap(null);
     setCardAnimation(null);
     setAnimatingCardId(null);
     setSelectedPower(null);
     setPowerInstructions(null);
     setHasDrawnFirstCard(false);
     setTemporaryRevealedCards([]);
+    setShowDeclareModal(false);
   };
 
   return (
@@ -472,8 +519,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setDrawnCard,
         roomId,
         setRoomId,
-        targetPlayerForSwap,
-        setTargetPlayerForSwap,
         cardAnimation,
         setCardAnimation,
         animatingCardId,
@@ -484,12 +529,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         temporaryRevealedCards,
         setTemporaryRevealedCards,
         handleDrawCard,
-        handleSwapCard,
-        handleDiscardCard,
+        handleSwapWithDrawnCard,
+        handleDiscardDrawnCard,
+        handleEliminateCard,
         handleDeclare,
+        handleConfirmDeclare,
         handleSelectCard,
         handleCardClick,
         handleViewBottomCards,
+        showDeclareModal,
+        setShowDeclareModal,
+        canDiscardDrawnCard,
         getInstructionsForCard,
         resetGame,
       }}

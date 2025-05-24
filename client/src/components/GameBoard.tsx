@@ -7,9 +7,9 @@ import Deck from "./Deck";
 import DiscardPile from "./DiscardPile";
 import ActionPanel from "./ActionPanel";
 import GameEndScreen from "./GameEndScreen";
-import ViewBottomCardsButton from "./ViewBottomCardsButton";
 import HandGrid from "./HandGrid";
 import PlayerInfo from "./PlayerInfo";
+import DeclareModal from "./DeclareModal";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface GameBoardProps {
@@ -28,16 +28,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     isPlayerTurn,
     myPlayer,
     handleDrawCard,
-    handleSwapCard,
-    handleDiscardCard,
     handleDeclare,
+    handleConfirmDeclare,
+    handleDiscardDrawnCard,
     drawnCard,
     handleSelectCard,
     selectedCard,
-    hasDrawnFirstCard,
     selectedPower,
     powerInstructions,
     handleCardClick,
+    showDeclareModal,
+    setShowDeclareModal,
+    canDiscardDrawnCard,
   } = useGameContext();
 
   // State to track the opponent we're currently viewing
@@ -112,6 +114,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         cards={opponent.hand}
         playerId={opponent.id}
         isCurrentPlayer={false}
+        isPlayerTurn={false}
       />
     );
   };
@@ -125,6 +128,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         cards={myHand}
         playerId={myPlayer?.id || ""}
         isCurrentPlayer={true}
+        isPlayerTurn={isPlayerTurn}
       />
     );
   };
@@ -159,7 +163,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   if (!gameStarted) {
     return (
       <div className="min-h-screen p-6 bg-gray-900 text-white">
-        <div className="flex max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-bold">Room: {initialRoomId}</h1>
@@ -177,7 +181,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             </div>
           </div>
 
-          <div className="mt-8 p-6 bg-gray-800 rounded-lg text-center">
+          <div className="p-6 bg-gray-800 rounded-lg text-center">
             <h2 className="text-xl font-bold mb-2">
               Waiting for host to start the game...
             </h2>
@@ -214,6 +218,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     <div className="min-h-screen p-6 bg-gray-900 text-white">
       {/* Game End Screen */}
       {gameEnded && <GameEndScreen onPlayAgain={handlePlayAgain} />}
+
+      {/* Declare Modal */}
+      <DeclareModal
+        isOpen={showDeclareModal}
+        onClose={() => setShowDeclareModal(false)}
+        onConfirm={handleConfirmDeclare}
+        playerHand={myHand}
+      />
 
       <div className="flex max-w-md mx-auto">
         <div className=" absolute top-0 left-0 mb-6">
@@ -273,16 +285,47 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               {isPlayerTurn && (
                 <div className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full animate-pulse"></div>
               )}
+              <div className="text-center mt-2 text-xs text-gray-400">
+                Click to draw
+              </div>
             </div>
 
             <div className="bg-gray-800 p-4 rounded-lg flex-1">
               <h3 className="text-center mb-2">Discard</h3>
               <div className="flex justify-center">
-                <DiscardPile
-                  topCard={topDiscardCard}
-                  count={gameState?.discardPile.length || 0}
-                  onDiscardClick={undefined}
-                />
+                <div
+                  onClick={
+                    drawnCard && isPlayerTurn
+                      ? handleDiscardDrawnCard
+                      : undefined
+                  }
+                  className={
+                    drawnCard && isPlayerTurn
+                      ? "cursor-pointer hover:scale-105 transition-transform"
+                      : ""
+                  }
+                >
+                  <DiscardPile
+                    topCard={topDiscardCard}
+                    count={gameState?.discardPile.length || 0}
+                    onDiscardClick={
+                      drawnCard && isPlayerTurn
+                        ? handleDiscardDrawnCard
+                        : undefined
+                    }
+                  />
+                </div>
+              </div>
+              <div className="text-center mt-2 text-xs text-gray-400">
+                {drawnCard && isPlayerTurn ? (
+                  <span className="text-green-300">
+                    Click to discard drawn card
+                  </span>
+                ) : topDiscardCard ? (
+                  `Top: ${topDiscardCard.rank}`
+                ) : (
+                  "Empty"
+                )}
               </div>
             </div>
           </div>
@@ -298,13 +341,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               />
             </div>
             {renderMyHand()}
-
-            {/* View Bottom Cards button - only visible before first draw */}
-            {!hasDrawnFirstCard && (
-              <div className="mt-4 flex justify-center">
-                <ViewBottomCardsButton />
-              </div>
-            )}
           </div>
 
           {/* Drawn Card Section */}
@@ -312,14 +348,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             <div className="bg-gray-800 p-4 rounded-lg">
               <h3 className="text-center mb-2">Drawn Card</h3>
               <div className="flex justify-center">
-                <div onClick={() => handleSelectCard(drawnCard)}>
-                  <Card
-                    suit={drawnCard.suit}
-                    rank={drawnCard.rank}
-                    isRevealed={true}
-                    isSelected={selectedCard?.cardId === drawnCard.id}
-                  />
-                </div>
+                <Card
+                  suit={drawnCard.suit}
+                  rank={drawnCard.rank}
+                  isRevealed={true}
+                  isSelected={false}
+                />
+              </div>
+              <div className="text-center mt-2 text-xs text-gray-400">
+                Click hand card to swap • Click discard pile to discard
               </div>
             </div>
           )}
@@ -342,10 +379,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <div className="mt-2">
             <ActionPanel
               isPlayerTurn={isPlayerTurn}
-              onDraw={handleDrawCard}
-              onSwap={handleSwapCard}
-              onDiscard={handleDiscardCard}
               onDeclare={handleDeclare}
+              drawnCard={drawnCard}
             />
           </div>
         </div>

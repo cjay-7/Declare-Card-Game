@@ -342,9 +342,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleEliminateCard = (cardId: string) => {
-    if (!isPlayerTurn || !roomId || !myPlayer) {
+    // Allow elimination when there's a discard card, even if it's not player's turn
+    const hasDiscardCard =
+      gameState?.discardPile && gameState.discardPile.length > 0;
+
+    if (!hasDiscardCard || !roomId || !myPlayer) {
       console.log("Cannot eliminate card:", {
-        isPlayerTurn,
+        hasDiscardCard,
         roomId,
         myPlayerId: myPlayer?.id,
       });

@@ -24,6 +24,7 @@ const HandGrid: React.FC<HandGridProps> = ({
     hasDrawnFirstCard,
     handleEliminateCard,
     drawnCard,
+    gameState,
   } = useGameContext();
 
   if (cards.length === 0) {
@@ -46,6 +47,11 @@ const HandGrid: React.FC<HandGridProps> = ({
     (a, b) => (a.position || 0) - (b.position || 0)
   );
 
+  // Remove debug logging since we identified the issue
+  // Check if there's a card in the discard pile
+  const hasDiscardCard =
+    gameState?.discardPile && gameState.discardPile.length > 0;
+
   return (
     <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
       {sortedCards.map((card, index) => {
@@ -58,9 +64,10 @@ const HandGrid: React.FC<HandGridProps> = ({
           (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Bottom 2 visible only before first draw
           (isCurrentPlayer && temporaryRevealedCards.includes(index));
 
-        // Show eliminate button when it's player's turn and no drawn card
+        // Show eliminate button when there's a discard card and it's the current player's own cards
+        // All players can eliminate during the matching window, not just the current turn player
         const showEliminateButton =
-          isCurrentPlayer && isPlayerTurn && !drawnCard;
+          isCurrentPlayer && !drawnCard && hasDiscardCard;
 
         return (
           <div

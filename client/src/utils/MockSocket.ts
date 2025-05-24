@@ -370,9 +370,9 @@ class MockSocket extends BrowserEventEmitter {
 
     const gameState = this.rooms[roomId];
 
-    // Check if it's player's turn
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (currentPlayer.id !== playerId) return;
+    // REMOVED: Check if it's player's turn - allow elimination during matching window
+    // const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    // if (currentPlayer.id !== playerId) return;
 
     // Find the player and card
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
@@ -402,9 +402,9 @@ class MockSocket extends BrowserEventEmitter {
 
         console.log("Card eliminated successfully:", eliminatedCard.rank);
 
-        // Move to next player after successful elimination
-        gameState.currentPlayerIndex =
-          (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        // REMOVED: Move to next player after successful elimination
+        // gameState.currentPlayerIndex =
+        //   (gameState.currentPlayerIndex + 1) % gameState.players.length;
       } else {
         // Invalid elimination - card stays in hand (face down) and give penalty card
         console.log(
@@ -427,9 +427,9 @@ class MockSocket extends BrowserEventEmitter {
           });
         }
 
-        // Move to next player even after failed elimination
-        gameState.currentPlayerIndex =
-          (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        // REMOVED: Move to next player even after failed elimination
+        // gameState.currentPlayerIndex =
+        //   (gameState.currentPlayerIndex + 1) % gameState.players.length;
       }
 
       // Create a last action record

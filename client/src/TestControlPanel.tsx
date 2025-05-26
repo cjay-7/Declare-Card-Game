@@ -3,6 +3,7 @@ import { useGameContext } from "./contexts/GameContext";
 import socket from "./socket";
 
 const TestControlPanel: React.FC = () => {
+  let playerCount = 0;
   const { gameState, roomId, playerName, setDrawnCard, drawnCard, myPlayer } =
     useGameContext();
 
@@ -154,12 +155,12 @@ const TestControlPanel: React.FC = () => {
   };
 
   // Add test player
+  // Add test player
   const addTestPlayer = () => {
     if (!gameState || !roomId) return;
 
     const updatedGameState = { ...gameState };
-    const playerCount = updatedGameState.players.length;
-
+    playerCount = updatedGameState.players.length;
     // Create a test player
     const testPlayer = {
       id: `test-player-${playerCount + 1}`,
@@ -174,6 +175,7 @@ const TestControlPanel: React.FC = () => {
       score: 0,
       knownCards: [],
       skippedTurn: false,
+      hasEliminatedThisRound: false, // Add this line
     };
 
     updatedGameState.players.push(testPlayer);

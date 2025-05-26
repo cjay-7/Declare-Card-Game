@@ -1,4 +1,5 @@
 import React from "react";
+import { useGameContext } from "../contexts/GameContext";
 
 interface ActionPanelProps {
   isPlayerTurn: boolean;
@@ -11,6 +12,45 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   onDeclare,
   drawnCard,
 }) => {
+  const { gameState, myPlayer } = useGameContext();
+
+  // Check if current player has an active power
+  const currentPlayer = gameState?.players.find((p) => p.id === myPlayer?.id);
+  const activePower = currentPlayer?.activePower;
+
+  const getPowerInstructions = (power: string) => {
+    switch (power) {
+      case "7":
+      case "8":
+        return "Click on one of your own cards to peek at it";
+      case "9":
+      case "10":
+        return "Click on an opponent's card to peek at it";
+      case "Q":
+        return "Select two cards to swap them (unseen swap)";
+      case "K":
+        return "Select two cards to swap them (seen swap)";
+      default:
+        return "";
+    }
+  };
+
+  if (activePower) {
+    return (
+      <div className="p-4 bg-purple-800 rounded-lg">
+        <h3 className="text-center mb-2 font-semibold text-white">
+          {activePower} Power Active!
+        </h3>
+        <div className="text-sm text-purple-100 text-center mb-3">
+          {getPowerInstructions(activePower)}
+        </div>
+        <div className="text-xs text-center text-purple-200">
+          Use your power by clicking on cards
+        </div>
+      </div>
+    );
+  }
+
   if (!isPlayerTurn) {
     return (
       <div className="p-4 bg-gray-800 rounded-lg">

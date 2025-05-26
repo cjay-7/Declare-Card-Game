@@ -1,6 +1,7 @@
 import React from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
+import socket from "../socket";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface HandGridProps {
@@ -25,7 +26,18 @@ const HandGrid: React.FC<HandGridProps> = ({
     handleEliminateCard,
     drawnCard,
     gameState,
+    myPlayer,
   } = useGameContext();
+
+  // Check if current player has an active power
+  const currentPlayer = gameState?.players.find((p) => p.id === socket.getId());
+  const activePower = currentPlayer?.activePower;
+
+  // Check if this hand should show a peek button
+  const showPeekButton =
+    activePower &&
+    ((["7", "8"].includes(activePower) && isCurrentPlayer) ||
+      (["9", "10"].includes(activePower) && !isCurrentPlayer));
 
   if (cards.length === 0) {
     return (
@@ -53,7 +65,26 @@ const HandGrid: React.FC<HandGridProps> = ({
     gameState?.discardPile && gameState.discardPile.length > 0;
 
   return (
-    <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
+    <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
+      {/* Peek button overlay */}
+      {showPeekButton && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center z-10">
+          <div className="bg-white p-3 rounded-lg shadow-lg text-center">
+            <div className="text-sm font-bold text-gray-800 mb-2">
+              {["7", "8"].includes(activePower)
+                ? "Peek at Your Card"
+                : "Peek at Opponent's Card"}
+            </div>
+            <div className="text-xs text-gray-600 mb-3">
+              Click any card below to peek at it
+            </div>
+            <div className="text-2xl">
+              {["7", "8"].includes(activePower) ? "👁️" : "🔍"}
+            </div>
+          </div>
+        </div>
+      )}
+
       {sortedCards.map((card, index) => {
         // Determine if this card should be revealed:
         // 1. Card is permanently revealed through gameplay (isRevealed=true)
@@ -64,10 +95,18 @@ const HandGrid: React.FC<HandGridProps> = ({
           (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Bottom 2 visible only before first draw
           (isCurrentPlayer && temporaryRevealedCards.includes(index));
 
-        // Show eliminate button when there's a discard card and it's the current player's own cards
-        // All players can eliminate during the matching window, not just the current turn player
+        // Show eliminate button when there's a discard card - on ANY player's cards during matching window
+        // Check if this player has already eliminated a card this round
+        const currentPlayer = gameState?.players.find(
+          (p) => p.id === socket.getId()
+        );
+        const hasAlreadyEliminated =
+          currentPlayer?.hasEliminatedThisRound || false;
+
         const showEliminateButton =
-          isCurrentPlayer && !drawnCard && hasDiscardCard;
+          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !activePower;
+
+        // Don't show individual power indicators anymore - we'll show hand-level peek buttons instead
 
         return (
           <div

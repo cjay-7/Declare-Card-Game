@@ -1,4 +1,4 @@
-// client/src/contexts/EnhancedGameContext.tsx
+// client/src/contexts/GameContext.tsx
 import React, {
   createContext,
   useState,
@@ -121,12 +121,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Helper to get instructions for special cards
   const getInstructionsForCard = (card: Card): string => {
     switch (card.rank) {
+      case "7":
+      case "8":
+        return `${card.rank}: Click on one of your own cards to peek at it.`;
+      case "9":
+      case "10":
+        return `${card.rank}: Click on one of an opponent's cards to peek at it.`;
       case "J":
-        return "Jack: Discard to skip the next player's turn.";
+        return "Jack: Skip the next player's turn (automatic).";
       case "Q":
-        return "Queen: Click on one of your cards to reveal it permanently.";
+        return "Queen: Click two cards to swap them (unseen swap).";
       case "K":
-        return "King: Click on another player's card to peek at it.";
+        return "King: Click two cards to swap them (seen swap - you'll see both cards first).";
       default:
         return "";
     }
@@ -183,10 +189,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           setCardAnimation("draw");
           setAnimatingCardId(cardData.card.id);
 
-          // Set power instructions if special card
-          if (["J", "Q", "K"].includes(cardData.card.rank)) {
+          // Set power instructions if special card (for visual feedback only)
+          if (
+            ["7", "8", "9", "10", "J", "Q", "K"].includes(cardData.card.rank)
+          ) {
             setSelectedPower(cardData.card.rank);
-            setPowerInstructions(getInstructionsForCard(cardData.card));
+            setPowerInstructions(
+              `Drawn ${cardData.card.rank} - power will activate when discarded`
+            );
           } else {
             setSelectedPower(null);
             setPowerInstructions(null);
@@ -204,10 +214,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setCardAnimation("draw");
         setAnimatingCardId((cardData as Card).id);
 
-        // Set power instructions if special card
-        if (["J", "Q", "K"].includes((cardData as Card).rank)) {
+        // Set power instructions if special card (for visual feedback only)
+        if (
+          ["7", "8", "9", "10", "J", "Q", "K"].includes((cardData as Card).rank)
+        ) {
           setSelectedPower((cardData as Card).rank);
-          setPowerInstructions(getInstructionsForCard(cardData as Card));
+          setPowerInstructions(
+            `Drawn ${
+              (cardData as Card).rank
+            } - power will activate when discarded`
+          );
         } else {
           setSelectedPower(null);
           setPowerInstructions(null);
@@ -238,11 +254,41 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // Handle power peek result
+    const handlePowerPeekResult = (data: {
+      card: Card;
+      targetPlayer: string;
+    }) => {
+      console.log(
+        `Power peek result: ${data.card.rank} from ${data.targetPlayer}`
+      );
+      // Show temporary notification with the peeked card
+      // For now, we'll just log it, but this could be a modal or notification
+      alert(
+        `Peeked card: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
+      );
+    };
+
+    // Handle power swap preview
+    const handlePowerSwapPreview = (data: {
+      card1: Card;
+      card2: Card;
+      player1Name: string;
+      player2Name: string;
+    }) => {
+      console.log(
+        `Power swap preview: ${data.card1.rank} (${data.player1Name}) ↔ ${data.card2.rank} (${data.player2Name})`
+      );
+      // Show preview of cards being swapped
+    };
+
     socket.on("game-state-update", handleGameStateUpdate);
     socket.on("card-drawn", handleCardDrawn);
     socket.on("card-revealed", handleCardRevealed);
     socket.on("game-ended", handleGameEnded);
     socket.on("penalty-card", handlePenaltyCard);
+    socket.on("power-peek-result", handlePowerPeekResult);
+    socket.on("power-swap-preview", handlePowerSwapPreview);
 
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
@@ -250,6 +296,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("card-revealed", handleCardRevealed);
       socket.off("game-ended", handleGameEnded);
       socket.off("penalty-card", handlePenaltyCard);
+      socket.off("power-peek-result", handlePowerPeekResult);
+      socket.off("power-swap-preview", handlePowerSwapPreview);
     };
   }, []);
 
@@ -432,18 +480,47 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleCardClick = (playerId: string, cardIndex: number) => {
-    if (!isPlayerTurn || !roomId || !myPlayer) {
+    if (!roomId || !myPlayer) {
       console.log("Cannot handle card click:", {
-        isPlayerTurn,
         roomId,
         myPlayerId: myPlayer?.id,
       });
       return;
     }
 
-    // King allows looking at opponent's card
+    // Check if current player has an active power
+    const currentPlayer = gameState?.players.find((p) => p.id === myPlayer.id);
+    const activePower = currentPlayer?.activePower;
+
+    if (activePower) {
+      // Handle power usage
+      if (["7", "8"].includes(activePower) && playerId === myPlayer.id) {
+        // Use power on own card
+        console.log(`Using ${activePower} power on own card`);
+        socket.emit("use-power-on-own-card", {
+          roomId,
+          playerId: myPlayer.id,
+          cardIndex,
+        });
+      } else if (
+        ["9", "10"].includes(activePower) &&
+        playerId !== myPlayer.id
+      ) {
+        // Use power on opponent card
+        console.log(`Using ${activePower} power on opponent card`);
+        socket.emit("use-power-on-opponent-card", {
+          roomId,
+          playerId: myPlayer.id,
+          targetPlayerId: playerId,
+          cardIndex,
+        });
+      }
+      return;
+    }
+
+    // Legacy drawn card logic (for when cards are drawn and need to be used immediately)
     if (drawnCard?.rank === "K" && playerId !== myPlayer.id) {
-      console.log("Viewing opponent's card with King...");
+      console.log("Viewing opponent's card with drawn King...");
       socket.emit("view-opponent-card", {
         roomId,
         playerId: myPlayer.id,
@@ -451,24 +528,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         cardIndex,
       });
 
-      // Discard the King after use
       setTimeout(() => {
         if (drawnCard) {
           handleDiscardDrawnCard();
         }
       }, 3500);
-    }
-
-    // Queen allows looking at your own card
-    else if (drawnCard?.rank === "Q" && playerId === myPlayer.id) {
-      console.log("Viewing own card with Queen...");
+    } else if (drawnCard?.rank === "Q" && playerId === myPlayer.id) {
+      console.log("Viewing own card with drawn Queen...");
       socket.emit("view-own-card", {
         roomId,
         playerId: myPlayer.id,
         cardIndex,
       });
 
-      // Discard the Queen after use
       setTimeout(() => {
         if (drawnCard) {
           handleDiscardDrawnCard();

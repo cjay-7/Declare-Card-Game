@@ -30,6 +30,47 @@ class MockSocket extends BrowserEventEmitter {
     return MockSocket.instance;
   }
 
+  // Helper function to move to next player, handling skipped turns
+  private moveToNextPlayer(gameState: GameState): void {
+    if (!gameState.players.length) return;
+
+    console.log(
+      `[TURN DEBUG] Current player before move: ${
+        gameState.players[gameState.currentPlayerIndex].name
+      } (index ${gameState.currentPlayerIndex})`
+    );
+
+    let nextPlayerIndex =
+      (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    console.log(
+      `[TURN DEBUG] Next player initially: ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
+    );
+
+    // Keep advancing until we find a player who isn't skipped
+    let attempts = 0;
+    while (
+      gameState.players[nextPlayerIndex]?.skippedTurn &&
+      attempts < gameState.players.length
+    ) {
+      console.log(
+        `[TURN DEBUG] Player ${gameState.players[nextPlayerIndex].name} turn skipped - advancing further`
+      );
+      // Reset the skip flag
+      gameState.players[nextPlayerIndex].skippedTurn = false;
+      // Move to next player
+      nextPlayerIndex = (nextPlayerIndex + 1) % gameState.players.length;
+      attempts++;
+      console.log(
+        `[TURN DEBUG] Advanced to player ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
+      );
+    }
+
+    gameState.currentPlayerIndex = nextPlayerIndex;
+    console.log(
+      `[TURN DEBUG] Final turn assignment: ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
+    );
+  }
+
   getId(): string {
     return this.id;
   }
@@ -54,7 +95,10 @@ class MockSocket extends BrowserEventEmitter {
       event === "swap-drawn-card" ||
       event === "declare" ||
       event === "view-opponent-card" ||
-      event === "view-own-card"
+      event === "view-own-card" ||
+      event === "use-power-on-own-card" ||
+      event === "use-power-on-opponent-card" ||
+      event === "use-power-swap"
     ) {
       this.handleClientEvents(event, data);
       return true;
@@ -119,6 +163,15 @@ class MockSocket extends BrowserEventEmitter {
       case "view-own-card":
         this.handleViewOwnCard(data);
         break;
+      case "use-power-on-own-card":
+        this.handleUsePowerOnOwnCard(data);
+        break;
+      case "use-power-on-opponent-card":
+        this.handleUsePowerOnOpponentCard(data);
+        break;
+      case "use-power-swap":
+        this.handleUsePowerSwap(data);
+        break;
       default:
         console.log(`Unhandled mock event: ${event}`);
     }
@@ -175,6 +228,7 @@ class MockSocket extends BrowserEventEmitter {
         score: 0,
         knownCards: [],
         skippedTurn: false,
+        hasEliminatedThisRound: false,
       };
 
       console.log(`Adding new player to room ${roomId}:`, newPlayer);
@@ -253,6 +307,7 @@ class MockSocket extends BrowserEventEmitter {
         score: 0,
         knownCards: [],
         skippedTurn: false,
+        hasEliminatedThisRound: false,
       };
 
       gameState.players.push(botPlayer);
@@ -286,6 +341,7 @@ class MockSocket extends BrowserEventEmitter {
       player.score = 0; // Reset scores
       player.knownCards = []; // Reset known cards
       player.skippedTurn = false; // Reset skip status
+      player.hasEliminatedThisRound = false; // Reset elimination tracking
     });
 
     // Clear any stored drawn cards from previous games
@@ -370,80 +426,98 @@ class MockSocket extends BrowserEventEmitter {
 
     const gameState = this.rooms[roomId];
 
-    // REMOVED: Check if it's player's turn - allow elimination during matching window
-    // const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    // if (currentPlayer.id !== playerId) return;
-
-    // Find the player and card
-    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
-    const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c.id === cardId
+    // Find the player who is trying to eliminate (the one taking the action)
+    const eliminatingPlayerIndex = gameState.players.findIndex(
+      (p) => p.id === playerId
     );
+    if (eliminatingPlayerIndex === -1) return;
 
-    if (playerIndex !== -1 && cardIndex !== -1) {
-      const cardToEliminate = gameState.players[playerIndex].hand[cardIndex];
+    // Check if this player has already eliminated a card this round
+    if (gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound) {
+      console.log("Player has already eliminated a card this round");
+      return;
+    }
 
-      // Check if elimination is valid (matches top discard card rank)
-      const topDiscardCard =
-        gameState.discardPile.length > 0
-          ? gameState.discardPile[gameState.discardPile.length - 1]
-          : null;
+    // Find which player owns the card being eliminated and the card itself
+    let cardOwnerIndex = -1;
+    let cardIndex = -1;
+    let cardToEliminate = null;
 
-      const canEliminate =
-        !topDiscardCard || topDiscardCard.rank === cardToEliminate.rank;
+    for (let i = 0; i < gameState.players.length; i++) {
+      const foundCardIndex = gameState.players[i].hand.findIndex(
+        (c) => c.id === cardId
+      );
+      if (foundCardIndex !== -1) {
+        cardOwnerIndex = i;
+        cardIndex = foundCardIndex;
+        cardToEliminate = gameState.players[i].hand[foundCardIndex];
+        break;
+      }
+    }
 
-      if (canEliminate) {
-        // Valid elimination - remove card from hand and add to discard pile
-        const eliminatedCard = gameState.players[playerIndex].hand.splice(
-          cardIndex,
-          1
-        )[0];
-        gameState.discardPile.push(eliminatedCard);
+    if (cardOwnerIndex === -1 || cardIndex === -1 || !cardToEliminate) {
+      console.log("Card not found in any player's hand");
+      return;
+    }
 
-        console.log("Card eliminated successfully:", eliminatedCard.rank);
+    // Check if elimination is valid (matches top discard card rank)
+    const topDiscardCard =
+      gameState.discardPile.length > 0
+        ? gameState.discardPile[gameState.discardPile.length - 1]
+        : null;
 
-        // REMOVED: Move to next player after successful elimination
-        // gameState.currentPlayerIndex =
-        //   (gameState.currentPlayerIndex + 1) % gameState.players.length;
-      } else {
-        // Invalid elimination - card stays in hand (face down) and give penalty card
-        console.log(
-          "Invalid elimination - card returned face down + penalty card"
-        );
+    const canEliminate =
+      topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
-        // Make the attempted card face down
-        cardToEliminate.isRevealed = false;
+    if (canEliminate) {
+      // Valid elimination - remove card from owner's hand and add to discard pile
+      const eliminatedCard = gameState.players[cardOwnerIndex].hand.splice(
+        cardIndex,
+        1
+      )[0];
+      gameState.discardPile.push(eliminatedCard);
 
-        // Give penalty card if deck has cards
-        if (gameState.deck.length > 0) {
-          const penaltyCard = gameState.deck.pop()!;
-          penaltyCard.isRevealed = false; // Penalty card is face down
-          gameState.players[playerIndex].hand.push(penaltyCard);
+      // Mark the eliminating player as having eliminated this round
+      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
-          this.emitToAll("penalty-card", {
-            playerId,
-            penaltyCard,
-            reason: "Invalid elimination attempt",
-          });
-        }
+      console.log(
+        `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${gameState.players[cardOwnerIndex].name}'s hand`
+      );
+    } else {
+      // Invalid elimination - card stays in owner's hand (face down) and eliminating player gets penalty
+      console.log("Invalid elimination - penalty for eliminating player");
 
-        // REMOVED: Move to next player even after failed elimination
-        // gameState.currentPlayerIndex =
-        //   (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      // Make the attempted card face down
+      cardToEliminate.isRevealed = false;
+
+      // Give penalty card to the player who attempted elimination
+      if (gameState.deck.length > 0) {
+        const penaltyCard = gameState.deck.pop()!;
+        penaltyCard.isRevealed = false; // Penalty card is face down
+        gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+
+        this.emitToAll("penalty-card", {
+          playerId,
+          penaltyCard,
+          reason: "Invalid elimination attempt",
+        });
       }
 
-      // Create a last action record
-      gameState.lastAction = {
-        type: "discard", // Use "discard" instead of "eliminate" for now
-        playerId,
-        cardId,
-        timestamp: Date.now(),
-      };
-
-      // Update game state
-      this.rooms[roomId] = gameState;
-      this.emitToAll("game-state-update", this.rooms[roomId]);
+      // Mark the eliminating player as having eliminated this round (penalty still counts)
+      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
     }
+
+    // Create a last action record
+    gameState.lastAction = {
+      type: "discard",
+      playerId,
+      cardId,
+      timestamp: Date.now(),
+    };
+
+    // Update game state
+    this.rooms[roomId] = gameState;
+    this.emitToAll("game-state-update", this.rooms[roomId]);
   }
 
   private handleDiscardDrawnCard({
@@ -479,13 +553,41 @@ class MockSocket extends BrowserEventEmitter {
     gameState.discardPile.push(drawnCard);
     console.log(`Discarded ${drawnCard.rank} of ${drawnCard.suit}`);
 
-    // Apply special card powers
+    // Reset elimination tracking for all players when new card is discarded
+    gameState.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
+
+    // Apply card powers when card is discarded directly (not when drawn)
     if (drawnCard.rank === "J") {
       // Jack: Skip the next player's turn
       const nextPlayerIndex =
         (gameState.currentPlayerIndex + 1) % gameState.players.length;
       gameState.players[nextPlayerIndex].skippedTurn = true;
-      console.log("Jack played - next player's turn skipped");
+      console.log(
+        `[JACK POWER] Jack played by ${
+          gameState.players[gameState.currentPlayerIndex].name
+        }`
+      );
+      console.log(
+        `[JACK POWER] Setting skippedTurn=true for ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
+      );
+      console.log(
+        `[JACK POWER] Player states:`,
+        gameState.players.map((p) => `${p.name}: skipped=${p.skippedTurn}`)
+      );
+    }
+
+    // Apply card powers for 7, 8, 9, 10, Q, K when discarded
+    if (["7", "8", "9", "10", "Q", "K"].includes(drawnCard.rank)) {
+      // Set power mode for the player who discarded
+      const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+      if (playerIndex !== -1) {
+        gameState.players[playerIndex].activePower = drawnCard.rank;
+        console.log(
+          `${drawnCard.rank} power activated for ${gameState.players[playerIndex].name}`
+        );
+      }
     }
 
     // Clear the drawn card from storage
@@ -499,9 +601,8 @@ class MockSocket extends BrowserEventEmitter {
       timestamp: Date.now(),
     };
 
-    // Move to next player
-    gameState.currentPlayerIndex =
-      (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    // Move to next player (with skip logic)
+    this.moveToNextPlayer(gameState);
 
     // Update game state
     this.rooms[roomId] = gameState;
@@ -551,6 +652,11 @@ class MockSocket extends BrowserEventEmitter {
       // Put the hand card into the discard pile
       gameState.discardPile.push(handCard);
 
+      // Reset elimination tracking for all players when new card is discarded
+      gameState.players.forEach((player) => {
+        player.hasEliminatedThisRound = false;
+      });
+
       // Clear the drawn card from storage
       delete this.drawnCards[playerId];
 
@@ -567,8 +673,7 @@ class MockSocket extends BrowserEventEmitter {
       };
 
       // Move to next player
-      gameState.currentPlayerIndex =
-        (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      this.moveToNextPlayer(gameState);
 
       // Update game state
       this.rooms[roomId] = gameState;
@@ -769,6 +874,178 @@ class MockSocket extends BrowserEventEmitter {
       // Update game state
       this.rooms[roomId] = gameState;
       this.emitToAll("game-state-update", this.rooms[roomId]);
+    }
+  }
+
+  // Handle using power on own card (7 or 8)
+  private handleUsePowerOnOwnCard({
+    roomId,
+    playerId,
+    cardIndex,
+  }: {
+    roomId: string;
+    playerId: string;
+    cardIndex: number;
+  }): void {
+    if (!this.rooms[roomId]) return;
+
+    const gameState = this.rooms[roomId];
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+
+    if (playerIndex !== -1 && gameState.players[playerIndex].activePower) {
+      const power = gameState.players[playerIndex].activePower;
+
+      if (
+        ["7", "8"].includes(power) &&
+        gameState.players[playerIndex].hand[cardIndex]
+      ) {
+        // Reveal the card permanently (not just peek)
+        const card = gameState.players[playerIndex].hand[cardIndex];
+        card.isRevealed = true;
+
+        console.log(
+          `${power} power used: permanently revealed own card ${card.rank}`
+        );
+
+        // Clear the active power
+        delete gameState.players[playerIndex].activePower;
+
+        // Update game state
+        this.rooms[roomId] = gameState;
+        this.emitToAll("game-state-update", this.rooms[roomId]);
+      }
+    }
+  }
+
+  // Handle using power on opponent card (9 or 10)
+  private handleUsePowerOnOpponentCard({
+    roomId,
+    playerId,
+    targetPlayerId,
+    cardIndex,
+  }: {
+    roomId: string;
+    playerId: string;
+    targetPlayerId: string;
+    cardIndex: number;
+  }): void {
+    if (!this.rooms[roomId]) return;
+
+    const gameState = this.rooms[roomId];
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+    const targetPlayerIndex = gameState.players.findIndex(
+      (p) => p.id === targetPlayerId
+    );
+
+    if (
+      playerIndex !== -1 &&
+      targetPlayerIndex !== -1 &&
+      gameState.players[playerIndex].activePower
+    ) {
+      const power = gameState.players[playerIndex].activePower;
+
+      if (
+        ["9", "10"].includes(power) &&
+        gameState.players[targetPlayerIndex].hand[cardIndex]
+      ) {
+        // Temporarily reveal the card visually for the power user
+        const card = gameState.players[targetPlayerIndex].hand[cardIndex];
+        card.isRevealed = true;
+
+        console.log(
+          `${power} power used: temporarily revealed ${gameState.players[targetPlayerIndex].name}'s ${card.rank}`
+        );
+
+        // Clear the active power
+        delete gameState.players[playerIndex].activePower;
+
+        // Update game state to show the revealed card
+        this.rooms[roomId] = gameState;
+        this.emitToAll("game-state-update", this.rooms[roomId]);
+
+        // Hide the card again after 3 seconds
+        setTimeout(() => {
+          if (
+            this.rooms[roomId] &&
+            this.rooms[roomId].players[targetPlayerIndex].hand[cardIndex]
+          ) {
+            this.rooms[roomId].players[targetPlayerIndex].hand[
+              cardIndex
+            ].isRevealed = false;
+            this.emitToAll("game-state-update", this.rooms[roomId]);
+          }
+        }, 3000);
+      }
+    }
+  }
+
+  // Handle using power for swapping (Q or K)
+  private handleUsePowerSwap({
+    roomId,
+    playerId,
+    card1PlayerId,
+    card1Index,
+    card2PlayerId,
+    card2Index,
+  }: {
+    roomId: string;
+    playerId: string;
+    card1PlayerId: string;
+    card1Index: number;
+    card2PlayerId: string;
+    card2Index: number;
+  }): void {
+    if (!this.rooms[roomId]) return;
+
+    const gameState = this.rooms[roomId];
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+
+    if (playerIndex !== -1 && gameState.players[playerIndex].activePower) {
+      const power = gameState.players[playerIndex].activePower;
+
+      if (["Q", "K"].includes(power)) {
+        const player1Index = gameState.players.findIndex(
+          (p) => p.id === card1PlayerId
+        );
+        const player2Index = gameState.players.findIndex(
+          (p) => p.id === card2PlayerId
+        );
+
+        if (
+          player1Index !== -1 &&
+          player2Index !== -1 &&
+          gameState.players[player1Index].hand[card1Index] &&
+          gameState.players[player2Index].hand[card2Index]
+        ) {
+          const card1 = gameState.players[player1Index].hand[card1Index];
+          const card2 = gameState.players[player2Index].hand[card2Index];
+
+          // For K (seen swap), show the cards first
+          if (power === "K") {
+            this.emit("power-swap-preview", {
+              card1,
+              card2,
+              player1Name: gameState.players[player1Index].name,
+              player2Name: gameState.players[player2Index].name,
+            });
+          }
+
+          // Perform the swap
+          gameState.players[player1Index].hand[card1Index] = card2;
+          gameState.players[player2Index].hand[card2Index] = card1;
+
+          console.log(
+            `${power} power used: swapped cards between ${gameState.players[player1Index].name} and ${gameState.players[player2Index].name}`
+          );
+
+          // Clear the active power
+          delete gameState.players[playerIndex].activePower;
+
+          // Update game state
+          this.rooms[roomId] = gameState;
+          this.emitToAll("game-state-update", this.rooms[roomId]);
+        }
+      }
     }
   }
 }

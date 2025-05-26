@@ -24,6 +24,8 @@ export type Player = {
   score: number;
   knownCards: string[]; // IDs of cards the player has seen
   skippedTurn: boolean;
+  hasEliminatedThisRound: boolean; // Track if player has eliminated a card this round
+  activePower?: string; // Current active power (7,8,9,10,Q,K)
 };
 
 export type GameAction = {
@@ -46,6 +48,7 @@ export const initGameState = (
       score: 0,
       knownCards: [],
       skippedTurn: false,
+      hasEliminatedThisRound: false, // Initialize elimination tracking
     })),
     currentPlayerIndex: 0,
     deck: [],

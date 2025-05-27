@@ -912,34 +912,33 @@ class MockSocket extends BrowserEventEmitter {
         ["7", "8"].includes(power) &&
         gameState.players[playerIndex].hand[cardIndex]
       ) {
-        // Temporarily reveal the card in the game state
         const card = gameState.players[playerIndex].hand[cardIndex];
-        card.isRevealed = true;
+
+        // Send the card info to the player who is looking at their own card
+        this.emit("power-peek-result", {
+          card,
+          targetPlayer: `${gameState.players[playerIndex].name} (You)`,
+          cardIndex,
+        });
+
+        // Add to known cards
+        if (!gameState.players[playerIndex].knownCards.includes(card.id)) {
+          gameState.players[playerIndex].knownCards.push(card.id);
+        }
 
         console.log(
-          `${power} power used: temporarily revealing own card ${card.rank} for 5 seconds`
+          `${power} power used: ${gameState.players[playerIndex].name} peeked at their own ${card.rank} of ${card.suit}`
         );
 
         // Clear the active power
         delete gameState.players[playerIndex].activePower;
 
-        // Update game state to show the revealed card
+        // Move to next player
+        this.moveToNextPlayer(gameState);
+
+        // Update game state
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
-
-        // Hide the card again after 5 seconds
-        setTimeout(() => {
-          if (
-            this.rooms[roomId] &&
-            this.rooms[roomId].players[playerIndex].hand[cardIndex]
-          ) {
-            this.rooms[roomId].players[playerIndex].hand[cardIndex].isRevealed =
-              false;
-            console.log(`Card ${card.rank} hidden again after 5 seconds`);
-            // Make sure to emit the game state update
-            this.emitToAll("game-state-update", this.rooms[roomId]);
-          }
-        }, 5000);
       }
     }
   }
@@ -975,37 +974,33 @@ class MockSocket extends BrowserEventEmitter {
         ["9", "10"].includes(power) &&
         gameState.players[targetPlayerIndex].hand[cardIndex]
       ) {
-        // Temporarily reveal the card in the game state
         const card = gameState.players[targetPlayerIndex].hand[cardIndex];
-        card.isRevealed = true;
+
+        // Send the card info to the player who is looking at opponent's card
+        this.emit("power-peek-result", {
+          card,
+          targetPlayer: gameState.players[targetPlayerIndex].name,
+          cardIndex,
+        });
+
+        // Add to known cards
+        if (!gameState.players[playerIndex].knownCards.includes(card.id)) {
+          gameState.players[playerIndex].knownCards.push(card.id);
+        }
 
         console.log(
-          `${power} power used: temporarily revealing ${gameState.players[targetPlayerIndex].name}'s ${card.rank} for 5 seconds`
+          `${power} power used: ${gameState.players[playerIndex].name} peeked at ${gameState.players[targetPlayerIndex].name}'s ${card.rank} of ${card.suit}`
         );
 
         // Clear the active power
         delete gameState.players[playerIndex].activePower;
 
-        // Update game state to show the revealed card
+        // Move to next player
+        this.moveToNextPlayer(gameState);
+
+        // Update game state
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
-
-        // Hide the card again after 5 seconds
-        setTimeout(() => {
-          if (
-            this.rooms[roomId] &&
-            this.rooms[roomId].players[targetPlayerIndex].hand[cardIndex]
-          ) {
-            this.rooms[roomId].players[targetPlayerIndex].hand[
-              cardIndex
-            ].isRevealed = false;
-            console.log(
-              `Opponent card ${card.rank} hidden again after 5 seconds`
-            );
-            // Make sure to emit the game state update
-            this.emitToAll("game-state-update", this.rooms[roomId]);
-          }
-        }, 5000);
       }
     }
   }

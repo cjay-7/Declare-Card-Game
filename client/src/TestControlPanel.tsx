@@ -183,7 +183,10 @@ const TestControlPanel: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg opacity-80 hover:opacity-100 z-50 transition-opacity text-sm">
+    <div
+      className="fixed bottom-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg opacity-80 hover:opacity-100 z-50 transition-opacity text-sm"
+      style={{ top: 0 }}
+    >
       <h3 className="text-white font-bold mb-2 text-center">Test Controls</h3>
       <div className="grid grid-cols-2 gap-2">
         <button

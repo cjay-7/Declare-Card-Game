@@ -266,16 +266,30 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Handle power peek result - No longer needed since cards flip in place
+    // Handle power peek result
     const handlePowerPeekResult = (data: {
       card: Card;
       targetPlayer: string;
       cardIndex: number;
     }) => {
       console.log(
-        `Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer} - card will flip in place`
+        `Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
       );
-      // No popup needed - the card flips in the actual game board
+
+      // For own cards (7/8), temporarily reveal the card
+      if (data.targetPlayer.includes("(You)")) {
+        setTemporaryRevealedCards([data.cardIndex]);
+
+        // Hide after 5 seconds
+        setTimeout(() => {
+          setTemporaryRevealedCards([]);
+        }, 5000);
+      } else {
+        // For opponent cards (9/10), show an alert or notification
+        alert(
+          `You peeked at ${data.targetPlayer}'s card: ${data.card.rank} of ${data.card.suit}`
+        );
+      }
     };
 
     // Helper function to get suit symbol

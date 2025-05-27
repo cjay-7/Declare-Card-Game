@@ -144,8 +144,9 @@ function App() {
 
       {/* Test panel toggle button */}
       <button
-        className="fixed top-4 right-4 p-1 bg-transparent text-xs text-gray-500 opacity-30 hover:opacity-100"
+        className="fixed top-0 right-0 p-1 bg-transparent text-xs text-gray-500 opacity-30 hover:opacity-100"
         onClick={() => setShowTestPanel(!showTestPanel)}
+        style={{ top: 0 }}
       >
         {showTestPanel ? "Hide Test Panel" : "Show Test Panel"}
       </button>

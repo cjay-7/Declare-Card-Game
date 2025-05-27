@@ -82,14 +82,10 @@ const HandGrid: React.FC<HandGridProps> = ({
         // 1. Card is permanently revealed through gameplay (isRevealed=true)
         // 2. Current player can see their own bottom 2 cards ONLY before first draw
         // 3. Card is temporarily revealed (in temporaryRevealedCards array)
-        // 4. Card is temporarily revealed by power usage (card.isRevealed = true from server)
         const shouldReveal =
-          card.isRevealed || // This includes power-revealed cards from server
+          card.isRevealed || // Permanently revealed cards
           (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Bottom 2 visible only before first draw
-          (isCurrentPlayer && temporaryRevealedCards.includes(index)); // Manual temporary reveals
-
-        // Show eliminate button when there's a discard card - on ANY player's cards during matching window
-        // Check if this player has already eliminated a card this round
+          (isCurrentPlayer && temporaryRevealedCards.includes(index)); // Temporary reveals from powers
         const currentPlayer = gameState?.players.find(
           (p) => p.id === socket.getId()
         );

@@ -1,4 +1,4 @@
-// client/src/contexts/GameContext.tsx
+// client/src/contexts/GameContext.tsx - Updated with proper power handling
 import React, {
   createContext,
   useState,
@@ -168,6 +168,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (updatedState.lastAction) {
         setLastAction(updatedState.lastAction);
       }
+
+      // Update power instructions based on active power
+      const currentPlayer = updatedState.players.find(
+        (p) => p.id === socket.getId()
+      );
+      if (currentPlayer?.activePower) {
+        setSelectedPower(currentPlayer.activePower);
+        setPowerInstructions(getPowerInstructions(currentPlayer.activePower));
+      } else {
+        setSelectedPower(null);
+        setPowerInstructions(null);
+      }
     };
 
     // Handle card drawn event
@@ -254,19 +266,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Handle power peek result
+    // Handle power peek result - No longer needed since cards flip in place
     const handlePowerPeekResult = (data: {
       card: Card;
       targetPlayer: string;
+      cardIndex: number;
     }) => {
       console.log(
-        `Power peek result: ${data.card.rank} from ${data.targetPlayer}`
+        `Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer} - card will flip in place`
       );
-      // Show temporary notification with the peeked card
-      // For now, we'll just log it, but this could be a modal or notification
-      alert(
-        `Peeked card: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
-      );
+      // No popup needed - the card flips in the actual game board
+    };
+
+    // Helper function to get suit symbol
+    const getSuitSymbol = (suit: string) => {
+      switch (suit) {
+        case "hearts":
+          return "♥";
+        case "diamonds":
+          return "♦";
+        case "clubs":
+          return "♣";
+        case "spades":
+          return "♠";
+        default:
+          return "";
+      }
     };
 
     // Handle power swap preview
@@ -300,6 +325,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("power-swap-preview", handlePowerSwapPreview);
     };
   }, []);
+
+  // Helper function to get power instructions
+  const getPowerInstructions = (power: string): string => {
+    switch (power) {
+      case "7":
+      case "8":
+        return "Click on one of your own cards to peek at it";
+      case "9":
+      case "10":
+        return "Click on an opponent's card to peek at it";
+      case "Q":
+        return "Select two cards to swap them (unseen swap)";
+      case "K":
+        return "Select two cards to swap them (seen swap)";
+      default:
+        return "";
+    }
+  };
 
   // Reset animation after it completes
   useEffect(() => {

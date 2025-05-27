@@ -1,4 +1,4 @@
-// client/src/utils/MockSocket.ts
+// client/src/utils/MockSocket.ts - Fixed version with proper card powers
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -587,6 +587,22 @@ class MockSocket extends BrowserEventEmitter {
         console.log(
           `${drawnCard.rank} power activated for ${gameState.players[playerIndex].name}`
         );
+
+        // Don't move to next player yet - wait for power to be used
+        // The power usage handlers will move the turn when appropriate
+
+        // Create a last action record
+        gameState.lastAction = {
+          type: "discard",
+          playerId,
+          cardId,
+          timestamp: Date.now(),
+        };
+
+        // Update game state
+        this.rooms[roomId] = gameState;
+        this.emitToAll("game-state-update", this.rooms[roomId]);
+        return; // Don't continue to move turns
       }
     }
 
@@ -772,10 +788,6 @@ class MockSocket extends BrowserEventEmitter {
 
     const gameState = this.rooms[roomId];
 
-    // Check if it's player's turn
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (currentPlayer.id !== playerId) return;
-
     // Find the target player
     const targetPlayerIndex = gameState.players.findIndex(
       (p) => p.id === targetPlayerId
@@ -785,9 +797,9 @@ class MockSocket extends BrowserEventEmitter {
       targetPlayerIndex !== -1 &&
       gameState.players[targetPlayerIndex].hand[cardIndex]
     ) {
-      // Reveal the card temporarily
+      // Get the card to reveal
       const card = gameState.players[targetPlayerIndex].hand[cardIndex];
-      card.isRevealed = true;
+      const targetPlayerName = gameState.players[targetPlayerIndex].name;
 
       // Create a last action record
       gameState.lastAction = {
@@ -798,35 +810,32 @@ class MockSocket extends BrowserEventEmitter {
         timestamp: Date.now(),
       };
 
-      // Add to known cards
-      if (
-        !gameState.players
-          .find((p) => p.id === playerId)
-          ?.knownCards.includes(card.id)
-      ) {
-        gameState.players
-          .find((p) => p.id === playerId)
-          ?.knownCards.push(card.id);
+      // Add to known cards for the viewing player
+      const viewingPlayerIndex = gameState.players.findIndex(
+        (p) => p.id === playerId
+      );
+      if (viewingPlayerIndex !== -1) {
+        if (
+          !gameState.players[viewingPlayerIndex].knownCards.includes(card.id)
+        ) {
+          gameState.players[viewingPlayerIndex].knownCards.push(card.id);
+        }
       }
 
-      // Send card revealed event to the player who used King
-      this.emit("card-revealed", {
-        playerId: targetPlayerId,
-        cardIndex,
+      // Send card peek result to the player who used the power
+      this.emit("power-peek-result", {
         card,
+        targetPlayer: targetPlayerName,
+        cardIndex,
       });
 
       // Update game state
       this.rooms[roomId] = gameState;
       this.emitToAll("game-state-update", this.rooms[roomId]);
 
-      // Hide the card again after 3 seconds
-      setTimeout(() => {
-        if (this.rooms[roomId]) {
-          card.isRevealed = false;
-          this.emitToAll("game-state-update", this.rooms[roomId]);
-        }
-      }, 3000);
+      console.log(
+        `${gameState.players[viewingPlayerIndex]?.name} peeked at ${targetPlayerName}'s ${card.rank} of ${card.suit}`
+      );
     }
   }
 
@@ -847,9 +856,9 @@ class MockSocket extends BrowserEventEmitter {
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
     if (playerIndex !== -1 && gameState.players[playerIndex].hand[cardIndex]) {
-      // Reveal the card permanently
+      // Get the card to peek at
       const card = gameState.players[playerIndex].hand[cardIndex];
-      card.isRevealed = true;
+      const playerName = gameState.players[playerIndex].name;
 
       // Create a last action record
       gameState.lastAction = {
@@ -864,16 +873,20 @@ class MockSocket extends BrowserEventEmitter {
         gameState.players[playerIndex].knownCards.push(card.id);
       }
 
-      // Send card revealed event to the player who revealed the card
-      this.emit("card-revealed", {
-        playerId,
-        cardIndex,
+      // Send card peek result to the player who peeked their own card
+      this.emit("power-peek-result", {
         card,
+        targetPlayer: `${playerName} (You)`,
+        cardIndex,
       });
 
       // Update game state
       this.rooms[roomId] = gameState;
       this.emitToAll("game-state-update", this.rooms[roomId]);
+
+      console.log(
+        `${playerName} peeked at their own ${card.rank} of ${card.suit}`
+      );
     }
   }
 
@@ -899,20 +912,34 @@ class MockSocket extends BrowserEventEmitter {
         ["7", "8"].includes(power) &&
         gameState.players[playerIndex].hand[cardIndex]
       ) {
-        // Reveal the card permanently (not just peek)
+        // Temporarily reveal the card in the game state
         const card = gameState.players[playerIndex].hand[cardIndex];
         card.isRevealed = true;
 
         console.log(
-          `${power} power used: permanently revealed own card ${card.rank}`
+          `${power} power used: temporarily revealing own card ${card.rank} for 5 seconds`
         );
 
         // Clear the active power
         delete gameState.players[playerIndex].activePower;
 
-        // Update game state
+        // Update game state to show the revealed card
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
+
+        // Hide the card again after 5 seconds
+        setTimeout(() => {
+          if (
+            this.rooms[roomId] &&
+            this.rooms[roomId].players[playerIndex].hand[cardIndex]
+          ) {
+            this.rooms[roomId].players[playerIndex].hand[cardIndex].isRevealed =
+              false;
+            console.log(`Card ${card.rank} hidden again after 5 seconds`);
+            // Make sure to emit the game state update
+            this.emitToAll("game-state-update", this.rooms[roomId]);
+          }
+        }, 5000);
       }
     }
   }
@@ -948,12 +975,12 @@ class MockSocket extends BrowserEventEmitter {
         ["9", "10"].includes(power) &&
         gameState.players[targetPlayerIndex].hand[cardIndex]
       ) {
-        // Temporarily reveal the card visually for the power user
+        // Temporarily reveal the card in the game state
         const card = gameState.players[targetPlayerIndex].hand[cardIndex];
         card.isRevealed = true;
 
         console.log(
-          `${power} power used: temporarily revealed ${gameState.players[targetPlayerIndex].name}'s ${card.rank}`
+          `${power} power used: temporarily revealing ${gameState.players[targetPlayerIndex].name}'s ${card.rank} for 5 seconds`
         );
 
         // Clear the active power
@@ -963,7 +990,7 @@ class MockSocket extends BrowserEventEmitter {
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
 
-        // Hide the card again after 3 seconds
+        // Hide the card again after 5 seconds
         setTimeout(() => {
           if (
             this.rooms[roomId] &&
@@ -972,9 +999,13 @@ class MockSocket extends BrowserEventEmitter {
             this.rooms[roomId].players[targetPlayerIndex].hand[
               cardIndex
             ].isRevealed = false;
+            console.log(
+              `Opponent card ${card.rank} hidden again after 5 seconds`
+            );
+            // Make sure to emit the game state update
             this.emitToAll("game-state-update", this.rooms[roomId]);
           }
-        }, 3000);
+        }, 5000);
       }
     }
   }

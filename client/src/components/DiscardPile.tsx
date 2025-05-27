@@ -71,7 +71,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
         <span className="ml-1">{suitSymbols[topCard.suit]}</span>
       </div>
 
-      <div className={`text-center text-2xl ${suitColors[topCard.suit]}`}>
+      <div className={`text-center text-6em ${suitColors[topCard.suit]}`}>
         {suitSymbols[topCard.suit]}
       </div>
 

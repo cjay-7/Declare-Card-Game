@@ -166,7 +166,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold">Room: {initialRoomId}</h1>
+              <h1 className="text-6em font-bold">Room: {initialRoomId}</h1>
               <h2 className="text-lg">You: {initialPlayerName}</h2>
             </div>
             <div>

@@ -41,7 +41,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-white text-center mb-6">
+        <h2 className="text-6em font-bold text-white text-center mb-6">
           Game Over
         </h2>
 

@@ -1,3 +1,4 @@
+// client/src/components/Card.tsx - Updated with highlight support
 import React, { useState, useEffect } from "react";
 
 interface CardProps {
@@ -52,7 +53,7 @@ const Card: React.FC<CardProps> = ({
           setAnimationClass("animate-cardSwap");
           break;
         case "reveal":
-          setAnimationClass("animate-cardReveal");
+          setAnimationClass("animate-bounce");
           break;
         default:
           setAnimationClass("");
@@ -67,6 +68,12 @@ const Card: React.FC<CardProps> = ({
       return () => clearTimeout(timer);
     }
   }, [animate]);
+
+  // Add a special glow effect for temporarily revealed cards
+  const tempRevealGlow =
+    isRevealed && isHighlighted
+      ? "shadow-lg shadow-yellow-400/75 ring-2 ring-yellow-400"
+      : "";
 
   // Define card colors based on suit
   const suitColors = {
@@ -89,11 +96,13 @@ const Card: React.FC<CardProps> = ({
 
   // Define selection styles
   const selectionStyles = isSelected
-    ? "border-1 border-yellow-400"
+    ? "border-2 border-yellow-400 shadow-lg shadow-yellow-400/50"
     : "";
 
-  // Define highlight styles
-  const highlightStyles = isHighlighted ? "ring-2 ring-blue-400" : "";
+  // Define highlight styles for power usage
+  const highlightStyles = isHighlighted
+    ? "ring-2 ring-purple-400 ring-opacity-75 shadow-lg shadow-purple-400/50"
+    : "";
 
   // If card is not revealed, show back side
   if (!isRevealed) {
@@ -101,15 +110,16 @@ const Card: React.FC<CardProps> = ({
       <div
         className={`w-16 h-24 ${selectionStyles} ${highlightStyles} 
                   ${cardBg} rounded shadow cursor-pointer transform 
-                  transition-transform ${animationClass}`}
+                  transition-all duration-200 hover:scale-105 ${animationClass}
+                  ${isHighlighted ? "animate-pulse" : ""}`}
         onClick={onClick}
       >
         <div className="h-full flex items-center justify-center">
-          <div className="bg-white rounded-full h-12 w-12 flex items-center justify-center">
+          <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center">
             <span
+              className="text-6em"
               role="img"
               aria-label="card back"
-              style={{ fontSize: "6em" }}
             >
               🎴
             </span>
@@ -119,31 +129,33 @@ const Card: React.FC<CardProps> = ({
     );
   }
 
-  // Show revealed card
+  // Show revealed card with special glow for power reveals
   return (
     <div
-      className={`w-16 h-24 ${selectionStyles} ${highlightStyles}
+      className={`w-16 h-24 ${selectionStyles} ${highlightStyles} ${tempRevealGlow}
                 ${cardBg} rounded shadow cursor-pointer transform 
-                transition-transform ${animationClass}
-                flex flex-col justify-between p-1`}
+                transition-all duration-200 hover:scale-105 ${animationClass}
+                flex flex-col justify-between p-1
+                ${isHighlighted ? "animate-pulse" : ""}
+                ${tempRevealGlow ? "animate-bounce" : ""}`}
       onClick={onClick}
     >
       {suit && rank ? (
         <>
-          <div className={`text-sm font-bold ${suitColors[suit]}`}>
+          <div className={`text-xs font-bold ${suitColors[suit]}`}>
             {rank}
-            <span className="ml-1">{suitSymbols[suit]}</span>
+            <span className="ml-0.5">{suitSymbols[suit]}</span>
           </div>
 
-          <div className={`text-center text-2xl ${suitColors[suit]}`}>
+          <div className={`text-center text-6em ${suitColors[suit]}`}>
             {suitSymbols[suit]}
           </div>
 
           <div
-            className={`text-sm font-bold self-end rotate-180 ${suitColors[suit]}`}
+            className={`text-xs font-bold self-end rotate-180 ${suitColors[suit]}`}
           >
             {rank}
-            <span className="ml-1">{suitSymbols[suit]}</span>
+            <span className="ml-0.5">{suitSymbols[suit]}</span>
           </div>
         </>
       ) : (

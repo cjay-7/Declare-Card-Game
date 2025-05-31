@@ -1,4 +1,4 @@
-// client/src/utils/MockSocket.ts - Fixed version with proper card powers
+// client/src/utils/MockSocket.ts - Updated with proper game logic
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -22,7 +22,6 @@ class MockSocket extends BrowserEventEmitter {
     console.log("MockSocket initialized with ID:", this.id);
   }
 
-  // Create a singleton instance
   public static getInstance(): MockSocket {
     if (!MockSocket.instance) {
       MockSocket.instance = new MockSocket();
@@ -30,7 +29,6 @@ class MockSocket extends BrowserEventEmitter {
     return MockSocket.instance;
   }
 
-  // Helper function to move to next player, handling skipped turns
   private moveToNextPlayer(gameState: GameState): void {
     if (!gameState.players.length) return;
 
@@ -42,9 +40,6 @@ class MockSocket extends BrowserEventEmitter {
 
     let nextPlayerIndex =
       (gameState.currentPlayerIndex + 1) % gameState.players.length;
-    console.log(
-      `[TURN DEBUG] Next player initially: ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
-    );
 
     // Keep advancing until we find a player who isn't skipped
     let attempts = 0;
@@ -60,9 +55,6 @@ class MockSocket extends BrowserEventEmitter {
       // Move to next player
       nextPlayerIndex = (nextPlayerIndex + 1) % gameState.players.length;
       attempts++;
-      console.log(
-        `[TURN DEBUG] Advanced to player ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
-      );
     }
 
     gameState.currentPlayerIndex = nextPlayerIndex;
@@ -75,7 +67,6 @@ class MockSocket extends BrowserEventEmitter {
     return this.id;
   }
 
-  // For test purposes - allows us to force a specific ID
   setId(id: string): void {
     this.id = id;
     console.log("MockSocket ID set to:", this.id);
@@ -84,7 +75,6 @@ class MockSocket extends BrowserEventEmitter {
   emit(event: string, data: any): boolean {
     console.log(`[${this.id}] Mock emitting: ${event}`, data);
 
-    // Special case for emit to server
     if (
       event === "join-room" ||
       event === "leave-room" ||
@@ -104,8 +94,6 @@ class MockSocket extends BrowserEventEmitter {
       return true;
     }
 
-    // This is an "emit to client" that would normally come from server
-    // Let's broadcast it to all instances
     setTimeout(() => {
       this.emitToAll(event, data);
     }, 10);
@@ -113,18 +101,15 @@ class MockSocket extends BrowserEventEmitter {
     return true;
   }
 
-  // Broadcast to all sockets
   private emitToAll(event: string, data: any): void {
     super.emit(event, data);
   }
 
-  // Override the default on method to add logging
   on(event: string, listener: (...args: any[]) => void): this {
     console.log(`[${this.id}] Mock registering listener for: ${event}`);
     return super.on(event, listener);
   }
 
-  // Override the default off method to add logging
   off(event: string, listener: (...args: any[]) => void): this {
     console.log(`[${this.id}] Mock removing listener for: ${event}`);
     return super.off(event, listener);
@@ -189,7 +174,6 @@ class MockSocket extends BrowserEventEmitter {
     );
 
     if (!this.rooms[roomId]) {
-      // Create new room
       this.rooms[roomId] = {
         players: [],
         currentPlayerIndex: 0,
@@ -207,7 +191,6 @@ class MockSocket extends BrowserEventEmitter {
       this.playersByRoom[roomId] = [];
     }
 
-    // Check if player with this socket ID already exists
     const existingPlayerIndex = this.rooms[roomId].players.findIndex(
       (p) => p.id === this.id
     );
@@ -218,7 +201,6 @@ class MockSocket extends BrowserEventEmitter {
       );
       this.rooms[roomId].players[existingPlayerIndex].name = playerName;
     } else {
-      // Add player to the room
       const isHost = this.rooms[roomId].players.length === 0;
       const newPlayer: Player = {
         id: this.id,
@@ -236,10 +218,7 @@ class MockSocket extends BrowserEventEmitter {
       this.playersByRoom[roomId].push(newPlayer);
     }
 
-    // Emit player joined event
     this.emitToAll("player-joined", { roomId, name: playerName, id: this.id });
-
-    // Send updated game state to all connected clients
     this.emitToAll("game-state-update", this.rooms[roomId]);
   }
 
@@ -252,7 +231,6 @@ class MockSocket extends BrowserEventEmitter {
   }): void {
     if (!this.rooms[roomId]) return;
 
-    // Remove player from the room
     this.rooms[roomId].players = this.rooms[roomId].players.filter(
       (player) => player.id !== playerId
     );
@@ -260,17 +238,13 @@ class MockSocket extends BrowserEventEmitter {
       (player) => player.id !== playerId
     );
 
-    // If room is empty, remove it
     if (this.rooms[roomId].players.length === 0) {
       delete this.rooms[roomId];
       delete this.playersByRoom[roomId];
     } else {
-      // If the host left, assign a new host
       if (!this.rooms[roomId].players.some((player) => player.isHost)) {
         this.rooms[roomId].players[0].isHost = true;
       }
-
-      // Send updated game state to all connected clients
       this.emitToAll("game-state-update", this.rooms[roomId]);
     }
   }
@@ -286,7 +260,6 @@ class MockSocket extends BrowserEventEmitter {
     const gameState = this.rooms[roomId];
     const playerCount = gameState.players.length;
 
-    // Check if the requesting player is the host
     const requestingPlayer = gameState.players.find((p) => p.id === this.id);
     if (!requestingPlayer?.isHost) {
       console.log("Only host can start the game");
@@ -296,9 +269,7 @@ class MockSocket extends BrowserEventEmitter {
 
     console.log(`Starting game with ${playerCount} players`);
 
-    // Force at least 2 players for testing
     if (playerCount < 2) {
-      // Add a bot player if needed
       const botPlayer: Player = {
         id: `bot-${Math.random().toString(36).substring(2, 9)}`,
         name: "Bot Player",
@@ -314,46 +285,34 @@ class MockSocket extends BrowserEventEmitter {
       console.log("Added bot player to make minimum 2 players");
     }
 
-    // Create and shuffle the deck
     const deck = shuffleDeck(createDeck());
-
-    // Deal cards to players
     const { playerHands, remainingDeck } = dealCards(
       deck,
       gameState.players.length
     );
 
-    // Update game state
     gameState.deck = remainingDeck;
     gameState.gameStatus = "playing";
     gameState.currentPlayerIndex = 0;
 
-    // Assign hands to players - all cards start hidden, but players will see their own bottom 2
     gameState.players.forEach((player, index) => {
       const hand = playerHands[index];
-      // Set position for each card - all start hidden
       hand.forEach((card, cardIndex) => {
         card.position = cardIndex;
-        card.isRevealed = false; // All cards start hidden in the game state
+        card.isRevealed = false;
       });
 
       player.hand = hand;
-      player.score = 0; // Reset scores
-      player.knownCards = []; // Reset known cards
-      player.skippedTurn = false; // Reset skip status
-      player.hasEliminatedThisRound = false; // Reset elimination tracking
+      player.score = 0;
+      player.knownCards = [];
+      player.skippedTurn = false;
+      player.hasEliminatedThisRound = false;
     });
 
-    // Clear any stored drawn cards from previous games
     this.drawnCards = {};
-
-    // Update game state
     this.rooms[roomId] = gameState;
 
-    // Emit game started event
     this.emitToAll("start-game", { roomId });
-
-    // Send updated game state to all connected clients
     this.emitToAll("game-state-update", this.rooms[roomId]);
 
     console.log(
@@ -386,28 +345,23 @@ class MockSocket extends BrowserEventEmitter {
       const drawnCard = gameState.deck.pop()!;
       drawnCard.isRevealed = true;
 
-      // Store the drawn card for this player
       this.drawnCards[playerId] = drawnCard;
 
-      // Create a last action record
       gameState.lastAction = {
         type: "draw",
         playerId,
         timestamp: Date.now(),
       };
 
-      // Send the drawn card to the player
       if (playerId === this.id) {
         this.emit("card-drawn", drawnCard);
       } else {
-        // This is a broadcast to all, for test purposes
         this.emitToAll("card-drawn", {
           playerId,
           card: drawnCard,
         });
       }
 
-      // Update game state
       this.rooms[roomId] = gameState;
       this.emitToAll("game-state-update", this.rooms[roomId]);
     }
@@ -426,7 +380,7 @@ class MockSocket extends BrowserEventEmitter {
 
     const gameState = this.rooms[roomId];
 
-    // Find the player who is trying to eliminate (the one taking the action)
+    // Find the player trying to eliminate
     const eliminatingPlayerIndex = gameState.players.findIndex(
       (p) => p.id === playerId
     );
@@ -438,7 +392,7 @@ class MockSocket extends BrowserEventEmitter {
       return;
     }
 
-    // Find which player owns the card being eliminated and the card itself
+    // Find which player owns the card being eliminated
     let cardOwnerIndex = -1;
     let cardIndex = -1;
     let cardToEliminate = null;
@@ -480,20 +434,23 @@ class MockSocket extends BrowserEventEmitter {
       // Mark the eliminating player as having eliminated this round
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
+      // Reset elimination tracking for all other players when new card is discarded
+      gameState.players.forEach((player, idx) => {
+        if (idx !== eliminatingPlayerIndex) {
+          player.hasEliminatedThisRound = false;
+        }
+      });
+
       console.log(
         `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${gameState.players[cardOwnerIndex].name}'s hand`
       );
     } else {
-      // Invalid elimination - card stays in owner's hand (face down) and eliminating player gets penalty
+      // Invalid elimination - penalty for eliminating player
       console.log("Invalid elimination - penalty for eliminating player");
 
-      // Make the attempted card face down
-      cardToEliminate.isRevealed = false;
-
-      // Give penalty card to the player who attempted elimination
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
-        penaltyCard.isRevealed = false; // Penalty card is face down
+        penaltyCard.isRevealed = false;
         gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
 
         this.emitToAll("penalty-card", {
@@ -503,11 +460,9 @@ class MockSocket extends BrowserEventEmitter {
         });
       }
 
-      // Mark the eliminating player as having eliminated this round (penalty still counts)
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
     }
 
-    // Create a last action record
     gameState.lastAction = {
       type: "discard",
       playerId,
@@ -515,7 +470,6 @@ class MockSocket extends BrowserEventEmitter {
       timestamp: Date.now(),
     };
 
-    // Update game state
     this.rooms[roomId] = gameState;
     this.emitToAll("game-state-update", this.rooms[roomId]);
   }
@@ -544,11 +498,6 @@ class MockSocket extends BrowserEventEmitter {
       return;
     }
 
-    // Verify the card ID matches (optional safety check)
-    if (drawnCard.id !== cardId) {
-      console.warn("Card ID mismatch - using stored drawn card anyway");
-    }
-
     // Add the actual drawn card to discard pile
     gameState.discardPile.push(drawnCard);
     console.log(`Discarded ${drawnCard.rank} of ${drawnCard.suit}`);
@@ -558,7 +507,7 @@ class MockSocket extends BrowserEventEmitter {
       player.hasEliminatedThisRound = false;
     });
 
-    // Apply card powers when card is discarded directly (not when drawn)
+    // Apply card powers ONLY when discarded directly from drawn card
     if (drawnCard.rank === "J") {
       // Jack: Skip the next player's turn
       const nextPlayerIndex =
@@ -570,11 +519,7 @@ class MockSocket extends BrowserEventEmitter {
         }`
       );
       console.log(
-        `[JACK POWER] Setting skippedTurn=true for ${gameState.players[nextPlayerIndex].name} (index ${nextPlayerIndex})`
-      );
-      console.log(
-        `[JACK POWER] Player states:`,
-        gameState.players.map((p) => `${p.name}: skipped=${p.skippedTurn}`)
+        `[JACK POWER] Setting skippedTurn=true for ${gameState.players[nextPlayerIndex].name}`
       );
     }
 
@@ -589,9 +534,8 @@ class MockSocket extends BrowserEventEmitter {
         );
 
         // Don't move to next player yet - wait for power to be used
-        // The power usage handlers will move the turn when appropriate
+        delete this.drawnCards[playerId];
 
-        // Create a last action record
         gameState.lastAction = {
           type: "discard",
           playerId,
@@ -599,7 +543,6 @@ class MockSocket extends BrowserEventEmitter {
           timestamp: Date.now(),
         };
 
-        // Update game state
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
         return; // Don't continue to move turns
@@ -609,7 +552,6 @@ class MockSocket extends BrowserEventEmitter {
     // Clear the drawn card from storage
     delete this.drawnCards[playerId];
 
-    // Create a last action record
     gameState.lastAction = {
       type: "discard",
       playerId,
@@ -620,7 +562,6 @@ class MockSocket extends BrowserEventEmitter {
     // Move to next player (with skip logic)
     this.moveToNextPlayer(gameState);
 
-    // Update game state
     this.rooms[roomId] = gameState;
     this.emitToAll("game-state-update", this.rooms[roomId]);
   }
@@ -662,7 +603,7 @@ class MockSocket extends BrowserEventEmitter {
       const handCard = gameState.players[playerIndex].hand[cardIndex];
 
       // Put the drawn card into the hand position (face down)
-      drawnCard.isRevealed = false; // Make it face down when it goes into hand
+      drawnCard.isRevealed = false;
       gameState.players[playerIndex].hand[cardIndex] = drawnCard;
 
       // Put the hand card into the discard pile
@@ -680,7 +621,6 @@ class MockSocket extends BrowserEventEmitter {
         `Swapped: drawn card ${drawnCard.rank} → hand (face down), hand card ${handCard.rank} → discard pile`
       );
 
-      // Create a last action record
       gameState.lastAction = {
         type: "swap",
         playerId,
@@ -691,7 +631,6 @@ class MockSocket extends BrowserEventEmitter {
       // Move to next player
       this.moveToNextPlayer(gameState);
 
-      // Update game state
       this.rooms[roomId] = gameState;
       this.emitToAll("game-state-update", this.rooms[roomId]);
     }
@@ -734,7 +673,6 @@ class MockSocket extends BrowserEventEmitter {
     gameState.gameStatus = "ended";
     gameState.declarer = playerId;
 
-    // Create a last action record
     gameState.lastAction = {
       type: "declare",
       playerId,
@@ -748,7 +686,7 @@ class MockSocket extends BrowserEventEmitter {
         card.isRevealed = true;
       });
 
-      // Calculate score - use actual card values for realism
+      // Calculate score - use actual card values
       player.score = player.hand.reduce((sum, card) => sum + card.value, 0);
     });
 
@@ -763,7 +701,6 @@ class MockSocket extends BrowserEventEmitter {
       .filter((p) => p.score === minScore)
       .map((p) => ({ id: p.id, name: p.name, score: p.score }));
 
-    // Update game state
     this.rooms[roomId] = gameState;
     this.emitToAll("game-state-update", this.rooms[roomId]);
     this.emitToAll("game-ended", {
@@ -773,124 +710,6 @@ class MockSocket extends BrowserEventEmitter {
     });
   }
 
-  private handleViewOpponentCard({
-    roomId,
-    playerId,
-    targetPlayerId,
-    cardIndex,
-  }: {
-    roomId: string;
-    playerId: string;
-    targetPlayerId: string;
-    cardIndex: number;
-  }): void {
-    if (!this.rooms[roomId]) return;
-
-    const gameState = this.rooms[roomId];
-
-    // Find the target player
-    const targetPlayerIndex = gameState.players.findIndex(
-      (p) => p.id === targetPlayerId
-    );
-
-    if (
-      targetPlayerIndex !== -1 &&
-      gameState.players[targetPlayerIndex].hand[cardIndex]
-    ) {
-      // Get the card to reveal
-      const card = gameState.players[targetPlayerIndex].hand[cardIndex];
-      const targetPlayerName = gameState.players[targetPlayerIndex].name;
-
-      // Create a last action record
-      gameState.lastAction = {
-        type: "view",
-        playerId,
-        targetPlayerId,
-        targetCardIndex: cardIndex,
-        timestamp: Date.now(),
-      };
-
-      // Add to known cards for the viewing player
-      const viewingPlayerIndex = gameState.players.findIndex(
-        (p) => p.id === playerId
-      );
-      if (viewingPlayerIndex !== -1) {
-        if (
-          !gameState.players[viewingPlayerIndex].knownCards.includes(card.id)
-        ) {
-          gameState.players[viewingPlayerIndex].knownCards.push(card.id);
-        }
-      }
-
-      // Send card peek result to the player who used the power
-      this.emit("power-peek-result", {
-        card,
-        targetPlayer: targetPlayerName,
-        cardIndex,
-      });
-
-      // Update game state
-      this.rooms[roomId] = gameState;
-      this.emitToAll("game-state-update", this.rooms[roomId]);
-
-      console.log(
-        `${gameState.players[viewingPlayerIndex]?.name} peeked at ${targetPlayerName}'s ${card.rank} of ${card.suit}`
-      );
-    }
-  }
-
-  private handleViewOwnCard({
-    roomId,
-    playerId,
-    cardIndex,
-  }: {
-    roomId: string;
-    playerId: string;
-    cardIndex: number;
-  }): void {
-    if (!this.rooms[roomId]) return;
-
-    const gameState = this.rooms[roomId];
-
-    // Find the player
-    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
-
-    if (playerIndex !== -1 && gameState.players[playerIndex].hand[cardIndex]) {
-      // Get the card to peek at
-      const card = gameState.players[playerIndex].hand[cardIndex];
-      const playerName = gameState.players[playerIndex].name;
-
-      // Create a last action record
-      gameState.lastAction = {
-        type: "view",
-        playerId,
-        targetCardIndex: cardIndex,
-        timestamp: Date.now(),
-      };
-
-      // Add to known cards
-      if (!gameState.players[playerIndex].knownCards.includes(card.id)) {
-        gameState.players[playerIndex].knownCards.push(card.id);
-      }
-
-      // Send card peek result to the player who peeked their own card
-      this.emit("power-peek-result", {
-        card,
-        targetPlayer: `${playerName} (You)`,
-        cardIndex,
-      });
-
-      // Update game state
-      this.rooms[roomId] = gameState;
-      this.emitToAll("game-state-update", this.rooms[roomId]);
-
-      console.log(
-        `${playerName} peeked at their own ${card.rank} of ${card.suit}`
-      );
-    }
-  }
-
-  // Handle using power on own card (7 or 8)
   private handleUsePowerOnOwnCard({
     roomId,
     playerId,
@@ -914,7 +733,7 @@ class MockSocket extends BrowserEventEmitter {
       ) {
         const card = gameState.players[playerIndex].hand[cardIndex];
 
-        // Send the card info to the player who is looking at their own card
+        // Send the card info to the player
         this.emit("power-peek-result", {
           card,
           targetPlayer: `${gameState.players[playerIndex].name} (You)`,
@@ -936,14 +755,12 @@ class MockSocket extends BrowserEventEmitter {
         // Move to next player
         this.moveToNextPlayer(gameState);
 
-        // Update game state
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
       }
     }
   }
 
-  // Handle using power on opponent card (9 or 10)
   private handleUsePowerOnOpponentCard({
     roomId,
     playerId,
@@ -976,12 +793,15 @@ class MockSocket extends BrowserEventEmitter {
       ) {
         const card = gameState.players[targetPlayerIndex].hand[cardIndex];
 
-        // Send the card info to the player who is looking at opponent's card
-        this.emit("power-peek-result", {
-          card,
-          targetPlayer: gameState.players[targetPlayerIndex].name,
-          cardIndex,
-        });
+        // Send the card info to the player who used the power (only to them)
+        if (playerId === this.id) {
+          this.emit("power-peek-result", {
+            card,
+            targetPlayer: gameState.players[targetPlayerIndex].name,
+            targetPlayerId: targetPlayerId,
+            cardIndex,
+          });
+        }
 
         // Add to known cards
         if (!gameState.players[playerIndex].knownCards.includes(card.id)) {
@@ -998,14 +818,21 @@ class MockSocket extends BrowserEventEmitter {
         // Move to next player
         this.moveToNextPlayer(gameState);
 
-        // Update game state
         this.rooms[roomId] = gameState;
         this.emitToAll("game-state-update", this.rooms[roomId]);
       }
     }
   }
 
-  // Handle using power for swapping (Q or K)
+  // Placeholder handlers for unused methods
+  private handleViewOpponentCard(data: any): void {
+    console.log("ViewOpponentCard not used in new logic");
+  }
+
+  private handleViewOwnCard(data: any): void {
+    console.log("ViewOwnCard not used in new logic");
+  }
+
   private handleUsePowerSwap({
     roomId,
     playerId,
@@ -1046,8 +873,8 @@ class MockSocket extends BrowserEventEmitter {
           const card1 = gameState.players[player1Index].hand[card1Index];
           const card2 = gameState.players[player2Index].hand[card2Index];
 
-          // For K (seen swap), show the cards first
-          if (power === "K") {
+          // For K (seen swap), show the cards first to the power user
+          if (power === "K" && playerId === this.id) {
             this.emit("power-swap-preview", {
               card1,
               card2,
@@ -1066,6 +893,9 @@ class MockSocket extends BrowserEventEmitter {
 
           // Clear the active power
           delete gameState.players[playerIndex].activePower;
+
+          // Move to next player
+          this.moveToNextPlayer(gameState);
 
           // Update game state
           this.rooms[roomId] = gameState;

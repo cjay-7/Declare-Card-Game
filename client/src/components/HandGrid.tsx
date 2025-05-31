@@ -1,4 +1,4 @@
-// client/src/components/HandGrid.tsx - Updated with proper power handling
+// client/src/components/HandGrid.tsx - Updated with opponent card reveal support
 import React from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
@@ -28,6 +28,8 @@ const HandGrid: React.FC<HandGridProps> = ({
     drawnCard,
     gameState,
     myPlayer,
+    opponentRevealedCard,
+    swapSelections,
   } = useGameContext();
 
   // Check if current player has an active power
@@ -38,7 +40,8 @@ const HandGrid: React.FC<HandGridProps> = ({
   const canUsePowerOnThisHand =
     activePower &&
     ((["7", "8"].includes(activePower) && isCurrentPlayer) ||
-      (["9", "10"].includes(activePower) && !isCurrentPlayer));
+      (["9", "10"].includes(activePower) && !isCurrentPlayer) ||
+      ["Q", "K"].includes(activePower)); // Q/K can target any hand
 
   if (cards.length === 0) {
     return (
@@ -72,7 +75,13 @@ const HandGrid: React.FC<HandGridProps> = ({
           <div className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
             {["7", "8"].includes(activePower)
               ? "Peek at your card"
-              : "Peek at opponent's card"}
+              : ["9", "10"].includes(activePower)
+              ? "Peek at opponent's card"
+              : ["Q", "K"].includes(activePower)
+              ? `Select cards to swap (${
+                  activePower === "Q" ? "unseen" : "seen"
+                })`
+              : "Use power"}
           </div>
         </div>
       )}
@@ -82,10 +91,15 @@ const HandGrid: React.FC<HandGridProps> = ({
         // 1. Card is permanently revealed through gameplay (isRevealed=true)
         // 2. Current player can see their own bottom 2 cards ONLY before first draw
         // 3. Card is temporarily revealed (in temporaryRevealedCards array)
+        // 4. Opponent card is temporarily revealed by power (9/10)
         const shouldReveal =
           card.isRevealed || // Permanently revealed cards
           (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Bottom 2 visible only before first draw
-          (isCurrentPlayer && temporaryRevealedCards.includes(index)); // Temporary reveals from powers
+          (isCurrentPlayer && temporaryRevealedCards.includes(index)) || // Temporary reveals from powers on own cards
+          (!isCurrentPlayer &&
+            opponentRevealedCard?.playerId === playerId &&
+            opponentRevealedCard?.cardIndex === index); // Opponent card revealed by 9/10 power
+
         const currentPlayer = gameState?.players.find(
           (p) => p.id === socket.getId()
         );
@@ -95,13 +109,24 @@ const HandGrid: React.FC<HandGridProps> = ({
         const showEliminateButton =
           !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !activePower;
 
+        // Check if this card is selected for swapping
+        const isSelectedForSwap = swapSelections.some(
+          (sel) => sel.playerId === playerId && sel.cardIndex === index
+        );
+
         // Show power glow effect when card can be used with active power
         const showPowerGlow = canUsePowerOnThisHand;
 
-        // Check if this is a temporarily revealed card by power (for visual feedback)
-        // This applies to cards revealed by 7,8,9,10 powers
-        const isTemporarilyRevealedByPower =
-          card.isRevealed && !isCurrentPlayer;
+        // Check if this is a temporarily revealed opponent card by power
+        const isTemporarilyRevealedOpponentCard =
+          !isCurrentPlayer &&
+          opponentRevealedCard?.playerId === playerId &&
+          opponentRevealedCard?.cardIndex === index;
+
+        // Use the revealed card data for opponent cards
+        const displayCard = isTemporarilyRevealedOpponentCard
+          ? opponentRevealedCard.card
+          : card;
 
         return (
           <div
@@ -122,30 +147,43 @@ const HandGrid: React.FC<HandGridProps> = ({
               className={`${showPowerGlow ? "animate-pulse" : ""}`}
             >
               <Card
-                suit={shouldReveal ? card.suit : undefined}
-                rank={shouldReveal ? card.rank : undefined}
+                suit={shouldReveal ? displayCard.suit : undefined}
+                rank={shouldReveal ? displayCard.rank : undefined}
                 isRevealed={shouldReveal}
-                isSelected={selectedCard?.cardId === card.id && isCurrentPlayer}
-                isHighlighted={showPowerGlow || isTemporarilyRevealedByPower}
+                isSelected={
+                  (selectedCard?.cardId === card.id && isCurrentPlayer) ||
+                  isSelectedForSwap
+                }
+                isHighlighted={
+                  showPowerGlow || isTemporarilyRevealedOpponentCard
+                }
                 animate={
-                  temporaryRevealedCards.includes(index)
-                    ? "reveal"
-                    : isTemporarilyRevealedByPower
+                  (isCurrentPlayer && temporaryRevealedCards.includes(index)) ||
+                  isTemporarilyRevealedOpponentCard
                     ? "reveal"
                     : undefined
                 }
               />
             </div>
 
+            {/* Swap selection indicator */}
+            {isSelectedForSwap && (
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+                {swapSelections.findIndex(
+                  (sel) => sel.playerId === playerId && sel.cardIndex === index
+                ) + 1}
+              </div>
+            )}
+
             {/* Power indicator for active powers */}
-            {showPowerGlow && (
+            {showPowerGlow && !isSelectedForSwap && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {activePower}
               </div>
             )}
 
             {/* Temporary reveal indicator for power-revealed cards */}
-            {isTemporarilyRevealedByPower && (
+            {isTemporarilyRevealedOpponentCard && (
               <div className="absolute -top-2 -left-2 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-ping">
                 👁️
               </div>

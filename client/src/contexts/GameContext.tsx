@@ -1,4 +1,4 @@
-// client/src/contexts/GameContext.tsx - Updated with proper power handling
+// client/src/contexts/GameContext.tsx - Updated with proper game logic
 import React, {
   createContext,
   useState,
@@ -34,10 +34,22 @@ interface GameContextType {
   powerInstructions: string | null;
   lastAction: GameAction | null;
   hasDrawnFirstCard: boolean;
+  swapSelections: Array<{ playerId: string; cardIndex: number }>;
+  setSwapSelections: (
+    selections: Array<{ playerId: string; cardIndex: number }>
+  ) => void;
 
   // Temporary reveal state
   temporaryRevealedCards: number[];
   setTemporaryRevealedCards: (indices: number[]) => void;
+  opponentRevealedCard: {
+    playerId: string;
+    cardIndex: number;
+    card: Card;
+  } | null;
+  setOpponentRevealedCard: (
+    data: { playerId: string; cardIndex: number; card: Card } | null
+  ) => void;
 
   // Game actions
   handleDrawCard: () => void;
@@ -100,6 +112,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [lastAction, setLastAction] = useState<GameAction | null>(null);
   const [hasDrawnFirstCard, setHasDrawnFirstCard] = useState(false);
 
+  // Swap selection state for Q/K powers
+  const [swapSelections, setSwapSelections] = useState<
+    Array<{ playerId: string; cardIndex: number }>
+  >([]);
+
   // UI states
   const [showDeclareModal, setShowDeclareModal] = useState(false);
 
@@ -107,6 +124,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [temporaryRevealedCards, setTemporaryRevealedCards] = useState<
     number[]
   >([]);
+
+  // Opponent revealed card (for 9/10 powers)
+  const [opponentRevealedCard, setOpponentRevealedCard] = useState<{
+    playerId: string;
+    cardIndex: number;
+    card: Card;
+  } | null>(null);
 
   // Compute if it's the current player's turn
   const myPlayer =
@@ -143,6 +167,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (gameState?.gameStatus === "waiting") {
       setHasDrawnFirstCard(false);
       setTemporaryRevealedCards([]);
+      setOpponentRevealedCard(null);
     }
   }, [gameState?.gameStatus]);
 
@@ -176,9 +201,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (currentPlayer?.activePower) {
         setSelectedPower(currentPlayer.activePower);
         setPowerInstructions(getPowerInstructions(currentPlayer.activePower));
+
+        // Reset swap selections when power changes
+        if (["Q", "K"].includes(currentPlayer.activePower)) {
+          setSwapSelections([]);
+        }
       } else {
         setSelectedPower(null);
         setPowerInstructions(null);
+        setSwapSelections([]);
       }
     };
 
@@ -193,15 +224,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (cardData.playerId === socket.getId()) {
           console.log("Setting drawn card for this player:", cardData.card);
           setDrawnCard(cardData.card);
-
-          // Set hasDrawnFirstCard to true on first draw
           setHasDrawnFirstCard(true);
-
-          // Set animation for drawn card
           setCardAnimation("draw");
           setAnimatingCardId(cardData.card.id);
 
-          // Set power instructions if special card (for visual feedback only)
+          // Only show power preview, don't activate power until discarded
           if (
             ["7", "8", "9", "10", "J", "Q", "K"].includes(cardData.card.rank)
           ) {
@@ -218,15 +245,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         // Legacy format - just a card
         console.log("Setting drawn card (legacy format):", cardData);
         setDrawnCard(cardData as Card);
-
-        // Set hasDrawnFirstCard to true on first draw
         setHasDrawnFirstCard(true);
-
-        // Set animation
         setCardAnimation("draw");
         setAnimatingCardId((cardData as Card).id);
 
-        // Set power instructions if special card (for visual feedback only)
+        // Only show power preview, don't activate power until discarded
         if (
           ["7", "8", "9", "10", "J", "Q", "K"].includes((cardData as Card).rank)
         ) {
@@ -261,8 +284,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }) => {
       if (data.playerId === socket.getId()) {
         console.log("Received penalty card:", data.penaltyCard);
-        // Add penalty card to hand
-        // This would be handled by the server updating the game state
+        // Server will update game state with penalty card
       }
     };
 
@@ -270,45 +292,41 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const handlePowerPeekResult = (data: {
       card: Card;
       targetPlayer: string;
+      targetPlayerId?: string;
       cardIndex: number;
     }) => {
       console.log(
         `Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
       );
 
-      // For own cards (7/8), temporarily reveal the card
-      if (data.targetPlayer.includes("(You)")) {
+      // For own cards (7/8), reveal the card in our own hand
+      if (data.targetPlayer.includes("(You)") || !data.targetPlayerId) {
         setTemporaryRevealedCards([data.cardIndex]);
-
-        // Hide after 5 seconds
-        setTimeout(() => {
-          setTemporaryRevealedCards([]);
-        }, 5000);
       } else {
-        // For opponent cards (9/10), show an alert or notification
-        alert(
-          `You peeked at ${data.targetPlayer}'s card: ${data.card.rank} of ${data.card.suit}`
+        // For opponent cards (9/10), we need to track which opponent's card to reveal
+        // We'll use a different state or method to handle opponent card reveals
+        // For now, let's show the card info in console and store it
+        console.log(
+          `Revealed opponent card: ${data.card.rank} of ${data.card.suit} at position ${data.cardIndex}`
         );
+
+        // Store this information so HandGrid can use it to show the revealed opponent card
+        // We'll add this to the context state
+        setOpponentRevealedCard({
+          playerId: data.targetPlayerId,
+          cardIndex: data.cardIndex,
+          card: data.card,
+        });
       }
+
+      // Hide after 5 seconds
+      setTimeout(() => {
+        setTemporaryRevealedCards([]);
+        setOpponentRevealedCard(null);
+      }, 5000);
     };
 
-    // Helper function to get suit symbol
-    const getSuitSymbol = (suit: string) => {
-      switch (suit) {
-        case "hearts":
-          return "♥";
-        case "diamonds":
-          return "♦";
-        case "clubs":
-          return "♣";
-        case "spades":
-          return "♠";
-        default:
-          return "";
-      }
-    };
-
-    // Handle power swap preview
+    // Handle power swap preview (for K power)
     const handlePowerSwapPreview = (data: {
       card1: Card;
       card2: Card;
@@ -318,7 +336,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       console.log(
         `Power swap preview: ${data.card1.rank} (${data.player1Name}) ↔ ${data.card2.rank} (${data.player2Name})`
       );
-      // Show preview of cards being swapped
+      // For K power, we could show a confirmation dialog here
+      // For now, just log and proceed with the swap automatically
     };
 
     socket.on("game-state-update", handleGameStateUpdate);
@@ -350,9 +369,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       case "10":
         return "Click on an opponent's card to peek at it";
       case "Q":
-        return "Select two cards to swap them (unseen swap)";
+        return `Select 2 cards to swap (unseen) - ${swapSelections.length}/2 selected`;
       case "K":
-        return "Select two cards to swap them (seen swap)";
+        return `Select 2 cards to swap (seen) - ${swapSelections.length}/2 selected`;
       default:
         return "";
     }
@@ -364,7 +383,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const timer = setTimeout(() => {
         setCardAnimation(null);
         setAnimatingCardId(null);
-      }, 500); // Match with animation duration
+      }, 500);
 
       return () => clearTimeout(timer);
     }
@@ -373,11 +392,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Game action handlers
   const handleDrawCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
-      console.log("Cannot draw card:", {
-        isPlayerTurn,
-        roomId,
-        myPlayerId: myPlayer?.id,
-      });
+      console.log("Cannot draw card - not your turn or missing data");
       return;
     }
 
@@ -387,18 +402,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSwapWithDrawnCard = (handCardId: string) => {
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
-      console.log("Cannot swap with drawn card:", {
-        isPlayerTurn,
-        roomId,
-        myPlayerId: myPlayer?.id,
-        drawnCard,
-      });
+      console.log("Cannot swap with drawn card - missing requirements");
       return;
     }
 
     console.log("Swapping drawn card with hand card:", handCardId);
 
-    // Set animation
     setCardAnimation("swap");
     setAnimatingCardId(handCardId);
 
@@ -418,18 +427,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleDiscardDrawnCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
-      console.log("Cannot discard drawn card:", {
-        isPlayerTurn,
-        roomId,
-        myPlayerId: myPlayer?.id,
-        drawnCard,
-      });
+      console.log("Cannot discard drawn card - missing requirements");
       return;
     }
 
     console.log("Discarding drawn card...");
 
-    // Set animation
     setCardAnimation("discard");
     setAnimatingCardId(drawnCard.id);
 
@@ -439,30 +442,30 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       cardId: drawnCard.id,
     });
 
-    // Reset selections
+    // Reset selections - but don't clear power instructions yet
+    // They will be updated by the game state when power activates
     setSelectedCard(null);
     setDrawnCard(null);
-    setSelectedPower(null);
-    setPowerInstructions(null);
   };
 
   const handleEliminateCard = (cardId: string) => {
-    // Allow elimination when there's a discard card, even if it's not player's turn
+    // Allow elimination when there's a discard card (matching discard rule)
     const hasDiscardCard =
       gameState?.discardPile && gameState.discardPile.length > 0;
 
     if (!hasDiscardCard || !roomId || !myPlayer) {
-      console.log("Cannot eliminate card:", {
-        hasDiscardCard,
-        roomId,
-        myPlayerId: myPlayer?.id,
-      });
+      console.log("Cannot eliminate card - no discard card or missing data");
+      return;
+    }
+
+    // Check if player has already eliminated this round
+    if (myPlayer.hasEliminatedThisRound) {
+      console.log("Cannot eliminate - already eliminated this round");
       return;
     }
 
     console.log("Eliminating card:", cardId);
 
-    // Set animation
     setCardAnimation("discard");
     setAnimatingCardId(cardId);
 
@@ -472,20 +475,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       cardId: cardId,
     });
 
-    // Reset selections
     setSelectedCard(null);
-    setDrawnCard(null);
-    setSelectedPower(null);
-    setPowerInstructions(null);
   };
 
   const handleDeclare = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
-      console.log("Cannot declare:", {
-        isPlayerTurn,
-        roomId,
-        myPlayerId: myPlayer?.id,
-      });
+      console.log("Cannot declare - not your turn or missing data");
       return;
     }
 
@@ -526,11 +521,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // Otherwise, select/deselect for elimination
     if (selectedCard && selectedCard.cardId === card.id) {
-      // Deselect if already selected
       console.log("Deselecting card:", card);
       setSelectedCard(null);
     } else {
-      // Select new card
       console.log("Selecting card:", card);
       setSelectedCard({ cardId: card.id, isSelected: true });
     }
@@ -538,10 +531,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleCardClick = (playerId: string, cardIndex: number) => {
     if (!roomId || !myPlayer) {
-      console.log("Cannot handle card click:", {
-        roomId,
-        myPlayerId: myPlayer?.id,
-      });
+      console.log("Cannot handle card click - missing room or player data");
       return;
     }
 
@@ -571,52 +561,65 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           targetPlayerId: playerId,
           cardIndex,
         });
+      } else if (["Q", "K"].includes(activePower)) {
+        // Handle swap power selection
+        const newSelection = { playerId, cardIndex };
+
+        // Check if this card is already selected
+        const existingIndex = swapSelections.findIndex(
+          (sel) => sel.playerId === playerId && sel.cardIndex === cardIndex
+        );
+
+        if (existingIndex >= 0) {
+          // Deselect if already selected
+          const newSelections = swapSelections.filter(
+            (_, index) => index !== existingIndex
+          );
+          setSwapSelections(newSelections);
+          console.log(`Deselected card for ${activePower} power`);
+        } else if (swapSelections.length < 2) {
+          // Add to selections if we have room
+          const newSelections = [...swapSelections, newSelection];
+          setSwapSelections(newSelections);
+          console.log(
+            `Selected card ${newSelections.length}/2 for ${activePower} power`
+          );
+
+          // If we have 2 selections, execute the swap
+          if (newSelections.length === 2) {
+            console.log(`Executing ${activePower} power swap`);
+            socket.emit("use-power-swap", {
+              roomId,
+              playerId: myPlayer.id,
+              card1PlayerId: newSelections[0].playerId,
+              card1Index: newSelections[0].cardIndex,
+              card2PlayerId: newSelections[1].playerId,
+              card2Index: newSelections[1].cardIndex,
+            });
+
+            // Reset selections
+            setSwapSelections([]);
+          }
+        }
+
+        // Update power instructions
+        setPowerInstructions(getPowerInstructions(activePower));
       }
       return;
     }
 
-    // Legacy drawn card logic (for when cards are drawn and need to be used immediately)
-    if (drawnCard?.rank === "K" && playerId !== myPlayer.id) {
-      console.log("Viewing opponent's card with drawn King...");
-      socket.emit("view-opponent-card", {
-        roomId,
-        playerId: myPlayer.id,
-        targetPlayerId: playerId,
-        cardIndex,
-      });
-
-      setTimeout(() => {
-        if (drawnCard) {
-          handleDiscardDrawnCard();
-        }
-      }, 3500);
-    } else if (drawnCard?.rank === "Q" && playerId === myPlayer.id) {
-      console.log("Viewing own card with drawn Queen...");
-      socket.emit("view-own-card", {
-        roomId,
-        playerId: myPlayer.id,
-        cardIndex,
-      });
-
-      setTimeout(() => {
-        if (drawnCard) {
-          handleDiscardDrawnCard();
-        }
-      }, 1000);
-    }
+    // No active power - just regular card click (no special behavior)
+    console.log("Regular card click - no active power");
   };
 
   // Function to view the bottom two cards at the start of the game
   const handleViewBottomCards = () => {
     if (!myPlayer || hasDrawnFirstCard) {
-      console.log("Cannot view bottom cards:", {
-        myPlayerId: myPlayer?.id,
-        hasDrawnFirstCard,
-      });
+      console.log("Cannot view bottom cards - already drawn first card");
       return;
     }
 
-    // Get the indices of the bottom two cards (assuming 4 cards total, so indices 2 and 3)
+    // Get the indices of the bottom two cards (indices 2 and 3)
     const bottomCardIndices = [2, 3];
 
     // Temporarily reveal these cards
@@ -635,6 +638,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setPowerInstructions(null);
     setHasDrawnFirstCard(false);
     setTemporaryRevealedCards([]);
+    setOpponentRevealedCard(null);
+    setSwapSelections([]);
     setShowDeclareModal(false);
   };
 
@@ -661,6 +666,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         hasDrawnFirstCard,
         temporaryRevealedCards,
         setTemporaryRevealedCards,
+        opponentRevealedCard,
+        setOpponentRevealedCard,
+        swapSelections,
+        setSwapSelections,
         handleDrawCard,
         handleSwapWithDrawnCard,
         handleDiscardDrawnCard,

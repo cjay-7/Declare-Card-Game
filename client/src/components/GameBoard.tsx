@@ -1,4 +1,4 @@
-// client/src/components/GameBoard.tsx
+// client/src/components/GameBoard.tsx - Updated with player switching
 import React, { useEffect, useState } from "react";
 import socket from "../socket";
 import { useGameContext } from "../contexts/GameContext";
@@ -40,10 +40,41 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     showDeclareModal,
     setShowDeclareModal,
     canDiscardDrawnCard,
+    currentPlayerId,
+    refreshPlayerData,
   } = useGameContext();
 
   // State to track the opponent we're currently viewing
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null);
+  const [hasJoined, setHasJoined] = useState(false);
+
+  // Listen for player switches and rejoin if necessary
+  useEffect(() => {
+    const handlePlayerSwitch = () => {
+      console.log(`GameBoard: Player switched to ${socket.getCurrentPlayer()}`);
+      refreshPlayerData();
+
+      // If we've already joined, rejoin as the new player WITHOUT leaving first
+      if (hasJoined) {
+        const newPlayerName =
+          socket.getCurrentPlayer() === "player1" ? "Player 1" : "Player 2";
+        console.log(`Rejoining as ${newPlayerName} (without leaving)`);
+
+        socket.emit("join-room", {
+          roomId: initialRoomId,
+          playerName: newPlayerName,
+        });
+
+        setPlayerName(newPlayerName);
+      }
+    };
+
+    window.addEventListener("player-switched", handlePlayerSwitch);
+
+    return () => {
+      window.removeEventListener("player-switched", handlePlayerSwitch);
+    };
+  }, [hasJoined, initialRoomId, setPlayerName, refreshPlayerData]);
 
   useEffect(() => {
     // Set player name and room ID in context
@@ -51,29 +82,39 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     setRoomId(initialRoomId);
 
     // Join the room
-    console.log(`Joining room ${initialRoomId} as ${initialPlayerName}`);
+    console.log(
+      `[${currentPlayerId}] Joining room ${initialRoomId} as ${initialPlayerName}`
+    );
     socket.emit("join-room", {
       roomId: initialRoomId,
       playerName: initialPlayerName,
     });
 
-    // Cleanup on unmount
+    setHasJoined(true);
+
+    // Don't leave room on unmount - let players stay in room when switching
     return () => {
-      socket.emit("leave-room", {
-        roomId: initialRoomId,
-        playerId: socket.getId(),
-      });
+      // Only leave if component is actually being unmounted (not just player switching)
+      console.log(`GameBoard unmounting for ${currentPlayerId}`);
     };
-  }, [initialPlayerName, initialRoomId, setPlayerName, setRoomId]);
+  }, [
+    initialPlayerName,
+    initialRoomId,
+    setPlayerName,
+    setRoomId,
+    currentPlayerId,
+  ]);
 
   const handleStartGame = () => {
-    console.log(`Starting game in room ${initialRoomId}`);
+    console.log(`[${currentPlayerId}] Starting game in room ${initialRoomId}`);
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
   const handlePlayAgain = () => {
     // Reset the game and restart
-    console.log(`Restarting game in room ${initialRoomId}`);
+    console.log(
+      `[${currentPlayerId}] Restarting game in room ${initialRoomId}`
+    );
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
@@ -86,8 +127,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     : null;
 
   // Check if current player is host
+  const currentSocketId = socket.getId();
   const isHost =
-    gameState?.players.find((p) => p.id === socket.getId())?.isHost || false;
+    gameState?.players.find((p) => p.id === currentSocketId)?.isHost || false;
+
+  console.log(
+    `Host check: Current socket ID: ${currentSocketId}, Is host: ${isHost}`
+  );
+  console.log(
+    `All players:`,
+    gameState?.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+    }))
+  );
 
   // Check if game has started
   const gameStarted = gameState?.gameStatus === "playing";
@@ -166,48 +220,114 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-6em font-bold">Room: {initialRoomId}</h1>
+              <h1 className="text-3xl font-bold">Room: {initialRoomId}</h1>
               <h2 className="text-lg">You: {initialPlayerName}</h2>
+              <div className="text-sm text-gray-400 mt-1">
+                Playing as:{" "}
+                {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+              </div>
             </div>
             <div>
-              {isHost && (
-                <button
-                  onClick={handleStartGame}
-                  className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                >
-                  Start Game
-                </button>
+              {isHost &&
+                gameState?.players &&
+                gameState.players.length >= 2 && (
+                  <button
+                    onClick={handleStartGame}
+                    className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 font-semibold"
+                  >
+                    Start Game
+                  </button>
+                )}
+              {!isHost && (
+                <div className="text-gray-400 text-sm">
+                  Waiting for host to start...
+                </div>
+              )}
+              {gameState?.players && gameState.players.length < 2 && (
+                <div className="text-yellow-400 text-sm">
+                  Need at least 2 players to start
+                </div>
               )}
             </div>
           </div>
 
           <div className="p-6 bg-gray-800 rounded-lg text-center">
             <h2 className="text-xl font-bold mb-2">
-              Waiting for host to start the game...
+              {isHost
+                ? "You are the host! Click 'Start Game' when ready!"
+                : "Waiting for host to start the game..."}
             </h2>
-            <p>Players: {gameState?.players.length || 0}/8</p>
+            <p className="text-gray-300 mb-4">
+              Players: {gameState?.players.length || 0}/8
+            </p>
+
+            {/* Host indicator */}
+            {gameState?.players && gameState.players.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-yellow-400">
+                  Host:{" "}
+                  {gameState.players.find((p) => p.isHost)?.name || "Unknown"}
+                </p>
+              </div>
+            )}
 
             {gameState?.players && gameState.players.length > 0 && (
               <div className="mt-4">
-                <h3 className="font-semibold mb-2">Players in Room:</h3>
-                <ul className="space-y-1">
+                <h3 className="font-semibold mb-3">Players in Room:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto">
                   {gameState.players.map((player) => (
-                    <li
+                    <div
                       key={player.id}
-                      className="flex justify-center items-center gap-2"
+                      className={`p-3 rounded-lg border ${
+                        player.id === currentSocketId
+                          ? "bg-blue-900 border-blue-600"
+                          : "bg-gray-700 border-gray-600"
+                      }`}
                     >
-                      <span
-                        className={
-                          player.isHost ? "text-yellow-400" : "text-white"
-                        }
-                      >
-                        {player.name} {player.isHost && "👑"}
-                      </span>
-                    </li>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                          {player.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span
+                          className={`font-medium ${
+                            player.isHost ? "text-yellow-400" : "text-white"
+                          }`}
+                        >
+                          {player.name}
+                          {player.isHost && " 👑"}
+                          {player.id === currentSocketId && " (You)"}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
+
+            {/* Instructions for 2-player mode */}
+            <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-600">
+              <h3 className="text-sm font-bold text-blue-300 mb-2">
+                2-Player Mode Instructions
+              </h3>
+              <div className="text-xs text-blue-200 space-y-1">
+                <div>
+                  • Use the player switcher (top right) to alternate between
+                  players
+                </div>
+                <div>
+                  • Both players join the same room with different names
+                </div>
+                <div>
+                  • Switch perspectives when it's the other player's turn
+                </div>
+                <div>
+                  • Current player:{" "}
+                  <span className="font-bold">
+                    {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -227,28 +347,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         playerHand={myHand}
       />
 
-      <div className="flex max-w-md mx-auto">
-        <div className=" absolute top-0 left-0 mb-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
           <div>
             <h4 className="text-xl font-bold">Room: {initialRoomId}</h4>
-            <h5 className="text-sm">You: {initialPlayerName}</h5>
+            <h5 className="text-sm text-gray-300">You: {initialPlayerName}</h5>
+            <div className="text-xs text-gray-400">
+              Playing as:{" "}
+              {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+            </div>
           </div>
 
-          <div>
+          <div className="text-right">
             <p className="text-sm">
               {isPlayerTurn
-                ? "Your Turn"
-                : `${
+                ? "🟢 Your Turn"
+                : `⏳ ${
                     gameState?.players[gameState.currentPlayerIndex]?.name
                   }'s Turn`}
             </p>
+            <div className="text-xs text-gray-400 mt-1">
+              Round {gameState?.roundNumber || 1}
+            </div>
           </div>
         </div>
 
         {/* Main Game Board Layout */}
         <div className="flex flex-col gap-6 w-full">
           {/* Opponent's Cards Section */}
-          <div className="bg-gray-800 p-4 w-1/2 mx-auto  rounded-lg">
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <h3 className="text-center mb-3 font-semibold">
+              {opponent ? "Opponent" : "No Opponents"}
+            </h3>
             {opponent ? (
               <>
                 <div className="mb-3">
@@ -265,33 +395,37 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 {renderOpponentHand()}
               </>
             ) : (
-              <div className="text-center py-4 text-gray-400">
-                No opponent selected
+              <div className="text-center py-8 text-gray-400">
+                Waiting for another player...
               </div>
             )}
             {renderOpponentSelector()}
           </div>
 
           {/* Middle Section - Deck and Discard Pile */}
-          <div className="flex justify-between gap-4">
-            <div className="bg-gray-800 p-4 rounded-lg flex-1 relative">
-              <h3 className="text-center mb-2">Deck</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-800 p-4 rounded-lg relative">
+              <h3 className="text-center mb-3 font-semibold">Deck</h3>
               <div className="flex justify-center">
                 <Deck
                   cardsRemaining={deckSize}
-                  onDeckClick={isPlayerTurn ? handleDrawCard : undefined}
+                  onDeckClick={
+                    isPlayerTurn && !drawnCard ? handleDrawCard : undefined
+                  }
                 />
               </div>
-              {isPlayerTurn && (
-                <div className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full animate-pulse"></div>
+              {isPlayerTurn && !drawnCard && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               )}
               <div className="text-center mt-2 text-xs text-gray-400">
-                Click to draw
+                {isPlayerTurn && !drawnCard
+                  ? "Click to draw"
+                  : `${deckSize} cards`}
               </div>
             </div>
 
-            <div className="bg-gray-800 p-4 rounded-lg flex-1">
-              <h3 className="text-center mb-2">Discard</h3>
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-center mb-3 font-semibold">Discard</h3>
               <div className="flex justify-center">
                 <div
                   onClick={
@@ -322,7 +456,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     Click to discard drawn card
                   </span>
                 ) : topDiscardCard ? (
-                  `Top: ${topDiscardCard.rank}`
+                  `Top: ${topDiscardCard.rank}${
+                    topDiscardCard.suit === "hearts"
+                      ? "♥"
+                      : topDiscardCard.suit === "diamonds"
+                      ? "♦"
+                      : topDiscardCard.suit === "clubs"
+                      ? "♣"
+                      : "♠"
+                  }`
                 ) : (
                   "Empty"
                 )}
@@ -331,7 +473,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           </div>
 
           {/* My Cards Section */}
-          <div className="bg-gray-800 p-4 w-1/2 mx-auto rounded-lg">
+          <div className="bg-gray-800 p-4 rounded-lg">
             <div className="mb-3">
               <PlayerInfo
                 name={myPlayer?.name || initialPlayerName}
@@ -346,7 +488,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           {/* Drawn Card Section */}
           {drawnCard && (
             <div className="bg-gray-800 p-4 rounded-lg">
-              <h3 className="text-center mb-2">Drawn Card</h3>
+              <h3 className="text-center mb-3 font-semibold">Drawn Card</h3>
               <div className="flex justify-center">
                 <Card
                   suit={drawnCard.suit}
@@ -358,6 +500,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               <div className="text-center mt-2 text-xs text-gray-400">
                 Click hand card to swap • Click discard pile to discard
               </div>
+              {selectedPower && (
+                <div className="text-center mt-1 text-xs text-purple-300">
+                  Power preview: {selectedPower} (activates when discarded)
+                </div>
+              )}
             </div>
           )}
 
@@ -366,8 +513,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             <div className="bg-purple-800 p-4 rounded-lg">
               <div className="flex items-center justify-center">
                 <div>
-                  <h3 className="text-lg font-bold text-center">
-                    Special Power
+                  <h3 className="text-lg font-bold text-center mb-2">
+                    Special Power Active
                   </h3>
                   <p className="text-center">{powerInstructions}</p>
                 </div>
@@ -382,6 +529,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               onDeclare={handleDeclare}
               drawnCard={drawnCard}
             />
+          </div>
+
+          {/* Current Player Turn Indicator */}
+          <div className="bg-gray-700 p-3 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <span className="text-gray-300">Current Turn:</span>
+                <span className="ml-2 font-semibold text-white">
+                  {gameState?.players[gameState.currentPlayerIndex]?.name ||
+                    "Unknown"}
+                </span>
+              </div>
+              <div className="text-xs text-gray-400">
+                {isPlayerTurn && (
+                  <span className="text-green-400 animate-pulse">
+                    ● Your turn
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Game Status */}
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="bg-gray-700 p-2 rounded text-center">
+              <div className="text-gray-300">Players</div>
+              <div className="font-bold">{gameState?.players.length || 0}</div>
+            </div>
+            <div className="bg-gray-700 p-2 rounded text-center">
+              <div className="text-gray-300">Cards Left</div>
+              <div className="font-bold">{deckSize}</div>
+            </div>
           </div>
         </div>
       </div>

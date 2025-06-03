@@ -1,4 +1,4 @@
-// client/src/utils/DualPlayerMockSocket.ts - Two players on same device
+// client/src/utils/DualPlayerMockSocket.ts - Improved logging for better debugging
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -20,7 +20,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   constructor(playerId: string) {
     super();
     this.id = playerId;
-    console.log("DualPlayerMockSocket initialized with ID:", this.id);
+    console.log(`🔌 DualPlayerMockSocket initialized for: ${this.id}`);
   }
 
   // Create or get instance for specific player
@@ -36,7 +36,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
   // Broadcast to all player instances
   private static broadcastToAll(event: string, data: any): void {
-    DualPlayerMockSocket.instances.forEach((instance) => {
+    console.log(`📡 Broadcasting ${event} to all players`, data);
+    DualPlayerMockSocket.instances.forEach((instance, playerId) => {
+      console.log(`  → Sending to ${playerId}`);
       instance.emitToSelf(event, data);
     });
   }
@@ -47,6 +49,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     event: string,
     data: any
   ): void {
+    console.log(`📡 Broadcasting ${event} to ${playerId}`, data);
     const instance = DualPlayerMockSocket.instances.get(playerId);
     if (instance) {
       instance.emitToSelf(event, data);
@@ -56,10 +59,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   private static moveToNextPlayer(gameState: GameState): void {
     if (!gameState.players.length) return;
 
+    const currentPlayerName =
+      gameState.players[gameState.currentPlayerIndex].name;
     console.log(
-      `[TURN DEBUG] Current player before move: ${
-        gameState.players[gameState.currentPlayerIndex].name
-      } (index ${gameState.currentPlayerIndex})`
+      `🔄 [TURN] Current: ${currentPlayerName} (index ${gameState.currentPlayerIndex})`
     );
 
     let nextPlayerIndex =
@@ -71,7 +74,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       attempts < gameState.players.length
     ) {
       console.log(
-        `[TURN DEBUG] Player ${gameState.players[nextPlayerIndex].name} turn skipped`
+        `⏭️ [TURN] ${gameState.players[nextPlayerIndex].name} turn skipped`
       );
       gameState.players[nextPlayerIndex].skippedTurn = false;
       nextPlayerIndex = (nextPlayerIndex + 1) % gameState.players.length;
@@ -79,9 +82,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
 
     gameState.currentPlayerIndex = nextPlayerIndex;
-    console.log(
-      `[TURN DEBUG] Final turn assignment: ${gameState.players[nextPlayerIndex].name}`
-    );
+    const newPlayerName = gameState.players[nextPlayerIndex].name;
+    console.log(`✅ [TURN] Next: ${newPlayerName} (index ${nextPlayerIndex})`);
   }
 
   getId(): string {
@@ -89,11 +91,11 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   }
 
   setId(id: string): void {
-    // Remove old instance and create new one with new ID
+    const oldId = this.id;
     DualPlayerMockSocket.instances.delete(this.id);
     this.id = id;
     DualPlayerMockSocket.instances.set(id, this);
-    console.log("DualPlayerMockSocket ID changed to:", this.id);
+    console.log(`🔄 Socket ID changed: ${oldId} → ${id}`);
   }
 
   private emitToSelf(event: string, data: any): void {
@@ -101,7 +103,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   }
 
   emit(event: string, data: any): boolean {
-    console.log(`[${this.id}] Mock emitting: ${event}`, data);
+    console.log(`📤 [${this.id}] Emitting: ${event}`, data);
 
     if (
       event === "join-room" ||
@@ -129,17 +131,17 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   }
 
   on(event: string, listener: (...args: any[]) => void): this {
-    console.log(`[${this.id}] Mock registering listener for: ${event}`);
+    console.log(`👂 [${this.id}] Listening for: ${event}`);
     return super.on(event, listener);
   }
 
   off(event: string, listener: (...args: any[]) => void): this {
-    console.log(`[${this.id}] Mock removing listener for: ${event}`);
+    console.log(`🔇 [${this.id}] Removing listener for: ${event}`);
     return super.off(event, listener);
   }
 
   private handleClientEvents(event: string, data: any): void {
-    console.log(`[${this.id}] Handling event: ${event}`, data);
+    console.log(`⚡ [${this.id}] Handling: ${event}`, data);
     switch (event) {
       case "join-room":
         this.handleJoinRoom(data);
@@ -175,7 +177,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         this.handleUsePowerSwap(data);
         break;
       default:
-        console.log(`Unhandled mock event: ${event}`);
+        console.log(`❓ Unhandled event: ${event}`);
     }
   }
 
@@ -186,9 +188,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     roomId: string;
     playerName: string;
   }): void {
-    console.log(
-      `[${this.id}] Handling join room. Room: ${roomId}, Player: ${playerName}`
-    );
+    console.log(`🚪 [${this.id}] Joining room: ${roomId} as ${playerName}`);
 
     if (!DualPlayerMockSocket.sharedRooms[roomId]) {
       DualPlayerMockSocket.sharedRooms[roomId] = {
@@ -205,6 +205,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         lastAction: null,
         type: "view",
       };
+      console.log(`🆕 Created new room: ${roomId}`);
     }
 
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
@@ -213,10 +214,16 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     );
 
     if (existingPlayerIndex >= 0) {
-      console.log(`Player with ID ${this.id} already in room, updating name`);
+      console.log(
+        `🔄 Player ${this.id} already in room, updating name to ${playerName}`
+      );
       gameState.players[existingPlayerIndex].name = playerName;
+      // Don't change host status - keep existing host status
     } else {
-      const isHost = gameState.players.length === 0;
+      // Only make new player host if no host exists
+      const hasHost = gameState.players.some((p) => p.isHost);
+      const isHost = !hasHost; // Only host if no existing host
+
       const newPlayer: Player = {
         id: this.id,
         name: playerName,
@@ -228,7 +235,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         hasEliminatedThisRound: false,
       };
 
-      console.log(`Adding new player to room ${roomId}:`, newPlayer);
+      console.log(`➕ Adding new player: ${playerName} (Host: ${isHost})`);
       gameState.players.push(newPlayer);
     }
 
@@ -247,28 +254,37 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     roomId: string;
     playerId: string;
   }): void {
+    console.log(`🚪 [${this.id}] Leaving room: ${roomId}`);
+
     if (!DualPlayerMockSocket.sharedRooms[roomId]) return;
 
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
+    const playerName =
+      gameState.players.find((p) => p.id === playerId)?.name || playerId;
+
     gameState.players = gameState.players.filter(
       (player) => player.id !== playerId
     );
 
+    console.log(`➖ Removed player: ${playerName}`);
+
     if (gameState.players.length === 0) {
       delete DualPlayerMockSocket.sharedRooms[roomId];
+      console.log(`🗑️ Deleted empty room: ${roomId}`);
     } else {
       if (!gameState.players.some((player) => player.isHost)) {
         gameState.players[0].isHost = true;
+        console.log(`👑 New host: ${gameState.players[0].name}`);
       }
       DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
     }
   }
 
   private handleStartGame({ roomId }: { roomId: string }): void {
-    console.log(`[${this.id}] Start game requested for room ${roomId}`);
+    console.log(`🎮 [${this.id}] Starting game in room: ${roomId}`);
 
     if (!DualPlayerMockSocket.sharedRooms[roomId]) {
-      console.error(`No room found with ID ${roomId}`);
+      console.error(`❌ No room found: ${roomId}`);
       return;
     }
 
@@ -277,14 +293,16 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const requestingPlayer = gameState.players.find((p) => p.id === this.id);
     if (!requestingPlayer?.isHost) {
-      console.log("Only host can start the game");
+      console.log(
+        `⛔ Only host can start game (requested by ${requestingPlayer?.name})`
+      );
       DualPlayerMockSocket.broadcastToPlayer(this.id, "error", {
         message: "Only host can start the game",
       });
       return;
     }
 
-    console.log(`Starting game with ${playerCount} players`);
+    console.log(`🎯 Starting game with ${playerCount} players`);
 
     const deck = shuffleDeck(createDeck());
     const { playerHands, remainingDeck } = dealCards(
@@ -308,6 +326,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       player.knownCards = [];
       player.skippedTurn = false;
       player.hasEliminatedThisRound = false;
+
+      console.log(`🃏 Dealt ${hand.length} cards to ${player.name}`);
     });
 
     DualPlayerMockSocket.drawnCards = {};
@@ -315,9 +335,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     DualPlayerMockSocket.broadcastToAll("start-game", { roomId });
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
 
-    console.log(
-      `Game successfully started in room ${roomId} with ${gameState.players.length} players`
-    );
+    console.log(`✅ Game started successfully in room ${roomId}`);
   }
 
   private handleDrawCard({
@@ -331,10 +349,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
     if (currentPlayer.id !== playerId) {
-      console.log(
-        `Not ${playerId}'s turn, current player is ${currentPlayer.id}`
-      );
+      console.log(`⛔ Not ${playerId}'s turn (current: ${currentPlayer.name})`);
       return;
     }
 
@@ -350,8 +367,14 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         timestamp: Date.now(),
       };
 
+      console.log(
+        `🎴 ${currentPlayer.name} drew: ${drawnCard.rank} of ${drawnCard.suit}`
+      );
+
       DualPlayerMockSocket.broadcastToPlayer(playerId, "card-drawn", drawnCard);
       DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
+    } else {
+      console.log(`⛔ No cards left to draw`);
     }
   }
 
@@ -372,12 +395,14 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const drawnCard = DualPlayerMockSocket.drawnCards[playerId];
     if (!drawnCard) {
-      console.error("No drawn card found for player:", playerId);
+      console.error(`❌ No drawn card found for ${playerId}`);
       return;
     }
 
     gameState.discardPile.push(drawnCard);
-    console.log(`Discarded ${drawnCard.rank} of ${drawnCard.suit}`);
+    console.log(
+      `♻️ ${currentPlayer.name} discarded: ${drawnCard.rank} of ${drawnCard.suit}`
+    );
 
     // Reset elimination tracking
     gameState.players.forEach((player) => {
@@ -390,7 +415,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         (gameState.currentPlayerIndex + 1) % gameState.players.length;
       gameState.players[nextPlayerIndex].skippedTurn = true;
       console.log(
-        `[JACK POWER] Jack played, skipping ${gameState.players[nextPlayerIndex].name}`
+        `⚡ Jack power: Skipping ${gameState.players[nextPlayerIndex].name}`
       );
     }
 
@@ -399,7 +424,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       if (playerIndex !== -1) {
         gameState.players[playerIndex].activePower = drawnCard.rank;
         console.log(
-          `${drawnCard.rank} power activated for ${gameState.players[playerIndex].name}`
+          `⚡ ${drawnCard.rank} power activated for ${gameState.players[playerIndex].name}`
         );
 
         delete DualPlayerMockSocket.drawnCards[playerId];
@@ -450,7 +475,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     if (playerIndex !== -1 && cardIndex !== -1) {
       const drawnCard = DualPlayerMockSocket.drawnCards[playerId];
       if (!drawnCard) {
-        console.error("No drawn card found for player:", playerId);
+        console.error(`❌ No drawn card found for ${playerId}`);
         return;
       }
 
@@ -466,7 +491,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       delete DualPlayerMockSocket.drawnCards[playerId];
 
       console.log(
-        `Swapped: drawn ${drawnCard.rank} → hand, hand ${handCard.rank} → discard`
+        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${handCard.rank} → discard`
       );
 
       gameState.lastAction = {
@@ -498,7 +523,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     if (eliminatingPlayerIndex === -1) return;
     if (gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound) {
-      console.log("Player has already eliminated a card this round");
+      console.log(
+        `⛔ ${gameState.players[eliminatingPlayerIndex].name} already eliminated this round`
+      );
       return;
     }
 
@@ -529,6 +556,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const canEliminate =
       topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
+    const eliminatingPlayerName =
+      gameState.players[eliminatingPlayerIndex].name;
+    const cardOwnerName = gameState.players[cardOwnerIndex].name;
+
     if (canEliminate) {
       const eliminatedCard = gameState.players[cardOwnerIndex].hand.splice(
         cardIndex,
@@ -544,10 +575,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       });
 
       console.log(
-        `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${gameState.players[cardOwnerIndex].name}'s hand`
+        `✅ ${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName}`
       );
     } else {
-      console.log("Invalid elimination - penalty");
+      console.log(`❌ ${eliminatingPlayerName} failed to eliminate - penalty`);
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
         penaltyCard.isRevealed = false;
@@ -587,6 +618,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     if (playerIndex !== -1 && gameState.players[playerIndex].activePower) {
       const power = gameState.players[playerIndex].activePower;
+      const playerName = gameState.players[playerIndex].name;
 
       if (
         ["7", "8"].includes(power) &&
@@ -596,7 +628,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
         DualPlayerMockSocket.broadcastToPlayer(playerId, "power-peek-result", {
           card,
-          targetPlayer: `${gameState.players[playerIndex].name} (You)`,
+          targetPlayer: `${playerName} (You)`,
           cardIndex,
         });
 
@@ -605,7 +637,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         }
 
         console.log(
-          `${power} power used: ${gameState.players[playerIndex].name} peeked at own ${card.rank}`
+          `👁️ ${playerName} peeked at own ${card.rank} with ${power} power`
         );
 
         delete gameState.players[playerIndex].activePower;
@@ -640,6 +672,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       gameState.players[playerIndex].activePower
     ) {
       const power = gameState.players[playerIndex].activePower;
+      const playerName = gameState.players[playerIndex].name;
+      const targetName = gameState.players[targetPlayerIndex].name;
 
       if (
         ["9", "10"].includes(power) &&
@@ -649,7 +683,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
         DualPlayerMockSocket.broadcastToPlayer(playerId, "power-peek-result", {
           card,
-          targetPlayer: gameState.players[targetPlayerIndex].name,
+          targetPlayer: targetName,
           targetPlayerId: targetPlayerId,
           cardIndex,
         });
@@ -659,7 +693,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         }
 
         console.log(
-          `${power} power used: ${gameState.players[playerIndex].name} peeked at ${gameState.players[targetPlayerIndex].name}'s ${card.rank}`
+          `👁️ ${playerName} peeked at ${targetName}'s ${card.rank} with ${power} power`
         );
 
         delete gameState.players[playerIndex].activePower;
@@ -691,6 +725,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     if (playerIndex !== -1 && gameState.players[playerIndex].activePower) {
       const power = gameState.players[playerIndex].activePower;
+      const playerName = gameState.players[playerIndex].name;
 
       if (["Q", "K"].includes(power)) {
         const player1Index = gameState.players.findIndex(
@@ -708,6 +743,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         ) {
           const card1 = gameState.players[player1Index].hand[card1Index];
           const card2 = gameState.players[player2Index].hand[card2Index];
+          const player1Name = gameState.players[player1Index].name;
+          const player2Name = gameState.players[player2Index].name;
 
           if (power === "K") {
             DualPlayerMockSocket.broadcastToPlayer(
@@ -716,8 +753,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
               {
                 card1,
                 card2,
-                player1Name: gameState.players[player1Index].name,
-                player2Name: gameState.players[player2Index].name,
+                player1Name,
+                player2Name,
               }
             );
           }
@@ -727,7 +764,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
           gameState.players[player2Index].hand[card2Index] = card1;
 
           console.log(
-            `${power} power used: swapped cards between ${gameState.players[player1Index].name} and ${gameState.players[player2Index].name}`
+            `🔄 ${playerName} used ${power} power: swapped cards between ${player1Name} and ${player2Name}`
           );
 
           delete gameState.players[playerIndex].activePower;
@@ -756,6 +793,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     if (playerIndex === -1) return;
 
+    const playerName = gameState.players[playerIndex].name;
     const actualRanks = gameState.players[playerIndex].hand.map(
       (card) => card.rank
     );
@@ -763,9 +801,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       (rank, index) => actualRanks[index] === rank
     );
 
-    console.log("Declared ranks:", declaredRanks);
-    console.log("Actual ranks:", actualRanks);
-    console.log("Is valid:", isValidDeclaration);
+    console.log(`🎯 ${playerName} declared:`);
+    console.log(`   Declared: [${declaredRanks.join(", ")}]`);
+    console.log(`   Actual:   [${actualRanks.join(", ")}]`);
+    console.log(`   Valid:    ${isValidDeclaration ? "✅" : "❌"}`);
 
     gameState.gameStatus = "ended";
     gameState.declarer = playerId;
@@ -780,12 +819,19 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     if (!isValidDeclaration) {
       gameState.players[playerIndex].score += 20;
+      console.log(`⚠️ ${playerName} gets +20 penalty for invalid declaration`);
     }
 
     const minScore = Math.min(...gameState.players.map((p) => p.score));
     const winners = gameState.players
       .filter((p) => p.score === minScore)
       .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+
+    console.log(
+      `🏆 Game ended! Winners: ${winners
+        .map((w) => w.name)
+        .join(", ")} (${minScore} points)`
+    );
 
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
     DualPlayerMockSocket.broadcastToAll("game-ended", {

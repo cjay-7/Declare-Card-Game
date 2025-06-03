@@ -1,4 +1,4 @@
-// client/src/contexts/GameContext.tsx - Updated with proper game logic
+// client/src/contexts/GameContext.tsx - Updated with player switch support
 import React, {
   createContext,
   useState,
@@ -74,6 +74,10 @@ interface GameContextType {
 
   // Reset game
   resetGame: () => void;
+
+  // Player switching
+  currentPlayerId: string;
+  refreshPlayerData: () => void;
 }
 
 const defaultGameState: GameState = {
@@ -99,6 +103,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCard, setSelectedCard] = useState<CardSelection | null>(null);
   const [drawnCard, setDrawnCard] = useState<Card | null>(null);
+  const [currentPlayerId, setCurrentPlayerId] = useState(
+    socket.getCurrentPlayer()
+  );
 
   // Animation states
   const [cardAnimation, setCardAnimation] = useState<string | null>(null);
@@ -131,6 +138,39 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     cardIndex: number;
     card: Card;
   } | null>(null);
+
+  // Listen for player switches
+  useEffect(() => {
+    const handlePlayerSwitch = (event: CustomEvent) => {
+      const { playerId } = event.detail;
+      setCurrentPlayerId(playerId);
+
+      // Reset some state when switching players
+      setSelectedCard(null);
+      setSwapSelections([]);
+      setTemporaryRevealedCards([]);
+      setOpponentRevealedCard(null);
+
+      console.log(`GameContext: Switched to ${playerId}`);
+    };
+
+    window.addEventListener(
+      "player-switched",
+      handlePlayerSwitch as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "player-switched",
+        handlePlayerSwitch as EventListener
+      );
+    };
+  }, []);
+
+  // Refresh player data
+  const refreshPlayerData = () => {
+    setCurrentPlayerId(socket.getCurrentPlayer());
+  };
 
   // Compute if it's the current player's turn
   const myPlayer =
@@ -186,7 +226,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Handle game state updates from server/mock
     const handleGameStateUpdate = (updatedState: GameState) => {
-      console.log("Received game state update:", updatedState);
+      console.log(
+        `[${currentPlayerId}] Received game state update:`,
+        updatedState
+      );
       setGameState(updatedState);
 
       // Update last action
@@ -217,7 +260,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const handleCardDrawn = (
       cardData: Card | { playerId: string; card: Card }
     ) => {
-      console.log("Card drawn event received:", cardData);
+      console.log(`[${currentPlayerId}] Card drawn event received:`, cardData);
 
       // Check if this is the new format with playerId
       if ("playerId" in cardData && "card" in cardData) {
@@ -274,7 +317,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // Handle game ended event
     const handleGameEnded = (result: any) => {
-      console.log("Game ended:", result);
+      console.log(`[${currentPlayerId}] Game ended:`, result);
     };
 
     // Handle penalty card event
@@ -283,7 +326,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       penaltyCard: Card;
     }) => {
       if (data.playerId === socket.getId()) {
-        console.log("Received penalty card:", data.penaltyCard);
+        console.log(
+          `[${currentPlayerId}] Received penalty card:`,
+          data.penaltyCard
+        );
         // Server will update game state with penalty card
       }
     };
@@ -296,7 +342,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       cardIndex: number;
     }) => {
       console.log(
-        `Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
+        `[${currentPlayerId}] Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
       );
 
       // For own cards (7/8), reveal the card in our own hand
@@ -304,14 +350,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setTemporaryRevealedCards([data.cardIndex]);
       } else {
         // For opponent cards (9/10), we need to track which opponent's card to reveal
-        // We'll use a different state or method to handle opponent card reveals
-        // For now, let's show the card info in console and store it
         console.log(
           `Revealed opponent card: ${data.card.rank} of ${data.card.suit} at position ${data.cardIndex}`
         );
 
         // Store this information so HandGrid can use it to show the revealed opponent card
-        // We'll add this to the context state
         setOpponentRevealedCard({
           playerId: data.targetPlayerId,
           cardIndex: data.cardIndex,
@@ -334,7 +377,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       player2Name: string;
     }) => {
       console.log(
-        `Power swap preview: ${data.card1.rank} (${data.player1Name}) ↔ ${data.card2.rank} (${data.player2Name})`
+        `[${currentPlayerId}] Power swap preview: ${data.card1.rank} (${data.player1Name}) ↔ ${data.card2.rank} (${data.player2Name})`
       );
       // For K power, we could show a confirmation dialog here
       // For now, just log and proceed with the swap automatically
@@ -357,7 +400,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("power-peek-result", handlePowerPeekResult);
       socket.off("power-swap-preview", handlePowerSwapPreview);
     };
-  }, []);
+  }, [currentPlayerId]); // Add currentPlayerId as dependency
 
   // Helper function to get power instructions
   const getPowerInstructions = (power: string): string => {
@@ -392,21 +435,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Game action handlers
   const handleDrawCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
-      console.log("Cannot draw card - not your turn or missing data");
+      console.log(
+        `[${currentPlayerId}] Cannot draw card - not your turn or missing data`
+      );
       return;
     }
 
-    console.log("Drawing card...");
+    console.log(`[${currentPlayerId}] Drawing card...`);
     socket.emit("draw-card", { roomId, playerId: myPlayer.id });
   };
 
   const handleSwapWithDrawnCard = (handCardId: string) => {
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
-      console.log("Cannot swap with drawn card - missing requirements");
+      console.log(
+        `[${currentPlayerId}] Cannot swap with drawn card - missing requirements`
+      );
       return;
     }
 
-    console.log("Swapping drawn card with hand card:", handCardId);
+    console.log(
+      `[${currentPlayerId}] Swapping drawn card with hand card:`,
+      handCardId
+    );
 
     setCardAnimation("swap");
     setAnimatingCardId(handCardId);
@@ -427,11 +477,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleDiscardDrawnCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
-      console.log("Cannot discard drawn card - missing requirements");
+      console.log(
+        `[${currentPlayerId}] Cannot discard drawn card - missing requirements`
+      );
       return;
     }
 
-    console.log("Discarding drawn card...");
+    console.log(`[${currentPlayerId}] Discarding drawn card...`);
 
     setCardAnimation("discard");
     setAnimatingCardId(drawnCard.id);
@@ -454,17 +506,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       gameState?.discardPile && gameState.discardPile.length > 0;
 
     if (!hasDiscardCard || !roomId || !myPlayer) {
-      console.log("Cannot eliminate card - no discard card or missing data");
+      console.log(
+        `[${currentPlayerId}] Cannot eliminate card - no discard card or missing data`
+      );
       return;
     }
 
     // Check if player has already eliminated this round
     if (myPlayer.hasEliminatedThisRound) {
-      console.log("Cannot eliminate - already eliminated this round");
+      console.log(
+        `[${currentPlayerId}] Cannot eliminate - already eliminated this round`
+      );
       return;
     }
 
-    console.log("Eliminating card:", cardId);
+    console.log(`[${currentPlayerId}] Eliminating card:`, cardId);
 
     setCardAnimation("discard");
     setAnimatingCardId(cardId);
@@ -480,7 +536,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleDeclare = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
-      console.log("Cannot declare - not your turn or missing data");
+      console.log(
+        `[${currentPlayerId}] Cannot declare - not your turn or missing data`
+      );
       return;
     }
 
@@ -490,7 +548,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const handleConfirmDeclare = (declaredRanks: string[]) => {
     if (!isPlayerTurn || !roomId || !myPlayer) return;
 
-    console.log("Confirming declare with ranks:", declaredRanks);
+    console.log(
+      `[${currentPlayerId}] Confirming declare with ranks:`,
+      declaredRanks
+    );
 
     socket.emit("declare", {
       roomId,
@@ -508,30 +569,35 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSelectCard = (card: Card) => {
     if (!card.id) {
-      console.log("Card has no ID:", card);
+      console.log(`[${currentPlayerId}] Card has no ID:`, card);
       return;
     }
 
     // If there's a drawn card, clicking a hand card should swap them
     if (drawnCard) {
-      console.log("Swapping drawn card with selected card:", card);
+      console.log(
+        `[${currentPlayerId}] Swapping drawn card with selected card:`,
+        card
+      );
       handleSwapWithDrawnCard(card.id);
       return;
     }
 
     // Otherwise, select/deselect for elimination
     if (selectedCard && selectedCard.cardId === card.id) {
-      console.log("Deselecting card:", card);
+      console.log(`[${currentPlayerId}] Deselecting card:`, card);
       setSelectedCard(null);
     } else {
-      console.log("Selecting card:", card);
+      console.log(`[${currentPlayerId}] Selecting card:`, card);
       setSelectedCard({ cardId: card.id, isSelected: true });
     }
   };
 
   const handleCardClick = (playerId: string, cardIndex: number) => {
     if (!roomId || !myPlayer) {
-      console.log("Cannot handle card click - missing room or player data");
+      console.log(
+        `[${currentPlayerId}] Cannot handle card click - missing room or player data`
+      );
       return;
     }
 
@@ -543,7 +609,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // Handle power usage
       if (["7", "8"].includes(activePower) && playerId === myPlayer.id) {
         // Use power on own card
-        console.log(`Using ${activePower} power on own card`);
+        console.log(
+          `[${currentPlayerId}] Using ${activePower} power on own card`
+        );
         socket.emit("use-power-on-own-card", {
           roomId,
           playerId: myPlayer.id,
@@ -554,7 +622,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         playerId !== myPlayer.id
       ) {
         // Use power on opponent card
-        console.log(`Using ${activePower} power on opponent card`);
+        console.log(
+          `[${currentPlayerId}] Using ${activePower} power on opponent card`
+        );
         socket.emit("use-power-on-opponent-card", {
           roomId,
           playerId: myPlayer.id,
@@ -576,18 +646,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             (_, index) => index !== existingIndex
           );
           setSwapSelections(newSelections);
-          console.log(`Deselected card for ${activePower} power`);
+          console.log(
+            `[${currentPlayerId}] Deselected card for ${activePower} power`
+          );
         } else if (swapSelections.length < 2) {
           // Add to selections if we have room
           const newSelections = [...swapSelections, newSelection];
           setSwapSelections(newSelections);
           console.log(
-            `Selected card ${newSelections.length}/2 for ${activePower} power`
+            `[${currentPlayerId}] Selected card ${newSelections.length}/2 for ${activePower} power`
           );
 
           // If we have 2 selections, execute the swap
           if (newSelections.length === 2) {
-            console.log(`Executing ${activePower} power swap`);
+            console.log(
+              `[${currentPlayerId}] Executing ${activePower} power swap`
+            );
             socket.emit("use-power-swap", {
               roomId,
               playerId: myPlayer.id,
@@ -609,13 +683,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // No active power - just regular card click (no special behavior)
-    console.log("Regular card click - no active power");
+    console.log(`[${currentPlayerId}] Regular card click - no active power`);
   };
 
   // Function to view the bottom two cards at the start of the game
   const handleViewBottomCards = () => {
     if (!myPlayer || hasDrawnFirstCard) {
-      console.log("Cannot view bottom cards - already drawn first card");
+      console.log(
+        `[${currentPlayerId}] Cannot view bottom cards - already drawn first card`
+      );
       return;
     }
 
@@ -625,7 +701,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // Temporarily reveal these cards
     setTemporaryRevealedCards(bottomCardIndices);
 
-    console.log("Viewing bottom cards:", bottomCardIndices);
+    console.log(
+      `[${currentPlayerId}] Viewing bottom cards:`,
+      bottomCardIndices
+    );
   };
 
   // Reset game state
@@ -684,6 +763,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         canDiscardDrawnCard,
         getInstructionsForCard,
         resetGame,
+        currentPlayerId,
+        refreshPlayerData,
       }}
     >
       {children}

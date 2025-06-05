@@ -1,4 +1,4 @@
-// client/src/utils/gameLogic.ts
+// client/src/utils/gameLogic.ts - Updated to support null cards for eliminated positions
 import { type Card, cardsMatch } from "./cardUtils";
 
 export type GameState = {
@@ -20,7 +20,7 @@ export type Player = {
   id: string;
   name: string;
   isHost: boolean;
-  hand: Card[];
+  hand: (Card | null)[]; // Allow null cards for eliminated positions
   score: number;
   knownCards: string[]; // IDs of cards the player has seen
   skippedTurn: boolean;
@@ -127,11 +127,11 @@ export const processTurn = (
         if (playerIndex !== -1) {
           const player = newState.players[playerIndex];
           const cardIndex = player.hand.findIndex(
-            (c) => c.id === action.cardId
+            (c) => c && c.id === action.cardId // Check for null cards
           );
 
-          if (cardIndex !== -1) {
-            const discardedCard = player.hand[cardIndex];
+          if (cardIndex !== -1 && player.hand[cardIndex]) {
+            const discardedCard = player.hand[cardIndex] as Card;
 
             // Check if we need to apply card power
             newState = applyCardPower(newState, discardedCard, action.playerId);
@@ -200,4 +200,24 @@ export const getPlayerById = (
   playerId: string
 ): Player | null => {
   return gameState.players.find((player) => player.id === playerId) || null;
+};
+
+// Helper function to count non-null cards in a player's hand
+export const getActiveCardCount = (player: Player): number => {
+  return player.hand.filter((card) => card !== null).length;
+};
+
+// Helper function to get all non-null cards from a player's hand
+export const getActiveCards = (player: Player): Card[] => {
+  return player.hand.filter((card) => card !== null) as Card[];
+};
+
+// Helper function to check if a player can still play (has at least one card)
+export const canPlayerContinue = (player: Player): boolean => {
+  return getActiveCardCount(player) > 0;
+};
+
+// Helper function to calculate score considering null cards as 0
+export const calculatePlayerScore = (player: Player): number => {
+  return player.hand.reduce((sum, card) => sum + (card ? card.value : 0), 0);
 };

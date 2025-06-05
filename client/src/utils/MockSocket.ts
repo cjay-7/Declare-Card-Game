@@ -1,4 +1,4 @@
-// client/src/utils/MockSocket.ts - Updated with proper game logic
+// client/src/utils/MockSocket.ts - Updated with fixed card elimination preserving positions
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -399,7 +399,7 @@ class MockSocket extends BrowserEventEmitter {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const foundCardIndex = gameState.players[i].hand.findIndex(
-        (c) => c.id === cardId
+        (c) => c && c.id === cardId // Check for null cards too
       );
       if (foundCardIndex !== -1) {
         cardOwnerIndex = i;
@@ -424,12 +424,10 @@ class MockSocket extends BrowserEventEmitter {
       topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
     if (canEliminate) {
-      // Valid elimination - remove card from owner's hand and add to discard pile
-      const eliminatedCard = gameState.players[cardOwnerIndex].hand.splice(
-        cardIndex,
-        1
-      )[0];
-      gameState.discardPile.push(eliminatedCard);
+      // Valid elimination - replace card with null to preserve positions
+      const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
+      gameState.players[cardOwnerIndex].hand[cardIndex] = null; // Replace with null instead of removing
+      gameState.discardPile.push(eliminatedCard!);
 
       // Mark the eliminating player as having eliminated this round
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
@@ -442,7 +440,7 @@ class MockSocket extends BrowserEventEmitter {
       });
 
       console.log(
-        `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${gameState.players[cardOwnerIndex].name}'s hand`
+        `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard!.rank} from ${gameState.players[cardOwnerIndex].name}'s hand at position ${cardIndex}`
       );
     } else {
       // Invalid elimination - penalty for eliminating player
@@ -451,7 +449,26 @@ class MockSocket extends BrowserEventEmitter {
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
         penaltyCard.isRevealed = false;
-        gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+
+        // Find first null position or add to end
+        const handLength =
+          gameState.players[eliminatingPlayerIndex].hand.length;
+        let addedToPosition = false;
+
+        for (let i = 0; i < handLength; i++) {
+          if (gameState.players[eliminatingPlayerIndex].hand[i] === null) {
+            gameState.players[eliminatingPlayerIndex].hand[i] = penaltyCard;
+            penaltyCard.position = i;
+            addedToPosition = true;
+            break;
+          }
+        }
+
+        if (!addedToPosition) {
+          // No null positions, add to end
+          penaltyCard.position = handLength;
+          gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+        }
 
         this.emitToAll("penalty-card", {
           playerId,
@@ -588,7 +605,7 @@ class MockSocket extends BrowserEventEmitter {
     // Find the player and the card in their hand
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c.id === handCardId
+      (c) => c && c.id === handCardId // Check for null cards
     );
 
     if (playerIndex !== -1 && cardIndex !== -1) {
@@ -601,9 +618,14 @@ class MockSocket extends BrowserEventEmitter {
 
       // Get the hand card that will be discarded
       const handCard = gameState.players[playerIndex].hand[cardIndex];
+      if (!handCard) {
+        console.error("Hand card is null at position:", cardIndex);
+        return;
+      }
 
-      // Put the drawn card into the hand position (face down)
+      // Put the drawn card into the hand position (face down) and preserve position
       drawnCard.isRevealed = false;
+      drawnCard.position = cardIndex; // Preserve the position
       gameState.players[playerIndex].hand[cardIndex] = drawnCard;
 
       // Put the hand card into the discard pile
@@ -618,7 +640,7 @@ class MockSocket extends BrowserEventEmitter {
       delete this.drawnCards[playerId];
 
       console.log(
-        `Swapped: drawn card ${drawnCard.rank} → hand (face down), hand card ${handCard.rank} → discard pile`
+        `Swapped: drawn card ${drawnCard.rank} → hand position ${cardIndex} (face down), hand card ${handCard.rank} → discard pile`
       );
 
       gameState.lastAction = {
@@ -657,9 +679,9 @@ class MockSocket extends BrowserEventEmitter {
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     if (playerIndex === -1) return;
 
-    // For testing, we'll validate the declaration (simplified)
-    const actualRanks = gameState.players[playerIndex].hand.map(
-      (card) => card.rank
+    // For testing, we'll validate the declaration with null handling
+    const actualRanks = gameState.players[playerIndex].hand.map((card) =>
+      card ? card.rank : "ELIMINATED"
     );
     const isValidDeclaration = declaredRanks.every(
       (rank, index) => actualRanks[index] === rank
@@ -683,11 +705,17 @@ class MockSocket extends BrowserEventEmitter {
     gameState.players.forEach((player) => {
       // Reveal all cards
       player.hand.forEach((card) => {
-        card.isRevealed = true;
+        if (card) {
+          // Only reveal non-null cards
+          card.isRevealed = true;
+        }
       });
 
-      // Calculate score - use actual card values
-      player.score = player.hand.reduce((sum, card) => sum + card.value, 0);
+      // Calculate score - use actual card values, treating null as 0
+      player.score = player.hand.reduce(
+        (sum, card) => sum + (card ? card.value : 0),
+        0
+      );
     });
 
     // If declaration was invalid, add penalty to declarer
@@ -729,7 +757,8 @@ class MockSocket extends BrowserEventEmitter {
 
       if (
         ["7", "8"].includes(power) &&
-        gameState.players[playerIndex].hand[cardIndex]
+        gameState.players[playerIndex].hand[cardIndex] &&
+        gameState.players[playerIndex].hand[cardIndex] !== null // Check not null
       ) {
         const card = gameState.players[playerIndex].hand[cardIndex];
 
@@ -789,7 +818,8 @@ class MockSocket extends BrowserEventEmitter {
 
       if (
         ["9", "10"].includes(power) &&
-        gameState.players[targetPlayerIndex].hand[cardIndex]
+        gameState.players[targetPlayerIndex].hand[cardIndex] &&
+        gameState.players[targetPlayerIndex].hand[cardIndex] !== null // Check not null
       ) {
         const card = gameState.players[targetPlayerIndex].hand[cardIndex];
 
@@ -868,7 +898,9 @@ class MockSocket extends BrowserEventEmitter {
           player1Index !== -1 &&
           player2Index !== -1 &&
           gameState.players[player1Index].hand[card1Index] &&
-          gameState.players[player2Index].hand[card2Index]
+          gameState.players[player2Index].hand[card2Index] &&
+          gameState.players[player1Index].hand[card1Index] !== null &&
+          gameState.players[player2Index].hand[card2Index] !== null
         ) {
           const card1 = gameState.players[player1Index].hand[card1Index];
           const card2 = gameState.players[player2Index].hand[card2Index];
@@ -883,12 +915,18 @@ class MockSocket extends BrowserEventEmitter {
             });
           }
 
-          // Perform the swap
+          // Perform the swap while preserving positions
+          const card1Position = card1.position;
+          const card2Position = card2.position;
+
+          card2.position = card1Position;
+          card1.position = card2Position;
+
           gameState.players[player1Index].hand[card1Index] = card2;
           gameState.players[player2Index].hand[card2Index] = card1;
 
           console.log(
-            `${power} power used: swapped cards between ${gameState.players[player1Index].name} and ${gameState.players[player2Index].name}`
+            `${power} power used: swapped cards between ${gameState.players[player1Index].name} position ${card1Index} and ${gameState.players[player2Index].name} position ${card2Index}`
           );
 
           // Clear the active power
@@ -905,5 +943,3 @@ class MockSocket extends BrowserEventEmitter {
     }
   }
 }
-
-export default MockSocket;

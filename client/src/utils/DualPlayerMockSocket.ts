@@ -469,7 +469,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c.id === handCardId
+      (c) => c!.id === handCardId
     );
 
     if (playerIndex !== -1 && cardIndex !== -1) {
@@ -482,7 +482,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       const handCard = gameState.players[playerIndex].hand[cardIndex];
       drawnCard.isRevealed = false;
       gameState.players[playerIndex].hand[cardIndex] = drawnCard;
-      gameState.discardPile.push(handCard);
+      gameState.discardPile.push(handCard!);
 
       gameState.players.forEach((player) => {
         player.hasEliminatedThisRound = false;
@@ -491,7 +491,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       delete DualPlayerMockSocket.drawnCards[playerId];
 
       console.log(
-        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${handCard.rank} → discard`
+        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${handCard!.rank} → discard`
       );
 
       gameState.lastAction = {
@@ -536,7 +536,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const foundCardIndex = gameState.players[i].hand.findIndex(
-        (c) => c.id === cardId
+        (c) => c !== null && c.id === cardId // Explicit null check
       );
       if (foundCardIndex !== -1) {
         cardOwnerIndex = i;
@@ -546,7 +546,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       }
     }
 
-    if (cardOwnerIndex === -1 || !cardToEliminate) return;
+    if (cardOwnerIndex === -1 || !cardToEliminate || cardToEliminate === null)
+      return;
 
     const topDiscardCard =
       gameState.discardPile.length > 0
@@ -561,28 +562,49 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const cardOwnerName = gameState.players[cardOwnerIndex].name;
 
     if (canEliminate) {
-      const eliminatedCard = gameState.players[cardOwnerIndex].hand.splice(
-        cardIndex,
-        1
-      )[0];
-      gameState.discardPile.push(eliminatedCard);
-      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+      // Replace with null instead of removing to preserve positions
+      const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
+      if (eliminatedCard) {
+        // Type guard to ensure card is not null
+        gameState.players[cardOwnerIndex].hand[cardIndex] = null;
+        gameState.discardPile.push(eliminatedCard);
+        gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
-      gameState.players.forEach((player, idx) => {
-        if (idx !== eliminatingPlayerIndex) {
-          player.hasEliminatedThisRound = false;
-        }
-      });
+        gameState.players.forEach((player, idx) => {
+          if (idx !== eliminatingPlayerIndex) {
+            player.hasEliminatedThisRound = false;
+          }
+        });
 
-      console.log(
-        `✅ ${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName}`
-      );
+        console.log(
+          `✅ ${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName} at position ${cardIndex}`
+        );
+      }
     } else {
       console.log(`❌ ${eliminatingPlayerName} failed to eliminate - penalty`);
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
         penaltyCard.isRevealed = false;
-        gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+
+        // Find first null position or add to end
+        const handLength =
+          gameState.players[eliminatingPlayerIndex].hand.length;
+        let addedToPosition = false;
+
+        for (let i = 0; i < handLength; i++) {
+          if (gameState.players[eliminatingPlayerIndex].hand[i] === null) {
+            gameState.players[eliminatingPlayerIndex].hand[i] = penaltyCard;
+            penaltyCard.position = i;
+            addedToPosition = true;
+            break;
+          }
+        }
+
+        if (!addedToPosition) {
+          // No null positions, add to end
+          penaltyCard.position = handLength;
+          gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+        }
 
         DualPlayerMockSocket.broadcastToAll("penalty-card", {
           playerId,
@@ -601,7 +623,6 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     };
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
-
   private handleUsePowerOnOwnCard({
     roomId,
     playerId,
@@ -795,7 +816,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const playerName = gameState.players[playerIndex].name;
     const actualRanks = gameState.players[playerIndex].hand.map(
-      (card) => card.rank
+      (card) => card?.rank
     );
     const isValidDeclaration = declaredRanks.every(
       (rank, index) => actualRanks[index] === rank
@@ -812,9 +833,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     gameState.players.forEach((player) => {
       player.hand.forEach((card) => {
-        card.isRevealed = true;
+        card!.isRevealed = true;
       });
-      player.score = player.hand.reduce((sum, card) => sum + card.value, 0);
+      player.score = player.hand.reduce((sum, card) => sum + card!.value, 0);
     });
 
     if (!isValidDeclaration) {

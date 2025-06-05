@@ -1,4 +1,4 @@
-// client/src/components/HandGrid.tsx - Updated with opponent card reveal support
+// client/src/components/HandGrid.tsx - Updated with null card support for eliminated positions
 import React from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
@@ -6,7 +6,7 @@ import socket from "../socket";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface HandGridProps {
-  cards: CardType[];
+  cards: (CardType | null)[]; // Allow null cards for eliminated positions
   playerId: string;
   isCurrentPlayer: boolean;
   isPlayerTurn?: boolean;
@@ -43,25 +43,11 @@ const HandGrid: React.FC<HandGridProps> = ({
       (["9", "10"].includes(activePower) && !isCurrentPlayer) ||
       ["Q", "K"].includes(activePower)); // Q/K can target any hand
 
-  if (cards.length === 0) {
-    return (
-      <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
-        {[...Array(4)].map((_, index) => (
-          <div
-            key={index}
-            className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
-          >
-            <span className="text-gray-400">Empty</span>
-          </div>
-        ))}
-      </div>
-    );
+  // Ensure we always have 4 positions (pad with nulls if needed)
+  const paddedCards: (CardType | null)[] = [...cards];
+  while (paddedCards.length < 4) {
+    paddedCards.push(null);
   }
-
-  // Sort cards by position
-  const sortedCards = [...cards].sort(
-    (a, b) => (a.position || 0) - (b.position || 0)
-  );
 
   // Check if there's a card in the discard pile
   const hasDiscardCard =
@@ -86,7 +72,26 @@ const HandGrid: React.FC<HandGridProps> = ({
         </div>
       )}
 
-      {sortedCards.map((card, index) => {
+      {paddedCards.map((card, index) => {
+        // Handle eliminated cards (null positions)
+        if (card === null) {
+          return (
+            <div
+              key={`eliminated-${playerId}-${index}`}
+              className="flex justify-center relative"
+            >
+              <div className="w-16 h-24 bg-gray-600 border-2 border-gray-500 border-dashed rounded shadow flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-gray-400 text-xs">ELIMINATED</div>
+                  <div className="text-gray-500 text-xs">
+                    Position {index + 1}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         // Determine if this card should be revealed:
         // 1. Card is permanently revealed through gameplay (isRevealed=true)
         // 2. Current player can see their own bottom 2 cards ONLY before first draw
@@ -114,8 +119,8 @@ const HandGrid: React.FC<HandGridProps> = ({
           (sel) => sel.playerId === playerId && sel.cardIndex === index
         );
 
-        // Show power glow effect when card can be used with active power
-        const showPowerGlow = canUsePowerOnThisHand;
+        // Show power glow effect when card can be used with active power (only for non-null cards)
+        const showPowerGlow = canUsePowerOnThisHand && card !== null;
 
         // Check if this is a temporarily revealed opponent card by power
         const isTemporarilyRevealedOpponentCard =
@@ -189,8 +194,8 @@ const HandGrid: React.FC<HandGridProps> = ({
               </div>
             )}
 
-            {/* Eliminate button */}
-            {showEliminateButton && !showPowerGlow && (
+            {/* Eliminate button - only show for non-null cards */}
+            {showEliminateButton && !showPowerGlow && card !== null && (
               <button
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent card selection
@@ -203,6 +208,13 @@ const HandGrid: React.FC<HandGridProps> = ({
               >
                 ❌
               </button>
+            )}
+
+            {/* Position indicator for eliminated cards or debugging */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-gray-800 text-white text-xs rounded-full flex items-center justify-center">
+                {index + 1}
+              </div>
             )}
           </div>
         );

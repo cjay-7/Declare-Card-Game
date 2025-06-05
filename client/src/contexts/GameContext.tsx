@@ -1,4 +1,4 @@
-// client/src/contexts/GameContext.tsx - Updated with player switch support
+// client/src/contexts/GameContext.tsx - Updated with King power card revelation
 import React, {
   createContext,
   useState,
@@ -9,6 +9,24 @@ import React, {
 import socket from "../socket";
 import { type Card, type CardSelection } from "../utils/cardUtils";
 import type { GameState, Player, GameAction } from "../utils/gameLogic";
+
+interface KingPowerReveal {
+  powerUserId: string;
+  powerUserName: string;
+  card1: {
+    card: Card;
+    playerId: string;
+    playerName: string;
+    cardIndex: number;
+  };
+  card2: {
+    card: Card;
+    playerId: string;
+    playerName: string;
+    cardIndex: number;
+  };
+  message: string;
+}
 
 interface GameContextType {
   // Basic state
@@ -50,6 +68,10 @@ interface GameContextType {
   setOpponentRevealedCard: (
     data: { playerId: string; cardIndex: number; card: Card } | null
   ) => void;
+
+  // King power reveal state
+  kingPowerReveal: KingPowerReveal | null;
+  setKingPowerReveal: (reveal: KingPowerReveal | null) => void;
 
   // Game actions
   handleDrawCard: () => void;
@@ -139,6 +161,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     card: Card;
   } | null>(null);
 
+  // King power reveal state
+  const [kingPowerReveal, setKingPowerReveal] =
+    useState<KingPowerReveal | null>(null);
+
   // Listen for player switches
   useEffect(() => {
     const handlePlayerSwitch = (event: CustomEvent) => {
@@ -150,6 +176,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setSwapSelections([]);
       setTemporaryRevealedCards([]);
       setOpponentRevealedCard(null);
+      setKingPowerReveal(null);
 
       console.log(`GameContext: Switched to ${playerId}`);
     };
@@ -196,7 +223,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       case "Q":
         return "Queen: Click two cards to swap them (unseen swap).";
       case "K":
-        return "King: Click two cards to swap them (seen swap - you'll see both cards first).";
+        return "King: Click two cards to swap them (seen swap - both cards will be revealed first).";
       default:
         return "";
     }
@@ -208,6 +235,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setHasDrawnFirstCard(false);
       setTemporaryRevealedCards([]);
       setOpponentRevealedCard(null);
+      setKingPowerReveal(null);
     }
   }, [gameState?.gameStatus]);
 
@@ -221,6 +249,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return () => clearTimeout(timer);
     }
   }, [temporaryRevealedCards]);
+
+  // Handle hiding King power reveals after some time
+  useEffect(() => {
+    if (kingPowerReveal) {
+      const timer = setTimeout(() => {
+        setKingPowerReveal(null);
+      }, 3000); // Hide after 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [kingPowerReveal]);
 
   // Set up socket event listeners
   useEffect(() => {
@@ -383,6 +422,70 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // For now, just log and proceed with the swap automatically
     };
 
+    // NEW: Handle King power reveal event
+    const handleKingPowerReveal = (data: KingPowerReveal) => {
+      console.log(`[${currentPlayerId}] King power reveal:`, data);
+
+      // Set the King power reveal state to show both cards
+      setKingPowerReveal(data);
+
+      // Also set temporary revealed cards if this affects the current player
+      const myPlayerId = socket.getId();
+      const revealedIndices: number[] = [];
+
+      if (data.card1.playerId === myPlayerId) {
+        revealedIndices.push(data.card1.cardIndex);
+      }
+      if (data.card2.playerId === myPlayerId) {
+        revealedIndices.push(data.card2.cardIndex);
+      }
+
+      if (revealedIndices.length > 0) {
+        setTemporaryRevealedCards(revealedIndices);
+      }
+
+      // For opponent cards, set the opponent revealed card state
+      if (data.card1.playerId !== myPlayerId) {
+        setOpponentRevealedCard({
+          playerId: data.card1.playerId,
+          cardIndex: data.card1.cardIndex,
+          card: data.card1.card,
+        });
+      }
+      if (
+        data.card2.playerId !== myPlayerId &&
+        data.card1.playerId !== data.card2.playerId
+      ) {
+        // If both cards are from different opponents, we'll show the first one
+        // In a full implementation, you might want to handle multiple opponent reveals
+        setOpponentRevealedCard({
+          playerId: data.card2.playerId,
+          cardIndex: data.card2.cardIndex,
+          card: data.card2.card,
+        });
+      }
+    };
+
+    // NEW: Handle King power swap completed event
+    const handlePowerSwapCompleted = (data: {
+      powerUserId: string;
+      powerUserName: string;
+      power: string;
+      swapDetails: {
+        player1Name: string;
+        player2Name: string;
+        card1Rank: string;
+        card2Rank: string;
+      };
+    }) => {
+      console.log(`[${currentPlayerId}] Power swap completed:`, data);
+
+      // Clear the King power reveal state
+      setKingPowerReveal(null);
+      setTemporaryRevealedCards([]);
+      setOpponentRevealedCard(null);
+    };
+
     socket.on("game-state-update", handleGameStateUpdate);
     socket.on("card-drawn", handleCardDrawn);
     socket.on("card-revealed", handleCardRevealed);
@@ -390,6 +493,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     socket.on("penalty-card", handlePenaltyCard);
     socket.on("power-peek-result", handlePowerPeekResult);
     socket.on("power-swap-preview", handlePowerSwapPreview);
+    socket.on("king-power-reveal", handleKingPowerReveal);
+    socket.on("power-swap-completed", handlePowerSwapCompleted);
 
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
@@ -399,6 +504,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("penalty-card", handlePenaltyCard);
       socket.off("power-peek-result", handlePowerPeekResult);
       socket.off("power-swap-preview", handlePowerSwapPreview);
+      socket.off("king-power-reveal", handleKingPowerReveal);
+      socket.off("power-swap-completed", handlePowerSwapCompleted);
     };
   }, [currentPlayerId]); // Add currentPlayerId as dependency
 
@@ -414,7 +521,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       case "Q":
         return `Select 2 cards to swap (unseen) - ${swapSelections.length}/2 selected`;
       case "K":
-        return `Select 2 cards to swap (seen) - ${swapSelections.length}/2 selected`;
+        return `Select 2 cards to swap (seen - cards will be revealed first) - ${swapSelections.length}/2 selected`;
       default:
         return "";
     }
@@ -432,7 +539,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [cardAnimation, animatingCardId]);
 
-  // Game action handlers
+  // Game action handlers (keeping all existing handlers the same)
   const handleDrawCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
       console.log(
@@ -718,6 +825,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setHasDrawnFirstCard(false);
     setTemporaryRevealedCards([]);
     setOpponentRevealedCard(null);
+    setKingPowerReveal(null);
     setSwapSelections([]);
     setShowDeclareModal(false);
   };
@@ -747,6 +855,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setTemporaryRevealedCards,
         opponentRevealedCard,
         setOpponentRevealedCard,
+        kingPowerReveal,
+        setKingPowerReveal,
         swapSelections,
         setSwapSelections,
         handleDrawCard,

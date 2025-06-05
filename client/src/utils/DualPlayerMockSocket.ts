@@ -1,4 +1,4 @@
-// client/src/utils/DualPlayerMockSocket.ts - Improved logging for better debugging
+// client/src/utils/DualPlayerMockSocket.ts - Updated King power to properly reveal cards
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -181,6 +181,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
   }
 
+  // ... (keeping all the existing handler methods the same until handleUsePowerSwap)
+
   private handleJoinRoom({
     roomId,
     playerName,
@@ -218,11 +220,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         `🔄 Player ${this.id} already in room, updating name to ${playerName}`
       );
       gameState.players[existingPlayerIndex].name = playerName;
-      // Don't change host status - keep existing host status
     } else {
-      // Only make new player host if no host exists
       const hasHost = gameState.players.some((p) => p.isHost);
-      const isHost = !hasHost; // Only host if no existing host
+      const isHost = !hasHost;
 
       const newPlayer: Player = {
         id: this.id,
@@ -491,7 +491,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       delete DualPlayerMockSocket.drawnCards[playerId];
 
       console.log(
-        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${handCard!.rank} → discard`
+        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${
+          handCard!.rank
+        } → discard`
       );
 
       gameState.lastAction = {
@@ -536,7 +538,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const foundCardIndex = gameState.players[i].hand.findIndex(
-        (c) => c !== null && c.id === cardId // Explicit null check
+        (c) => c !== null && c.id === cardId
       );
       if (foundCardIndex !== -1) {
         cardOwnerIndex = i;
@@ -562,10 +564,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const cardOwnerName = gameState.players[cardOwnerIndex].name;
 
     if (canEliminate) {
-      // Replace with null instead of removing to preserve positions
       const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
       if (eliminatedCard) {
-        // Type guard to ensure card is not null
         gameState.players[cardOwnerIndex].hand[cardIndex] = null;
         gameState.discardPile.push(eliminatedCard);
         gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
@@ -586,7 +586,6 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         const penaltyCard = gameState.deck.pop()!;
         penaltyCard.isRevealed = false;
 
-        // Find first null position or add to end
         const handLength =
           gameState.players[eliminatingPlayerIndex].hand.length;
         let addedToPosition = false;
@@ -601,7 +600,6 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         }
 
         if (!addedToPosition) {
-          // No null positions, add to end
           penaltyCard.position = handLength;
           gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
         }
@@ -623,6 +621,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     };
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
+
   private handleUsePowerOnOwnCard({
     roomId,
     playerId,
@@ -724,6 +723,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
   }
 
+  // FIXED: King power implementation with proper card revelation
   private handleUsePowerSwap({
     roomId,
     playerId,
@@ -760,40 +760,129 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
           player1Index !== -1 &&
           player2Index !== -1 &&
           gameState.players[player1Index].hand[card1Index] &&
-          gameState.players[player2Index].hand[card2Index]
+          gameState.players[player2Index].hand[card2Index] &&
+          gameState.players[player1Index].hand[card1Index] !== null &&
+          gameState.players[player2Index].hand[card2Index] !== null
         ) {
           const card1 = gameState.players[player1Index].hand[card1Index];
           const card2 = gameState.players[player2Index].hand[card2Index];
           const player1Name = gameState.players[player1Index].name;
           const player2Name = gameState.players[player2Index].name;
 
+          // For K (seen swap), reveal both cards to ALL PLAYERS before swapping
           if (power === "K") {
-            DualPlayerMockSocket.broadcastToPlayer(
-              playerId,
-              "power-swap-preview",
-              {
+            console.log(`👁️ K Power: Revealing both cards before swap`);
+
+            // Broadcast the card revelations to all players
+            DualPlayerMockSocket.broadcastToAll("king-power-reveal", {
+              powerUserId: playerId,
+              powerUserName: playerName,
+              card1: {
+                card: card1,
+                playerId: card1PlayerId,
+                playerName: player1Name,
+                cardIndex: card1Index,
+              },
+              card2: {
+                card: card2,
+                playerId: card2PlayerId,
+                playerName: player2Name,
+                cardIndex: card2Index,
+              },
+              message: `${playerName} used King power - revealing cards before swap`,
+            });
+
+            // Wait a moment for players to see the revealed cards
+            setTimeout(() => {
+              this.performSwap(
+                gameState,
+                player1Index,
+                card1Index,
+                player2Index,
+                card2Index,
                 card1,
                 card2,
+                playerIndex,
+                power,
+                playerName,
                 player1Name,
-                player2Name,
-              }
+                player2Name
+              );
+            }, 2000); // 2 second delay to show the revealed cards
+          } else {
+            // For Q (unseen swap), swap immediately without revealing
+            console.log(`🔄 Q Power: Unseen swap`);
+            this.performSwap(
+              gameState,
+              player1Index,
+              card1Index,
+              player2Index,
+              card2Index,
+              card1,
+              card2,
+              playerIndex,
+              power,
+              playerName,
+              player1Name,
+              player2Name
             );
           }
-
-          // Perform the swap
-          gameState.players[player1Index].hand[card1Index] = card2;
-          gameState.players[player2Index].hand[card2Index] = card1;
-
-          console.log(
-            `🔄 ${playerName} used ${power} power: swapped cards between ${player1Name} and ${player2Name}`
-          );
-
-          delete gameState.players[playerIndex].activePower;
-          DualPlayerMockSocket.moveToNextPlayer(gameState);
-          DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
         }
       }
     }
+  }
+
+  // Helper method to perform the actual swap
+  private performSwap(
+    gameState: GameState,
+    player1Index: number,
+    card1Index: number,
+    player2Index: number,
+    card2Index: number,
+    card1: Card,
+    card2: Card,
+    powerUserIndex: number,
+    power: string,
+    powerUserName: string,
+    player1Name: string,
+    player2Name: string
+  ): void {
+    // Preserve positions while swapping
+    const card1Position = card1.position;
+    const card2Position = card2.position;
+
+    card2.position = card1Position;
+    card1.position = card2Position;
+
+    // Perform the swap
+    gameState.players[player1Index].hand[card1Index] = card2;
+    gameState.players[player2Index].hand[card2Index] = card1;
+
+    console.log(
+      `🔄 ${powerUserName} used ${power} power: swapped ${card1.rank} (${player1Name}) ↔ ${card2.rank} (${player2Name})`
+    );
+
+    // Clear the active power
+    delete gameState.players[powerUserIndex].activePower;
+
+    // Move to next player
+    DualPlayerMockSocket.moveToNextPlayer(gameState);
+
+    // Broadcast the completed swap
+    DualPlayerMockSocket.broadcastToAll("power-swap-completed", {
+      powerUserId: gameState.players[powerUserIndex].id,
+      powerUserName: powerUserName,
+      power: power,
+      swapDetails: {
+        player1Name,
+        player2Name,
+        card1Rank: card1.rank,
+        card2Rank: card2.rank,
+      },
+    });
+
+    // Update game state
+    DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
 
   private handleDeclare({
@@ -833,9 +922,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     gameState.players.forEach((player) => {
       player.hand.forEach((card) => {
-        card!.isRevealed = true;
+        if (card) card.isRevealed = true;
       });
-      player.score = player.hand.reduce((sum, card) => sum + card!.value, 0);
+      player.score = player.hand.reduce(
+        (sum, card) => sum + (card ? card.value : 0),
+        0
+      );
     });
 
     if (!isValidDeclaration) {

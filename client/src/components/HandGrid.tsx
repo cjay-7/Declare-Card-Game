@@ -1,4 +1,4 @@
-// client/src/components/HandGrid.tsx - Updated with null card support for eliminated positions
+// client/src/components/HandGrid.tsx - Updated with King power reveal support
 import React from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
@@ -9,14 +9,12 @@ interface HandGridProps {
   cards: (CardType | null)[]; // Allow null cards for eliminated positions
   playerId: string;
   isCurrentPlayer: boolean;
-  isPlayerTurn?: boolean;
 }
 
 const HandGrid: React.FC<HandGridProps> = ({
   cards,
   playerId,
   isCurrentPlayer,
-  isPlayerTurn = false,
 }) => {
   const {
     handleSelectCard,
@@ -27,9 +25,9 @@ const HandGrid: React.FC<HandGridProps> = ({
     handleEliminateCard,
     drawnCard,
     gameState,
-    myPlayer,
     opponentRevealedCard,
     swapSelections,
+    kingPowerReveal,
   } = useGameContext();
 
   // Check if current player has an active power
@@ -72,6 +70,21 @@ const HandGrid: React.FC<HandGridProps> = ({
         </div>
       )}
 
+      {/* King Power Reveal Overlay */}
+      {kingPowerReveal && (
+        <div className="absolute inset-0 bg-yellow-500 bg-opacity-30 rounded-lg border-4 border-yellow-400 flex items-center justify-center z-20 pointer-events-none">
+          <div className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg text-center">
+            <div className="flex items-center justify-center mb-1">
+              <span className="text-lg mr-2">👑</span>
+              King Power Active
+            </div>
+            <div className="text-xs">
+              {kingPowerReveal.powerUserName} is revealing cards before swap
+            </div>
+          </div>
+        </div>
+      )}
+
       {paddedCards.map((card, index) => {
         // Handle eliminated cards (null positions)
         if (card === null) {
@@ -92,18 +105,44 @@ const HandGrid: React.FC<HandGridProps> = ({
           );
         }
 
+        // Check if this card is being revealed by King power
+        const isKingPowerRevealed =
+          kingPowerReveal &&
+          ((kingPowerReveal.card1.playerId === playerId &&
+            kingPowerReveal.card1.cardIndex === index) ||
+            (kingPowerReveal.card2.playerId === playerId &&
+              kingPowerReveal.card2.cardIndex === index));
+
+        // Get the card to display for King power reveals
+        let kingRevealedCard = null;
+        if (isKingPowerRevealed) {
+          if (
+            kingPowerReveal.card1.playerId === playerId &&
+            kingPowerReveal.card1.cardIndex === index
+          ) {
+            kingRevealedCard = kingPowerReveal.card1.card;
+          } else if (
+            kingPowerReveal.card2.playerId === playerId &&
+            kingPowerReveal.card2.cardIndex === index
+          ) {
+            kingRevealedCard = kingPowerReveal.card2.card;
+          }
+        }
+
         // Determine if this card should be revealed:
         // 1. Card is permanently revealed through gameplay (isRevealed=true)
         // 2. Current player can see their own bottom 2 cards ONLY before first draw
         // 3. Card is temporarily revealed (in temporaryRevealedCards array)
         // 4. Opponent card is temporarily revealed by power (9/10)
+        // 5. King power is revealing this card
         const shouldReveal =
           card.isRevealed || // Permanently revealed cards
           (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Bottom 2 visible only before first draw
           (isCurrentPlayer && temporaryRevealedCards.includes(index)) || // Temporary reveals from powers on own cards
           (!isCurrentPlayer &&
             opponentRevealedCard?.playerId === playerId &&
-            opponentRevealedCard?.cardIndex === index); // Opponent card revealed by 9/10 power
+            opponentRevealedCard?.cardIndex === index) || // Opponent card revealed by 9/10 power
+          isKingPowerRevealed; // King power reveal
 
         const currentPlayer = gameState?.players.find(
           (p) => p.id === socket.getId()
@@ -112,7 +151,11 @@ const HandGrid: React.FC<HandGridProps> = ({
           currentPlayer?.hasEliminatedThisRound || false;
 
         const showEliminateButton =
-          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !activePower;
+          !drawnCard &&
+          hasDiscardCard &&
+          !hasAlreadyEliminated &&
+          !activePower &&
+          !isKingPowerRevealed;
 
         // Check if this card is selected for swapping
         const isSelectedForSwap = swapSelections.some(
@@ -120,7 +163,8 @@ const HandGrid: React.FC<HandGridProps> = ({
         );
 
         // Show power glow effect when card can be used with active power (only for non-null cards)
-        const showPowerGlow = canUsePowerOnThisHand && card !== null;
+        const showPowerGlow =
+          canUsePowerOnThisHand && card !== null && !isKingPowerRevealed;
 
         // Check if this is a temporarily revealed opponent card by power
         const isTemporarilyRevealedOpponentCard =
@@ -128,8 +172,10 @@ const HandGrid: React.FC<HandGridProps> = ({
           opponentRevealedCard?.playerId === playerId &&
           opponentRevealedCard?.cardIndex === index;
 
-        // Use the revealed card data for opponent cards
-        const displayCard = isTemporarilyRevealedOpponentCard
+        // Use the appropriate revealed card data
+        const displayCard = isKingPowerRevealed
+          ? kingRevealedCard
+          : isTemporarilyRevealedOpponentCard
           ? opponentRevealedCard.card
           : card;
 
@@ -140,39 +186,56 @@ const HandGrid: React.FC<HandGridProps> = ({
           >
             <div
               onClick={() => {
-                if (activePower && canUsePowerOnThisHand) {
-                  // Handle power usage
+                if (
+                  activePower &&
+                  canUsePowerOnThisHand &&
+                  !isKingPowerRevealed
+                ) {
+                  // Handle power usage (but not during King power reveal)
                   handleCardClick(playerId, index);
-                } else if (isCurrentPlayer) {
+                } else if (isCurrentPlayer && !isKingPowerRevealed) {
                   handleSelectCard(card);
-                } else {
+                } else if (!isKingPowerRevealed) {
                   handleCardClick(playerId, index);
                 }
               }}
-              className={`${showPowerGlow ? "animate-pulse" : ""}`}
+              className={`${showPowerGlow ? "animate-pulse" : ""} ${
+                isKingPowerRevealed ? "pointer-events-none" : ""
+              }`}
             >
               <Card
-                suit={shouldReveal ? displayCard.suit : undefined}
-                rank={shouldReveal ? displayCard.rank : undefined}
-                isRevealed={shouldReveal}
+                suit={shouldReveal ? displayCard?.suit : undefined}
+                rank={shouldReveal ? displayCard?.rank : undefined}
+                isRevealed={shouldReveal || false}
                 isSelected={
                   (selectedCard?.cardId === card.id && isCurrentPlayer) ||
                   isSelectedForSwap
                 }
                 isHighlighted={
-                  showPowerGlow || isTemporarilyRevealedOpponentCard
+                  showPowerGlow ||
+                  isTemporarilyRevealedOpponentCard ||
+                  isKingPowerRevealed ||
+                  false
                 }
                 animate={
                   (isCurrentPlayer && temporaryRevealedCards.includes(index)) ||
-                  isTemporarilyRevealedOpponentCard
+                  isTemporarilyRevealedOpponentCard ||
+                  isKingPowerRevealed
                     ? "reveal"
                     : undefined
                 }
               />
             </div>
 
+            {/* King Power Reveal Indicator */}
+            {isKingPowerRevealed && (
+              <div className="absolute -top-3 -left-3 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-lg font-bold animate-bounce shadow-lg border-2 border-yellow-300">
+                👑
+              </div>
+            )}
+
             {/* Swap selection indicator */}
-            {isSelectedForSwap && (
+            {isSelectedForSwap && !isKingPowerRevealed && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {swapSelections.findIndex(
                   (sel) => sel.playerId === playerId && sel.cardIndex === index
@@ -181,14 +244,14 @@ const HandGrid: React.FC<HandGridProps> = ({
             )}
 
             {/* Power indicator for active powers */}
-            {showPowerGlow && !isSelectedForSwap && (
+            {showPowerGlow && !isSelectedForSwap && !isKingPowerRevealed && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {activePower}
               </div>
             )}
 
             {/* Temporary reveal indicator for power-revealed cards */}
-            {isTemporarilyRevealedOpponentCard && (
+            {isTemporarilyRevealedOpponentCard && !isKingPowerRevealed && (
               <div className="absolute -top-2 -left-2 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-ping">
                 👁️
               </div>

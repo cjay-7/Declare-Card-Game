@@ -5,7 +5,7 @@ interface DeclareModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (declaredRanks: string[]) => void;
-  playerHand: Card[];
+  playerHand: (Card | null)[]; // Allow null cards for eliminated positions
 }
 
 const DeclareModal: React.FC<DeclareModalProps> = ({
@@ -14,12 +14,13 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
   onConfirm,
   playerHand,
 }) => {
-  const [declaredRanks, setDeclaredRanks] = useState<string[]>([
-    "",
-    "",
-    "",
-    "",
-  ]);
+  // Filter out null cards and only get actual cards
+  const actualCards = playerHand.filter((card): card is Card => card !== null);
+  const actualCardCount = actualCards.length;
+
+  const [declaredRanks, setDeclaredRanks] = useState<string[]>(
+    new Array(actualCardCount).fill("")
+  );
   const [error, setError] = useState<string>("");
 
   if (!isOpen) return null;
@@ -34,45 +35,48 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
   const handleConfirm = () => {
     // Check if all ranks are declared
     if (declaredRanks.some((rank) => rank === "")) {
-      setError("You must declare all 4 card ranks");
+      setError(`You must declare all ${actualCardCount} card ranks`);
       return;
     }
 
-    // Check for duplicates (unless it's a valid set)
-    const rankCounts = declaredRanks.reduce((counts, rank) => {
-      counts[rank] = (counts[rank] || 0) + 1;
-      return counts;
-    }, {} as Record<string, number>);
+    // Validation for sets and sequences only makes sense with 4 cards
+    if (actualCardCount === 4) {
+      // Check for duplicates (unless it's a valid set)
+      const rankCounts = declaredRanks.reduce((counts, rank) => {
+        counts[rank] = (counts[rank] || 0) + 1;
+        return counts;
+      }, {} as Record<string, number>);
 
-    const uniqueRanks = Object.keys(rankCounts);
-    const isSet = uniqueRanks.length === 1;
-    const hasValidSequence = uniqueRanks.length === 4;
+      const uniqueRanks = Object.keys(rankCounts);
+      const isSet = uniqueRanks.length === 1;
+      const hasValidSequence = uniqueRanks.length === 4;
 
-    if (!isSet && !hasValidSequence) {
-      // Check if it could be a sequence
-      const rankValues = declaredRanks
-        .map((rank) => {
-          if (rank === "A") return 1;
-          if (rank === "J") return 11;
-          if (rank === "Q") return 12;
-          if (rank === "K") return 13;
-          return parseInt(rank);
-        })
-        .sort((a, b) => a - b);
+      if (!isSet && !hasValidSequence) {
+        // Check if it could be a sequence
+        const rankValues = declaredRanks
+          .map((rank) => {
+            if (rank === "A") return 1;
+            if (rank === "J") return 11;
+            if (rank === "Q") return 12;
+            if (rank === "K") return 13;
+            return parseInt(rank);
+          })
+          .sort((a, b) => a - b);
 
-      let isSequence = true;
-      for (let i = 1; i < rankValues.length; i++) {
-        if (rankValues[i] !== rankValues[i - 1] + 1) {
-          isSequence = false;
-          break;
+        let isSequence = true;
+        for (let i = 1; i < rankValues.length; i++) {
+          if (rankValues[i] !== rankValues[i - 1] + 1) {
+            isSequence = false;
+            break;
+          }
         }
-      }
 
-      if (!isSequence) {
-        setError(
-          "Invalid declaration: Must be a set (4 same ranks) or sequence (4 consecutive ranks of same suit)"
-        );
-        return;
+        if (!isSequence) {
+          setError(
+            "Invalid declaration with 4 cards: Must be a set (4 same ranks) or sequence (4 consecutive ranks of same suit)"
+          );
+          return;
+        }
       }
     }
 
@@ -94,6 +98,12 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
     "Q",
     "K",
   ];
+
+  // Calculate eliminated cards info
+  const eliminatedCount = playerHand.length - actualCardCount;
+  const eliminatedPositions = playerHand
+    .map((card, index) => (card === null ? index + 1 : null))
+    .filter((pos): pos is number => pos !== null);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
@@ -122,37 +132,52 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
         </div>
 
         <div className="text-white space-y-4">
+          {/* Show eliminated cards info */}
+          {eliminatedCount > 0 && (
+            <div className="p-3 bg-red-900 bg-opacity-50 border border-red-700 rounded text-red-200">
+              <div className="text-sm font-medium mb-1">
+                🗑️ Eliminated Cards: {eliminatedCount}
+              </div>
+              <div className="text-xs">
+                Positions eliminated: {eliminatedPositions.join(", ")}
+              </div>
+              <div className="text-xs mt-1">(These count as 0 points each)</div>
+            </div>
+          )}
+
           <p className="text-sm text-gray-300">
-            Name the rank of each card in your hand (from left to right, top to
-            bottom):
+            Declare the rank of each remaining card in your hand:
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((index) => (
-              <div
-                key={index}
-                className="space-y-1"
-              >
-                <label className="block text-sm font-medium text-gray-300">
-                  Card {index + 1}:
-                </label>
-                <select
-                  value={declaredRanks[index]}
-                  onChange={(e) => handleRankChange(index, e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          {/* Only show inputs for actual cards */}
+          <div className="space-y-3">
+            {Array(actualCardCount)
+              .fill(null)
+              .map((_, index) => (
+                <div
+                  key={index}
+                  className="space-y-1"
                 >
-                  <option value="">Select rank...</option>
-                  {ranks.map((rank) => (
-                    <option
-                      key={rank}
-                      value={rank}
-                    >
-                      {rank}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+                  <label className="block text-sm font-medium text-gray-300">
+                    Remaining Card {index + 1}:
+                  </label>
+                  <select
+                    value={declaredRanks[index]}
+                    onChange={(e) => handleRankChange(index, e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select rank...</option>
+                    {ranks.map((rank) => (
+                      <option
+                        key={rank}
+                        value={rank}
+                      >
+                        {rank}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
           </div>
 
           {error && (
@@ -163,15 +188,26 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
 
           <div className="text-xs text-gray-400">
             <p>
-              <strong>Valid declarations:</strong>
+              <strong>Scoring:</strong>
             </p>
             <p>
-              • <strong>Set:</strong> All 4 cards same rank (e.g., 4 Aces)
+              • Your total = sum of remaining cards + 0 for eliminated cards
             </p>
-            <p>
-              • <strong>Sequence:</strong> 4 consecutive ranks of same suit
-              (e.g., 5-6-7-8 of Hearts)
-            </p>
+            <p>• Win condition: Have the lowest total among all players</p>
+            {actualCardCount === 4 && (
+              <>
+                <p className="mt-2">
+                  <strong>Bonus win conditions (4 cards only):</strong>
+                </p>
+                <p>
+                  • <strong>Set:</strong> All 4 cards same rank (e.g., 4 Aces)
+                </p>
+                <p>
+                  • <strong>Sequence:</strong> 4 consecutive ranks of same suit
+                  (e.g., 5-6-7-8 of Hearts)
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex gap-3 mt-6">
@@ -185,7 +221,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
               onClick={handleConfirm}
               className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
-              Declare
+              Declare ({actualCardCount} cards)
             </button>
           </div>
         </div>

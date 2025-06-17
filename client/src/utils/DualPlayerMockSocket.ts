@@ -885,6 +885,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
 
+  // Updated declare handler in DualPlayerMockSocket.ts
+
   private handleDeclare({
     roomId,
     playerId,
@@ -904,53 +906,99 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     if (playerIndex === -1) return;
 
     const playerName = gameState.players[playerIndex].name;
-    const actualRanks = gameState.players[playerIndex].hand.map(
-      (card) => card?.rank
+    const playerHand = gameState.players[playerIndex].hand;
+
+    // Get only the actual (non-null) cards and their ranks
+    const actualCards = playerHand.filter(
+      (card): card is Card => card !== null
     );
-    const isValidDeclaration = declaredRanks.every(
-      (rank, index) => actualRanks[index] === rank
-    );
+    const actualRanks = actualCards.map((card) => card.rank);
 
     console.log(`🎯 ${playerName} declared:`);
+    console.log(
+      `   Hand structure: [${playerHand
+        .map((card) => (card ? card.rank : "ELIMINATED"))
+        .join(", ")}]`
+    );
+    console.log(
+      `   Actual cards: ${actualCards.length} (${actualRanks.join(", ")})`
+    );
     console.log(`   Declared: [${declaredRanks.join(", ")}]`);
-    console.log(`   Actual:   [${actualRanks.join(", ")}]`);
-    console.log(`   Valid:    ${isValidDeclaration ? "✅" : "❌"}`);
+    console.log(`   Expected: [${actualRanks.join(", ")}]`);
 
+    // Validate declaration - should match actual cards only
+    const isValidDeclaration =
+      declaredRanks.length === actualCards.length &&
+      declaredRanks.every((rank, index) => actualRanks[index] === rank);
+
+    console.log(`   Valid: ${isValidDeclaration ? "✅" : "❌"}`);
+
+    // End the game
     gameState.gameStatus = "ended";
     gameState.declarer = playerId;
     gameState.lastAction = { type: "declare", playerId, timestamp: Date.now() };
 
+    // Calculate final scores for all players
     gameState.players.forEach((player) => {
+      // Reveal all remaining cards
       player.hand.forEach((card) => {
         if (card) card.isRevealed = true;
       });
+
+      // Calculate score: sum of remaining cards + 0 for eliminated cards
       player.score = player.hand.reduce(
-        (sum, card) => sum + (card ? card.value : 0),
+        (sum, card) => sum + (card ? card.value : 0), // null cards = 0 points
         0
       );
     });
 
+    // Apply penalty for invalid declaration
     if (!isValidDeclaration) {
-      gameState.players[playerIndex].score += 20;
+      gameState.players[playerIndex].score += 20; // Penalty for wrong declaration
       console.log(`⚠️ ${playerName} gets +20 penalty for invalid declaration`);
     }
 
+    // Find winner(s) - lowest score wins
     const minScore = Math.min(...gameState.players.map((p) => p.score));
     const winners = gameState.players
       .filter((p) => p.score === minScore)
       .map((p) => ({ id: p.id, name: p.name, score: p.score }));
 
+    console.log(`🏆 Game ended!`);
     console.log(
-      `🏆 Game ended! Winners: ${winners
+      `   Final scores: ${gameState.players
+        .map((p) => `${p.name}: ${p.score}`)
+        .join(", ")}`
+    );
+    console.log(
+      `   Winners: ${winners
         .map((w) => w.name)
         .join(", ")} (${minScore} points)`
     );
+
+    // Show detailed score breakdown
+    gameState.players.forEach((player) => {
+      const remainingCards = player.hand.filter((card) => card !== null);
+      const eliminatedCount = player.hand.length - remainingCards.length;
+      console.log(
+        `   ${player.name}: ${remainingCards.length} cards (${remainingCards
+          .map((c) => `${c.rank}=${c.value}`)
+          .join(", ")}) + ${eliminatedCount} eliminated = ${player.score} total`
+      );
+    });
 
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
     DualPlayerMockSocket.broadcastToAll("game-ended", {
       declarer: playerId,
       winners,
       isValidDeclaration,
+      scoreBreakdown: gameState.players.map((player) => ({
+        id: player.id,
+        name: player.name,
+        score: player.score,
+        remainingCards: player.hand.filter((card) => card !== null).length,
+        eliminatedCards: player.hand.filter((card) => card === null).length,
+      })),
     });
   }
 }

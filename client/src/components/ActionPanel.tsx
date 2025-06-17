@@ -1,4 +1,5 @@
-// client/src/components/ActionPanel.tsx - Enhanced with better King power instructions
+// Enhanced ActionPanel.tsx - Clear separation of Turn Actions vs Elimination Actions
+
 import React from "react";
 import { useGameContext } from "../contexts/GameContext";
 
@@ -18,6 +19,11 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   // Check if current player has an active power
   const currentPlayer = gameState?.players.find((p) => p.id === myPlayer?.id);
   const activePower = currentPlayer?.activePower;
+
+  // Check elimination eligibility
+  const canEliminate =
+    gameState?.discardPile && gameState.discardPile.length > 0;
+  const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
 
   const getPowerInstructions = (power: string) => {
     switch (power) {
@@ -58,6 +64,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
     }
   };
 
+  // If player has an active power, show power UI
   if (activePower) {
     const powerInfo = getPowerInstructions(activePower);
     if (!powerInfo) return null;
@@ -109,54 +116,141 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
     );
   }
 
-  if (!isPlayerTurn) {
-    return (
-      <div className="p-4 bg-gray-800 rounded-lg">
-        <p className="text-center text-gray-400">Waiting for your turn...</p>
-      </div>
-    );
-  }
-
+  // Main action panel
   return (
-    <div className="p-4 bg-gray-800 rounded-lg">
-      <h3 className="text-center mb-2 font-semibold text-white">Your Turn</h3>
+    <div className="space-y-4">
+      {/* Turn-Based Actions Section */}
+      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-blue-500">
+        <div className="flex items-center mb-2">
+          <span className="text-blue-400 mr-2">🎯</span>
+          <h3 className="font-semibold text-white">Turn Actions</h3>
+          {isPlayerTurn && (
+            <span className="ml-2 text-green-400 text-sm animate-pulse">
+              ● Your Turn
+            </span>
+          )}
+        </div>
 
-      {/* Instructions */}
-      <div className="text-xs text-gray-300 text-center mb-3">
-        {drawnCard
-          ? "Click your cards to swap • Click discard pile to discard drawn card"
-          : "Click deck to draw • Click ❌ on cards to eliminate • Declare when ready"}
-      </div>
+        {isPlayerTurn ? (
+          <div className="space-y-3">
+            {drawnCard ? (
+              <div className="text-center">
+                <div className="text-sm text-gray-300 mb-2">
+                  You drew a card! Choose what to do:
+                </div>
+                <div className="text-xs text-blue-300">
+                  • Click hand card to swap with drawn card
+                  <br />• Click discard pile to discard drawn card
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-center">
+                  <div className="text-sm text-gray-300 mb-2">
+                    Choose your turn action:
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    • Click deck to draw a card
+                    <br />• Click "Declare" if you think you have the lowest
+                    total
+                  </div>
+                </div>
 
-      <div className="flex justify-center space-x-3">
-        <button
-          onClick={onDeclare}
-          className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
-          title="Declare your hand (must name all ranks)"
-        >
-          Declare
-        </button>
-      </div>
-
-      {/* Action hints */}
-      <div className="mt-2 text-xs text-center text-gray-300">
-        {drawnCard ? (
-          <span className="text-blue-300">
-            Drawn card ready - click hand card to swap or discard pile to
-            discard
-          </span>
+                <div className="flex justify-center">
+                  <button
+                    onClick={onDeclare}
+                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
+                    title="Declare your hand (must name all remaining card ranks)"
+                  >
+                    🎯 Declare Hand
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
-          <span>Draw from deck or eliminate cards by clicking ❌</span>
+          <div className="text-center text-gray-400">
+            <div className="text-sm">Waiting for your turn...</div>
+            <div className="text-xs mt-1">
+              Current turn:{" "}
+              {gameState?.players[gameState.currentPlayerIndex]?.name ||
+                "Unknown"}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Game rules reminder */}
-      <div className="mt-3 text-xs text-gray-400 text-center">
-        <div className="bg-gray-700 rounded p-2">
-          <div className="font-medium mb-1">Quick Tips:</div>
-          <div>• K♥/♦ = 0 points, K♠/♣ = 13 points</div>
-          <div>• Goal: Lowest total points wins</div>
-          <div>• Card powers activate when discarded</div>
+      {/* Elimination Actions Section - Always Available */}
+      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-red-500">
+        <div className="flex items-center mb-2">
+          <span className="text-red-400 mr-2">⚡</span>
+          <h3 className="font-semibold text-white">Elimination Actions</h3>
+          <span className="ml-2 text-yellow-400 text-sm">Always Available</span>
+        </div>
+
+        <div className="space-y-2">
+          {canEliminate ? (
+            <div className="text-center">
+              {hasAlreadyEliminated ? (
+                <div className="text-yellow-400 text-sm">
+                  ⏳ You already eliminated a card this round.
+                  <br />
+                  Wait for someone else to discard to eliminate again.
+                </div>
+              ) : (
+                <div>
+                  <div className="text-sm text-gray-300 mb-1">
+                    Elimination available! Click ❌ on matching cards.
+                  </div>
+                  <div className="text-xs text-green-300">
+                    Match the top discard card rank to eliminate it for 0
+                    points!
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center text-gray-400 text-sm">
+              No cards in discard pile yet.
+              <br />
+              Elimination becomes available after first discard.
+            </div>
+          )}
+
+          {/* Elimination Rules */}
+          <div className="text-xs text-gray-400 bg-gray-700 rounded p-2">
+            <div className="font-medium mb-1">Elimination Rules:</div>
+            <div>• Match rank of top discard card</div>
+            <div>• Only 1 card per round per player</div>
+            <div>• Wrong guess = penalty card</div>
+            <div>• Eliminated cards = 0 points</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Game Status Section */}
+      <div className="p-3 bg-gray-700 rounded-lg">
+        <div className="text-xs text-gray-300 space-y-1">
+          <div className="flex justify-between">
+            <span>Cards in deck:</span>
+            <span className="text-white">{gameState?.deck.length || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cards in discard:</span>
+            <span className="text-white">
+              {gameState?.discardPile.length || 0}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Round:</span>
+            <span className="text-white">{gameState?.roundNumber || 1}</span>
+          </div>
+        </div>
+
+        {/* Quick reminder */}
+        <div className="mt-2 pt-2 border-t border-gray-600 text-xs text-gray-400 text-center">
+          <div className="font-medium mb-1">Remember:</div>
+          <div>K♥/♦ = 0 pts • K♠/♣ = 13 pts • Goal: Lowest total wins</div>
         </div>
       </div>
     </div>

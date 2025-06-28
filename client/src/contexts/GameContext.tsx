@@ -495,6 +495,26 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     socket.on("power-swap-preview", handlePowerSwapPreview);
     socket.on("king-power-reveal", handleKingPowerReveal);
     socket.on("power-swap-completed", handlePowerSwapCompleted);
+    // Add this handler in the socket event listeners section of GameContext.tsx
+
+    socket.on("elimination-card-transfer", (data) => {
+      console.log(`[${currentPlayerId}] Elimination card transfer:`, data);
+      const {
+        eliminatingPlayerName,
+        cardOwnerName,
+        eliminatedCard,
+        givenCard,
+        position,
+      } = data;
+
+      // Show notification about the card transfer
+      const message = `${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName}'s hand and gave them a ${givenCard.rank}!`;
+
+      // You might want to show a toast notification here
+      console.log(message);
+
+      // The game state will be updated via the game-state-update event
+    });
 
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);

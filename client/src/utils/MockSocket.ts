@@ -424,10 +424,68 @@ class MockSocket extends BrowserEventEmitter {
       topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
     if (canEliminate) {
-      // Valid elimination - replace card with null to preserve positions
+      // Valid elimination
       const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
-      gameState.players[cardOwnerIndex].hand[cardIndex] = null; // Replace with null instead of removing
+
+      // Discard the eliminated card
       gameState.discardPile.push(eliminatedCard!);
+
+      // Now the eliminating player must give one of their cards to the opponent
+      // Find a non-null card from the eliminating player
+      const eliminatingPlayerHand =
+        gameState.players[eliminatingPlayerIndex].hand;
+      let cardToGiveIndex = -1;
+
+      // Find first non-null card to give (you might want to add UI to let player choose)
+      for (let i = 0; i < eliminatingPlayerHand.length; i++) {
+        if (eliminatingPlayerHand[i] !== null) {
+          cardToGiveIndex = i;
+          break;
+        }
+      }
+
+      if (cardToGiveIndex !== -1) {
+        // Transfer the card from eliminating player to opponent
+        const cardToGive = eliminatingPlayerHand[cardToGiveIndex];
+
+        // Place the given card in the eliminated card's position
+        gameState.players[cardOwnerIndex].hand[cardIndex] = cardToGive;
+        cardToGive!.position = cardIndex;
+
+        // Replace the given card with null in eliminating player's hand
+        gameState.players[eliminatingPlayerIndex].hand[cardToGiveIndex] = null;
+
+        console.log(
+          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
+            eliminatedCard!.rank
+          } from ${
+            gameState.players[cardOwnerIndex].name
+          }'s hand at position ${cardIndex} and gave them ${cardToGive!.rank}`
+        );
+
+        // Emit a special event for the card transfer
+        this.emitToAll("elimination-card-transfer", {
+          eliminatingPlayerId: playerId,
+          eliminatingPlayerName: gameState.players[eliminatingPlayerIndex].name,
+          cardOwnerId: gameState.players[cardOwnerIndex].id,
+          cardOwnerName: gameState.players[cardOwnerIndex].name,
+          eliminatedCard: eliminatedCard,
+          givenCard: cardToGive,
+          position: cardIndex,
+        });
+      } else {
+        // Edge case: eliminating player has no cards to give (all null)
+        // Just remove the eliminated card
+        gameState.players[cardOwnerIndex].hand[cardIndex] = null;
+
+        console.log(
+          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
+            eliminatedCard!.rank
+          } from ${
+            gameState.players[cardOwnerIndex].name
+          }'s hand (no card to give)`
+        );
+      }
 
       // Mark the eliminating player as having eliminated this round
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
@@ -438,10 +496,6 @@ class MockSocket extends BrowserEventEmitter {
           player.hasEliminatedThisRound = false;
         }
       });
-
-      console.log(
-        `${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard!.rank} from ${gameState.players[cardOwnerIndex].name}'s hand at position ${cardIndex}`
-      );
     } else {
       // Invalid elimination - penalty for eliminating player
       console.log("Invalid elimination - penalty for eliminating player");

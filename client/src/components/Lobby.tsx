@@ -1,5 +1,5 @@
+// components/Lobby.tsx - Fixed to work without setPlayerName dependency
 import { useState } from "react";
-import { useGameContext } from "../contexts/GameContext";
 import GameInstructionsModal from "./GameInstructionsModal";
 import socket from "../socket";
 
@@ -10,7 +10,6 @@ interface LobbyProps {
 const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const [roomId, setRoomId] = useState("");
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
-  const { setPlayerName } = useGameContext();
 
   // Get current player from socket
   const currentPlayerId = socket.getCurrentPlayer();
@@ -19,7 +18,7 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const handleJoin = () => {
     if (!roomId) return alert("Please enter a room ID");
 
-    setPlayerName(playerName);
+    // Don't need to call setPlayerName here - handled by parent component
     onJoinRoom(roomId, playerName);
   };
 
@@ -31,7 +30,7 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const handleQuickStart = () => {
     const quickRoomId = "QUICK";
     setRoomId(quickRoomId);
-    setPlayerName(playerName);
+    // Fixed: Don't call setPlayerName since it's not available or needed here
     onJoinRoom(quickRoomId, playerName);
   };
 

@@ -3,6 +3,7 @@
 import { type Card, cardsMatch } from "./cardUtils";
 
 export type GameState = {
+  pendingCardGiving: any;
   players: Player[];
   currentPlayerIndex: number;
   deck: Card[];
@@ -30,7 +31,7 @@ export type Player = {
 };
 
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "match" | "view";
+  type: "draw" | "swap" | "discard" | "declare" | "match" | "view" |"give-card";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;
@@ -64,7 +65,18 @@ export const initGameState = (
     type: "view",
   };
 };
-
+export interface PendingCardGiving {
+  eliminatingPlayerId: string;
+  eliminatingPlayerIndex: number;
+  cardOwnerIndex: number;
+  cardIndex: number;
+  eliminatedCard: Card;
+  availableCards: Array<{
+    cardId: string;
+    cardIndex: number;
+    card: Card;
+  }>;
+}
 // Handle card power effects
 export const applyCardPower = (
   gameState: GameState,

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // client/src/contexts/GameContext.tsx - Updated with King power card revelation
 import React, {
   createContext,

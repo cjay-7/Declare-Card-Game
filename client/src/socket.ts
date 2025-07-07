@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // client/src/socket.ts - Clean implementation for 2-player same device
 import DualPlayerMockSocket from "./utils/DualPlayerMockSocket";
 

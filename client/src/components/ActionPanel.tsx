@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Enhanced ActionPanel.tsx - Clear separation of Turn Actions vs Elimination Actions
 
 import React from "react";

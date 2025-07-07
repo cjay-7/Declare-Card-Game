@@ -25,7 +25,7 @@ export interface Card {
       ranks.forEach((rank) => {
         // Assign values based on rank (A=1, 2=2, ..., J=11, Q=12, K=13)
         // With K of hearts/diamonds = 0 (as per your data model)
-        let value = 
+        const value = 
           rank === "A" ? 1 :
           rank === "J" ? 11 :
           rank === "Q" ? 12 :

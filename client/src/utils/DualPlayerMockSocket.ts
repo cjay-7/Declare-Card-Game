@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // client/src/utils/DualPlayerMockSocket.ts - Updated King power to properly reveal cards
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {

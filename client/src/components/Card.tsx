@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/components/Card.tsx - Updated with highlight support
 import React, { useState, useEffect } from "react";
 

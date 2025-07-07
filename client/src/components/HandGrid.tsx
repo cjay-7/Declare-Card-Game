@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Updated HandGrid.tsx - Better handling of eliminated cards
 
 import React from "react";

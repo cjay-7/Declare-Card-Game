@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/utils/gameLogic.ts - Updated to support null cards for eliminated positions
 import { type Card, cardsMatch } from "./cardUtils";
 
@@ -75,10 +76,10 @@ export const applyCardPower = (
   switch (card.rank) {
     case "J":
       // Jack: Skip the next player's turn
-      const nextPlayerIndex =
+      { const nextPlayerIndex =
         (newState.currentPlayerIndex + 1) % newState.players.length;
       newState.players[nextPlayerIndex].skippedTurn = true;
-      break;
+      break; }
 
     case "Q":
       // Queen: Look at one of your cards

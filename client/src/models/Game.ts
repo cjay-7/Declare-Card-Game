@@ -5,8 +5,32 @@ import type { Player } from "./Player";
 
 export type GameStatus = "waiting" | "playing" | "ended";
 
+// Add this interface after your existing imports
+export interface PendingCardGiving {
+  eliminatingPlayerId: string;
+  eliminatingPlayerIndex: number;
+  cardOwnerIndex: number;
+  cardIndex: number;
+  eliminatedCard: Card;
+  availableCards: Array<{
+    cardId: string;
+    cardIndex: number;
+    card: Card;
+  }>;
+}
+
+// Update your GameAction type to include the new action types:
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "match" | "view";
+  type:
+    | "draw"
+    | "swap"
+    | "discard"
+    | "declare"
+    | "match"
+    | "view"
+    | "eliminate"
+    | "give-card"
+    | "eliminate-failed";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;
@@ -14,6 +38,7 @@ export type GameAction = {
   timestamp: number;
 };
 
+// Update your Game interface to include the pendingCardGiving property:
 export interface Game {
   id: string;
   players: Player[];
@@ -27,6 +52,7 @@ export interface Game {
   roundNumber: number;
   declarer: string | null;
   lastAction: GameAction | null;
+  pendingCardGiving?: PendingCardGiving; // ADD THIS LINE
   createdAt: Date;
   updatedAt: Date;
 }

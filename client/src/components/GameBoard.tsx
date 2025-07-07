@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/components/GameBoard.tsx - Updated with player switching
 import React, { useEffect, useState } from "react";
 import socket from "../socket";

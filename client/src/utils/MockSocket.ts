@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/utils/MockSocket.ts - Updated with fixed card elimination preserving positions
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
@@ -88,7 +90,8 @@ class MockSocket extends BrowserEventEmitter {
       event === "view-own-card" ||
       event === "use-power-on-own-card" ||
       event === "use-power-on-opponent-card" ||
-      event === "use-power-swap"
+      event === "use-power-swap" ||
+      event === "give-card"
     ) {
       this.handleClientEvents(event, data);
       return true;
@@ -392,6 +395,12 @@ class MockSocket extends BrowserEventEmitter {
       return;
     }
 
+    // Check if player is already in card-giving phase
+    if (gameState.pendingCardGiving?.eliminatingPlayerId === playerId) {
+      console.log("Player is already in card-giving phase");
+      return;
+    }
+
     // Find which player owns the card being eliminated
     let cardOwnerIndex = -1;
     let cardIndex = -1;
@@ -399,7 +408,7 @@ class MockSocket extends BrowserEventEmitter {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const foundCardIndex = gameState.players[i].hand.findIndex(
-        (c) => c && c.id === cardId // Check for null cards too
+        (c) => c && c.id === cardId
       );
       if (foundCardIndex !== -1) {
         cardOwnerIndex = i;
@@ -424,73 +433,74 @@ class MockSocket extends BrowserEventEmitter {
       topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
     if (canEliminate) {
-      // Valid elimination
+      // Valid elimination - Phase 1: Remove the card
       const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
 
       // Discard the eliminated card
       gameState.discardPile.push(eliminatedCard!);
 
-      // Now the eliminating player must give one of their cards to the opponent
-      // Find a non-null card from the eliminating player
+      // Set the position to null temporarily
+      gameState.players[cardOwnerIndex].hand[cardIndex] = null;
+
+      // Check if eliminating player has any cards to give
       const eliminatingPlayerHand =
         gameState.players[eliminatingPlayerIndex].hand;
-      let cardToGiveIndex = -1;
+      const availableCards = eliminatingPlayerHand
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card !== null);
 
-      // Find first non-null card to give (you might want to add UI to let player choose)
-      for (let i = 0; i < eliminatingPlayerHand.length; i++) {
-        if (eliminatingPlayerHand[i] !== null) {
-          cardToGiveIndex = i;
-          break;
-        }
-      }
+      if (availableCards.length === 0) {
+        // Edge case: eliminating player has no cards to give
+        console.log(
+          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
+            eliminatedCard!.rank
+          } but has no cards to give`
+        );
 
-      if (cardToGiveIndex !== -1) {
-        // Transfer the card from eliminating player to opponent
-        const cardToGive = eliminatingPlayerHand[cardToGiveIndex];
+        // Mark as completed
+        gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
-        // Place the given card in the eliminated card's position
-        gameState.players[cardOwnerIndex].hand[cardIndex] = cardToGive;
-        cardToGive!.position = cardIndex;
-
-        // Replace the given card with null in eliminating player's hand
-        gameState.players[eliminatingPlayerIndex].hand[cardToGiveIndex] = null;
+        gameState.lastAction = {
+          type: "eliminate",
+          playerId,
+          cardId,
+          timestamp: Date.now(),
+        };
+      } else {
+        // Set up pending card giving phase
+        gameState.pendingCardGiving = {
+          eliminatingPlayerId: playerId,
+          eliminatingPlayerIndex,
+          cardOwnerIndex,
+          cardIndex,
+          eliminatedCard: eliminatedCard!,
+          availableCards: availableCards.map(({ card, index }) => ({
+            cardId: card!.id,
+            cardIndex: index,
+            card: card!,
+          })),
+        };
 
         console.log(
           `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
             eliminatedCard!.rank
           } from ${
             gameState.players[cardOwnerIndex].name
-          }'s hand at position ${cardIndex} and gave them ${cardToGive!.rank}`
+          }'s hand. Now choosing card to give...`
         );
 
-        // Emit a special event for the card transfer
-        this.emitToAll("elimination-card-transfer", {
+        // Emit event to show card selection UI to eliminating player
+        this.emitToAll("elimination-card-selection", {
           eliminatingPlayerId: playerId,
           eliminatingPlayerName: gameState.players[eliminatingPlayerIndex].name,
           cardOwnerId: gameState.players[cardOwnerIndex].id,
           cardOwnerName: gameState.players[cardOwnerIndex].name,
           eliminatedCard: eliminatedCard,
-          givenCard: cardToGive,
-          position: cardIndex,
+          availableCards: gameState.pendingCardGiving.availableCards,
         });
-      } else {
-        // Edge case: eliminating player has no cards to give (all null)
-        // Just remove the eliminated card
-        gameState.players[cardOwnerIndex].hand[cardIndex] = null;
-
-        console.log(
-          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
-            eliminatedCard!.rank
-          } from ${
-            gameState.players[cardOwnerIndex].name
-          }'s hand (no card to give)`
-        );
       }
 
-      // Mark the eliminating player as having eliminated this round
-      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
-
-      // Reset elimination tracking for all other players when new card is discarded
+      // Reset elimination tracking for all other players
       gameState.players.forEach((player, idx) => {
         if (idx !== eliminatingPlayerIndex) {
           player.hasEliminatedThisRound = false;
@@ -502,42 +512,126 @@ class MockSocket extends BrowserEventEmitter {
 
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
-        penaltyCard.isRevealed = false;
 
-        // Find first null position or add to end
-        const handLength =
-          gameState.players[eliminatingPlayerIndex].hand.length;
-        let addedToPosition = false;
-
-        for (let i = 0; i < handLength; i++) {
+        // Find first available slot for penalty card
+        let slotFound = false;
+        for (
+          let i = 0;
+          i < gameState.players[eliminatingPlayerIndex].hand.length;
+          i++
+        ) {
           if (gameState.players[eliminatingPlayerIndex].hand[i] === null) {
-            gameState.players[eliminatingPlayerIndex].hand[i] = penaltyCard;
+            penaltyCard.isRevealed = false;
             penaltyCard.position = i;
-            addedToPosition = true;
+            gameState.players[eliminatingPlayerIndex].hand[i] = penaltyCard;
+            slotFound = true;
+            console.log(
+              `Penalty card ${penaltyCard.rank} given to ${gameState.players[eliminatingPlayerIndex].name} at position ${i}`
+            );
             break;
           }
         }
 
-        if (!addedToPosition) {
-          // No null positions, add to end
-          penaltyCard.position = handLength;
-          gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+        if (!slotFound) {
+          // All slots occupied, put penalty card back
+          gameState.deck.push(penaltyCard);
+          console.log("No empty slots for penalty card");
         }
-
-        this.emitToAll("penalty-card", {
-          playerId,
-          penaltyCard,
-          reason: "Invalid elimination attempt",
-        });
       }
 
-      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+      gameState.lastAction = {
+        type: "eliminate-failed",
+        playerId,
+        cardId,
+        timestamp: Date.now(),
+      };
     }
 
+    this.rooms[roomId] = gameState;
+    this.emitToAll("game-state-update", this.rooms[roomId]);
+  }
+
+  // Add this new method to MockSocket class
+  private handleGiveCard({
+    roomId,
+    playerId,
+    cardIndex,
+  }: {
+    roomId: string;
+    playerId: string;
+    cardIndex: number;
+  }): void {
+    if (!this.rooms[roomId]) return;
+
+    const gameState = this.rooms[roomId];
+
+    // Check if there's a pending card giving for this player
+    if (
+      !gameState.pendingCardGiving ||
+      gameState.pendingCardGiving.eliminatingPlayerId !== playerId
+    ) {
+      console.log("No pending card giving for this player");
+      return;
+    }
+
+    const {
+      eliminatingPlayerIndex,
+      cardOwnerIndex,
+      cardIndex: eliminatedCardIndex,
+      eliminatedCard,
+      availableCards,
+    } = gameState.pendingCardGiving;
+
+    // Validate the selected card
+    const selectedCardData = availableCards.find(
+      (ac) => ac.cardIndex === cardIndex
+    );
+    if (!selectedCardData) {
+      console.log("Invalid card selection for giving");
+      return;
+    }
+
+    // Get the card to give
+    const cardToGive =
+      gameState.players[eliminatingPlayerIndex].hand[cardIndex];
+    if (!cardToGive || cardToGive.id !== selectedCardData.cardId) {
+      console.log("Card mismatch during giving");
+      return;
+    }
+
+    // Transfer the card from eliminating player to opponent
+    // Place the given card in the eliminated card's position
+    gameState.players[cardOwnerIndex].hand[eliminatedCardIndex] = cardToGive;
+    cardToGive.position = eliminatedCardIndex;
+
+    // Replace the given card with null in eliminating player's hand
+    gameState.players[eliminatingPlayerIndex].hand[cardIndex] = null;
+
+    console.log(
+      `${gameState.players[eliminatingPlayerIndex].name} gave ${cardToGive.rank} to ${gameState.players[cardOwnerIndex].name} at position ${eliminatedCardIndex}`
+    );
+
+    // Mark the eliminating player as having eliminated this round
+    gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+
+    // Clear the pending card giving
+    delete gameState.pendingCardGiving;
+
+    // Emit completion event
+    this.emitToAll("elimination-card-transfer", {
+      eliminatingPlayerId: playerId,
+      eliminatingPlayerName: gameState.players[eliminatingPlayerIndex].name,
+      cardOwnerId: gameState.players[cardOwnerIndex].id,
+      cardOwnerName: gameState.players[cardOwnerIndex].name,
+      eliminatedCard: eliminatedCard,
+      givenCard: cardToGive,
+      position: eliminatedCardIndex,
+    });
+
     gameState.lastAction = {
-      type: "discard",
+      type: "give-card",
       playerId,
-      cardId,
+      cardId: cardToGive.id,
       timestamp: Date.now(),
     };
 

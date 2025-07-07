@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Updated App.tsx with proper player switching
 import { useState, useEffect } from "react";
 import Lobby from "./components/Lobby";

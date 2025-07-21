@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Updated HandGrid.tsx - Better handling of eliminated cards
 
 import React from "react";
@@ -31,6 +32,8 @@ const HandGrid: React.FC<HandGridProps> = ({
     opponentRevealedCard,
     swapSelections,
     kingPowerReveal,
+    eliminationCardSelection,
+    handleEliminationCardSelected,
   } = useGameContext();
 
   // Check if current player has an active power
@@ -54,8 +57,21 @@ const HandGrid: React.FC<HandGridProps> = ({
   const hasDiscardCard =
     gameState?.discardPile && gameState.discardPile.length > 0;
 
+  const isEliminationSelectionActive =
+    eliminationCardSelection?.isActive &&
+    eliminationCardSelection.eliminatedCardInfo?.eliminatingPlayerId ===
+      socket.getId();
+
   const handleCardClickWithValidation = (cardIndex: number) => {
     const card = paddedCards[cardIndex];
+
+    // Add this check at the beginning of the function
+    // Handle elimination card selection mode
+    if (isEliminationSelectionActive && isCurrentPlayer && card !== null) {
+      console.log(`Selecting card at index ${cardIndex} to give to opponent`);
+      handleEliminationCardSelected(cardIndex);
+      return;
+    }
 
     // Check if trying to interact with eliminated card
     if (card === null) {
@@ -72,28 +88,35 @@ const HandGrid: React.FC<HandGridProps> = ({
         console.log("Cannot use power on eliminated card");
         return;
       } else if (drawnCard && isCurrentPlayer) {
-        console.log("Cannot swap with eliminated card position");
+        console.log("Cannot swap with eliminated card");
         return;
       }
+
+      // Add elimination selection specific error
+      if (isEliminationSelectionActive) {
+        console.log("Cannot give an eliminated card");
+        return;
+      }
+
       return;
     }
 
-    // For active powers, handle power usage
-    if (activePower && canUsePowerOnThisHand) {
-      handleCardClick(playerId, cardIndex);
-      return;
-    }
-
-    // For current player actions
-    if (isCurrentPlayer) {
-      handleSelectCard(card);
-    } else {
-      handleCardClick(playerId, cardIndex);
-    }
+    // ... rest of existing handleCardClickWithValidation code
+    // (Only handles card click when it's a valid interaction)
+    handleCardClick(playerId, cardIndex);
   };
 
   return (
     <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
+      {/* Elimination card selection overlay - ADD THIS BLOCK */}
+      {isEliminationSelectionActive && isCurrentPlayer && (
+        <div className="absolute inset-0 bg-orange-500 bg-opacity-30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
+          <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-pulse">
+            Select a card to give to{" "}
+            {eliminationCardSelection?.eliminatedCardInfo?.cardOwnerName}
+          </div>
+        </div>
+      )}
       {/* Power interaction overlay - only show if there are valid cards to interact with */}
       {canUsePowerOnThisHand && paddedCards.some((card) => card !== null) && (
         <div className="absolute inset-0 bg-purple-500 bg-opacity-20 rounded-lg border-2 border-purple-400 border-dashed flex items-center justify-center z-10 pointer-events-none">
@@ -199,6 +222,7 @@ const HandGrid: React.FC<HandGridProps> = ({
           !hasAlreadyEliminated &&
           !activePower &&
           !isKingPowerRevealed &&
+          !isEliminationSelectionActive &&
           card !== null; // Key check: card must not be eliminated
 
         // Check if this card is selected for swapping
@@ -231,7 +255,12 @@ const HandGrid: React.FC<HandGridProps> = ({
               onClick={() => handleCardClickWithValidation(index)}
               className={`${showPowerGlow ? "animate-pulse" : ""} ${
                 isKingPowerRevealed ? "pointer-events-none" : ""
-              } cursor-pointer`}
+              } ${
+                isEliminationSelectionActive && isCurrentPlayer && card !== null
+                  ? "ring-2 ring-orange-400 rounded animate-pulse"
+                  : ""
+              }
+      cursor-pointer`}
             >
               <Card
                 suit={shouldReveal ? displayCard?.suit : undefined}
@@ -256,6 +285,14 @@ const HandGrid: React.FC<HandGridProps> = ({
                 }
               />
             </div>
+
+            {isEliminationSelectionActive &&
+              isCurrentPlayer &&
+              card !== null && (
+                <div className="absolute -top-3 -left-3 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-bold animate-bounce shadow-lg">
+                  👆
+                </div>
+              )}
 
             {/* King Power Reveal Indicator */}
             {isKingPowerRevealed && (

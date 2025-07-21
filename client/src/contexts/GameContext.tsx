@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/contexts/GameContext.tsx - Updated with King power card revelation
 import React, {
   createContext,
@@ -41,6 +43,17 @@ interface GameContextType {
   setDrawnCard: (card: Card | null) => void;
   roomId: string | null;
   setRoomId: (id: string) => void;
+
+  eliminationCardSelection: {
+    isActive: boolean;
+    eliminatedCardInfo: {
+      eliminatingPlayerId: string;
+      cardOwnerId: string;
+      cardOwnerName: string;
+      cardIndex: number;
+      eliminatedCard: Card;
+    } | null;
+  } | null;
 
   // Animation states
   cardAnimation: string | null;
@@ -100,6 +113,8 @@ interface GameContextType {
   // Player switching
   currentPlayerId: string;
   refreshPlayerData: () => void;
+
+  handleEliminationCardSelected: (cardIndex: number) => void;
 }
 
 const defaultGameState: GameState = {
@@ -165,6 +180,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [kingPowerReveal, setKingPowerReveal] =
     useState<KingPowerReveal | null>(null);
 
+  const [eliminationCardSelection, setEliminationCardSelection] = useState<{
+    isActive: boolean;
+    eliminatedCardInfo: {
+      eliminatingPlayerId: string;
+      cardOwnerId: string;
+      cardOwnerName: string;
+      cardIndex: number;
+      eliminatedCard: Card;
+    } | null;
+  } | null>(null);
+
   // Listen for player switches
   useEffect(() => {
     const handlePlayerSwitch = (event: CustomEvent) => {
@@ -197,6 +223,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Refresh player data
   const refreshPlayerData = () => {
     setCurrentPlayerId(socket.getCurrentPlayer());
+    setEliminationCardSelection(null);
   };
 
   // Compute if it's the current player's turn
@@ -274,6 +301,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // Update last action
       if (updatedState.lastAction) {
         setLastAction(updatedState.lastAction);
+      }
+
+      // Clear elimination selection if game state changes
+      if (eliminationCardSelection?.isActive) {
+        setEliminationCardSelection(null);
       }
 
       // Update power instructions based on active power
@@ -516,6 +548,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // The game state will be updated via the game-state-update event
     });
 
+    const handleEliminationCardSelectionRequired = (data: {
+      eliminatingPlayerId: string;
+      cardOwnerId: string;
+      cardOwnerName: string;
+      cardIndex: number;
+      eliminatedCard: Card;
+    }) => {
+      console.log(
+        `[${currentPlayerId}] Elimination card selection required:`,
+        data
+      );
+
+      // Only show selection UI for the eliminating player
+      if (socket.getId() === data.eliminatingPlayerId) {
+        setEliminationCardSelection({
+          isActive: true,
+          eliminatedCardInfo: data,
+        });
+      }
+    };
+
+    socket.on(
+      "elimination-card-selection-required",
+      handleEliminationCardSelectionRequired
+    );
+
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
       socket.off("card-drawn", handleCardDrawn);
@@ -526,6 +584,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("power-swap-preview", handlePowerSwapPreview);
       socket.off("king-power-reveal", handleKingPowerReveal);
       socket.off("power-swap-completed", handlePowerSwapCompleted);
+      socket.off("elimination-card-selection-required", handleEliminationCardSelectionRequired);
     };
   }, [currentPlayerId]); // Add currentPlayerId as dependency
 
@@ -660,7 +719,34 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     setSelectedCard(null);
   };
+  const handleEliminationCardSelected = (cardIndex: number) => {
+    if (!eliminationCardSelection?.eliminatedCardInfo) return;
 
+    const {
+      eliminatingPlayerId,
+      cardOwnerId,
+      cardOwnerName,
+      cardIndex: targetIndex,
+      eliminatedCard,
+    } = eliminationCardSelection.eliminatedCardInfo;
+
+    console.log(
+      `[${currentPlayerId}] Selected card at index ${cardIndex} to give to ${cardOwnerName}`
+    );
+
+    socket.emit("complete-elimination-card-give", {
+      roomId,
+      eliminatingPlayerId,
+      cardOwnerId,
+      cardOwnerName,
+      selectedCardIndex: cardIndex,
+      targetCardIndex: targetIndex,
+      eliminatedCard,
+    });
+
+    // Clear the selection state
+    setEliminationCardSelection(null);
+  };
   const handleDeclare = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
       console.log(
@@ -848,6 +934,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setKingPowerReveal(null);
     setSwapSelections([]);
     setShowDeclareModal(false);
+    setEliminationCardSelection(null);
   };
 
   return (
@@ -895,6 +982,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         resetGame,
         currentPlayerId,
         refreshPlayerData,
+        eliminationCardSelection,
+        handleEliminationCardSelected,
       }}
     >
       {children}

@@ -6,7 +6,7 @@ import type { Player } from "./Player";
 export type GameStatus = "waiting" | "playing" | "ended";
 
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "match" | "view";
+  type: "draw" | "swap" | "discard" | "declare" | "match" | "view" | "elimination";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;

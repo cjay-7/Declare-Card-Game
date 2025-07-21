@@ -191,6 +191,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     } | null;
   } | null>(null);
 
+  const [hasShownTransferNotification, setHasShownTransferNotification] =
+    useState(false);
+
   // Listen for player switches
   useEffect(() => {
     const handlePlayerSwitch = (event: CustomEvent) => {
@@ -529,24 +532,37 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     socket.on("power-swap-completed", handlePowerSwapCompleted);
     // Add this handler in the socket event listeners section of GameContext.tsx
 
-    socket.on("elimination-card-transfer", (data) => {
+    // Handle elimination card transfer with deduplication
+    let lastTransferTimestamp = 0;
+    const handleEliminationCardTransfer = (data: any) => {
+      // Deduplicate based on timestamp
+      const currentTime = Date.now();
+      if (currentTime - lastTransferTimestamp < 100) {
+        console.log(
+          `[${currentPlayerId}] Ignoring duplicate elimination transfer event`
+        );
+        return;
+      }
+      lastTransferTimestamp = currentTime;
+
       console.log(`[${currentPlayerId}] Elimination card transfer:`, data);
-      const {
-        eliminatingPlayerName,
-        cardOwnerName,
-        eliminatedCard,
-        givenCard,
-        position,
-      } = data;
 
-      // Show notification about the card transfer
-      const message = `${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName}'s hand and gave them a ${givenCard.rank}!`;
+      // Show notification only once
+      if (!hasShownTransferNotification) {
+        setLastAction({
+          type: "elimination-transfer",
+          playerId: data.eliminatingPlayerId || currentPlayerId,
+          message: `${data.eliminatingPlayerName} eliminated ${data.eliminatedCard.rank} from ${data.cardOwnerName}'s hand and gave them a ${data.givenCard.rank}!`,
+          timestamp: Date.now(),
+        });
+        setHasShownTransferNotification(true);
 
-      // You might want to show a toast notification here
-      console.log(message);
+        // Reset flag after a delay
+        setTimeout(() => setHasShownTransferNotification(false), 1000);
+      }
+    };
 
-      // The game state will be updated via the game-state-update event
-    });
+    socket.on("elimination-card-transfer", handleEliminationCardTransfer);
 
     const handleEliminationCardSelectionRequired = (data: {
       eliminatingPlayerId: string;
@@ -584,7 +600,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("power-swap-preview", handlePowerSwapPreview);
       socket.off("king-power-reveal", handleKingPowerReveal);
       socket.off("power-swap-completed", handlePowerSwapCompleted);
-      socket.off("elimination-card-selection-required", handleEliminationCardSelectionRequired);
+      socket.off(
+        "elimination-card-selection-required",
+        handleEliminationCardSelectionRequired
+      );
     };
   }, [currentPlayerId]); // Add currentPlayerId as dependency
 
@@ -730,8 +749,36 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       eliminatedCard,
     } = eliminationCardSelection.eliminatedCardInfo;
 
+    // CRITICAL FIX: Get the actual card from the non-padded hand array
+    const eliminatingPlayer = gameState?.players.find(
+      (p) => p.id === eliminatingPlayerId
+    );
+    if (!eliminatingPlayer) {
+      console.error("Eliminating player not found");
+      return;
+    }
+
+    // Find the actual card at the selected index, skipping null positions
+    let actualCardIndex = -1;
+    let nonNullCount = 0;
+
+    for (let i = 0; i < eliminatingPlayer.hand.length; i++) {
+      if (eliminatingPlayer.hand[i] !== null) {
+        if (nonNullCount === cardIndex) {
+          actualCardIndex = i;
+          break;
+        }
+        nonNullCount++;
+      }
+    }
+
+    if (actualCardIndex === -1) {
+      console.error(`No valid card found at UI index ${cardIndex}`);
+      return;
+    }
+
     console.log(
-      `[${currentPlayerId}] Selected card at index ${cardIndex} to give to ${cardOwnerName}`
+      `[${currentPlayerId}] Selected card at UI index ${cardIndex} (actual index ${actualCardIndex}) to give to ${cardOwnerName}`
     );
 
     socket.emit("complete-elimination-card-give", {
@@ -739,7 +786,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       eliminatingPlayerId,
       cardOwnerId,
       cardOwnerName,
-      selectedCardIndex: cardIndex,
+      selectedCardIndex: actualCardIndex, // Use the actual array index, not UI index
       targetCardIndex: targetIndex,
       eliminatedCard,
     });
@@ -812,6 +859,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         `[${currentPlayerId}] Cannot handle card click - missing room or player data`
       );
       return;
+      
     }
 
     // Check if current player has an active power
@@ -892,6 +940,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         // Update power instructions
         setPowerInstructions(getPowerInstructions(activePower));
       }
+      return;
+    }
+
+    // Get the target player
+    const targetPlayer = gameState?.players.find(p => p.id === playerId);
+    if (!targetPlayer) {
+      console.error("Target player not found");
+      return;
+    }
+
+    // Check if the card at this index is null (eliminated)
+    if (targetPlayer.hand[cardIndex] === null) {
+      console.log(`[${currentPlayerId}] Cannot interact with eliminated card at position ${cardIndex}`);
       return;
     }
 

@@ -53,6 +53,18 @@ const HandGrid: React.FC<HandGridProps> = ({
     paddedCards.push(null);
   }
 
+  // CRITICAL FIX: Create mapping for elimination card selection
+  // When in elimination mode, we need to map UI positions to actual non-null card indices
+  const getNonNullCardMapping = () => {
+    const mapping: number[] = [];
+    paddedCards.forEach((card, index) => {
+      if (card !== null) {
+        mapping.push(index);
+      }
+    });
+    return mapping;
+  };
+
   // Check if there's a card in the discard pile for elimination
   const hasDiscardCard =
     gameState?.discardPile && gameState.discardPile.length > 0;
@@ -67,9 +79,25 @@ const HandGrid: React.FC<HandGridProps> = ({
 
     // Add this check at the beginning of the function
     // Handle elimination card selection mode
+    // Handle elimination card selection mode with proper index mapping
     if (isEliminationSelectionActive && isCurrentPlayer && card !== null) {
-      console.log(`Selecting card at index ${cardIndex} to give to opponent`);
-      handleEliminationCardSelected(cardIndex);
+      console.log(
+        `Selecting card at UI position ${cardIndex} to give to opponent`
+      );
+
+      // Map UI index to non-null card index for elimination selection
+      const nonNullMapping = getNonNullCardMapping();
+      const nonNullIndex = nonNullMapping.indexOf(cardIndex);
+
+      if (nonNullIndex === -1) {
+        console.error("Card not found in non-null mapping");
+        return;
+      }
+
+      console.log(
+        `UI position ${cardIndex} maps to non-null index ${nonNullIndex}`
+      );
+      handleEliminationCardSelected(nonNullIndex);
       return;
     }
 
@@ -108,12 +136,15 @@ const HandGrid: React.FC<HandGridProps> = ({
 
   return (
     <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
-      {/* Elimination card selection overlay - ADD THIS BLOCK */}
+      {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
         <div className="absolute inset-0 bg-orange-500 bg-opacity-30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
           <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-pulse">
             Select a card to give to{" "}
             {eliminationCardSelection?.eliminatedCardInfo?.cardOwnerName}
+            <div className="text-xs mt-1 opacity-80">
+              Click any of your remaining cards
+            </div>
           </div>
         </div>
       )}

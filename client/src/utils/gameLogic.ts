@@ -30,12 +30,13 @@ export type Player = {
 };
 
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "match" | "view" | "elimination";
+  type: "draw" | "swap" | "discard" | "declare" | "match" | "view" | "elimination" | "elimination-transfer";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;
   targetCardIndex?: number;
   timestamp: number;
+  message?: string;
 };
 
 // Initialize game state

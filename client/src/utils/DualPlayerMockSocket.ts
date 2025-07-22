@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/utils/DualPlayerMockSocket.ts - Updated King power to properly reveal cards
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
@@ -116,6 +118,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       event === "declare" ||
       event === "use-power-on-own-card" ||
       event === "use-power-on-opponent-card" ||
+      event === "complete-elimination-card-give" ||
       event === "use-power-swap"
     ) {
       this.handleClientEvents(event, data);
@@ -157,6 +160,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         break;
       case "eliminate-card":
         this.handleEliminateCard(data);
+        break;
+      case "complete-elimination-card-give":
+        this.handleCompleteEliminationCardGive(data);
         break;
       case "discard-drawn-card":
         this.handleDiscardDrawnCard(data);
@@ -469,7 +475,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c!.id === handCardId
+      (c) => c && c.id === handCardId
     );
 
     if (playerIndex !== -1 && cardIndex !== -1) {
@@ -539,7 +545,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const foundCardIndex = gameState.players[i].hand.findIndex(
-        (c) => c && c.id === cardId
+        (c) => c && c.id === cardId // Ensure we skip null cards
       );
       if (foundCardIndex !== -1) {
         cardOwnerIndex = i;
@@ -550,7 +556,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
 
     if (cardOwnerIndex === -1 || cardIndex === -1 || !cardToEliminate) {
-      console.log("Card not found in any player's hand");
+      console.log(
+        "Card not found in any player's hand or card is already eliminated"
+      );
       return;
     }
 
@@ -565,103 +573,77 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     if (canEliminate) {
       // Valid elimination
-      const eliminatedCard = gameState.players[cardOwnerIndex].hand[cardIndex];
+      const eliminatedCard = { ...cardToEliminate };
 
-      // Discard the eliminated card
-      gameState.discardPile.push(eliminatedCard!);
+      console.log(
+        `✅ ${gameState.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${gameState.players[cardOwnerIndex].name} at position ${cardIndex}`
+      );
 
-      // Now the eliminating player must give one of their cards to the opponent
-      // Find a non-null card from the eliminating player
-      const eliminatingPlayerHand =
-        gameState.players[eliminatingPlayerIndex].hand;
-      let cardToGiveIndex = -1;
+      // Add the eliminated card to discard pile
+      gameState.discardPile.push(eliminatedCard);
 
-      // Find first non-null card to give
-      for (let i = 0; i < eliminatingPlayerHand.length; i++) {
-        if (eliminatingPlayerHand[i] !== null) {
-          cardToGiveIndex = i;
-          break;
-        }
-      }
-
-      if (cardToGiveIndex !== -1) {
-        // Transfer the card from eliminating player to opponent
-        const cardToGive = eliminatingPlayerHand[cardToGiveIndex];
-
-        // Place the given card in the eliminated card's position
-        gameState.players[cardOwnerIndex].hand[cardIndex] = cardToGive;
-        cardToGive!.position = cardIndex;
-
-        // Replace the given card with null in eliminating player's hand
-        gameState.players[eliminatingPlayerIndex].hand[cardToGiveIndex] = null;
-
-        console.log(
-          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
-            eliminatedCard!.rank
-          } from ${
-            gameState.players[cardOwnerIndex].name
-          }'s hand at position ${cardIndex} and gave them ${cardToGive!.rank}`
-        );
-
-        // Emit a special event for the card transfer
-        DualPlayerMockSocket.broadcastToAll("elimination-card-transfer", {
-          eliminatingPlayerId: playerId,
-          eliminatingPlayerName: gameState.players[eliminatingPlayerIndex].name,
-          cardOwnerId: gameState.players[cardOwnerIndex].id,
-          cardOwnerName: gameState.players[cardOwnerIndex].name,
-          eliminatedCard: eliminatedCard,
-          givenCard: cardToGive,
-          position: cardIndex,
-        });
-      } else {
-        // Edge case: eliminating player has no cards to give (all null)
-        // Just remove the eliminated card
-        gameState.players[cardOwnerIndex].hand[cardIndex] = null;
-
-        console.log(
-          `${gameState.players[eliminatingPlayerIndex].name} eliminated ${
-            eliminatedCard!.rank
-          } from ${
-            gameState.players[cardOwnerIndex].name
-          }'s hand (no card to give)`
-        );
-      }
+      // Set the eliminated position to null
+      gameState.players[cardOwnerIndex].hand[cardIndex] = null;
 
       // Mark the eliminating player as having eliminated this round
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
-      // Reset elimination tracking for all other players
-      gameState.players.forEach((player, idx) => {
-        if (idx !== eliminatingPlayerIndex) {
-          player.hasEliminatedThisRound = false;
+      // Validate hand integrity after elimination
+      this.validateHandIntegrity(
+        gameState.players[cardOwnerIndex].hand,
+        gameState.players[cardOwnerIndex].name
+      );
+
+      // Emit event to trigger card selection UI for the eliminating player
+      DualPlayerMockSocket.broadcastToAll(
+        "elimination-card-selection-required",
+        {
+          eliminatingPlayerId: playerId,
+          cardOwnerId: gameState.players[cardOwnerIndex].id,
+          cardOwnerName: gameState.players[cardOwnerIndex].name,
+          cardIndex: cardIndex,
+          eliminatedCard: eliminatedCard,
         }
-      });
+      );
+
+      // Update game state
+      gameState.lastAction = {
+        type: "elimination",
+        playerId,
+        cardId,
+        timestamp: Date.now(),
+      };
+
+      DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
     } else {
-      // Invalid elimination - penalty for eliminating player
-      console.log("Invalid elimination - penalty for eliminating player");
+      // Invalid elimination - apply penalty
+      console.log("❌ Invalid elimination - applying penalty");
 
       if (gameState.deck.length > 0) {
         const penaltyCard = gameState.deck.pop()!;
         penaltyCard.isRevealed = false;
 
         // Find first null position or add to end
-        const handLength =
-          gameState.players[eliminatingPlayerIndex].hand.length;
+        const eliminatingPlayer = gameState.players[eliminatingPlayerIndex];
         let addedToPosition = false;
 
-        for (let i = 0; i < handLength; i++) {
-          if (gameState.players[eliminatingPlayerIndex].hand[i] === null) {
-            gameState.players[eliminatingPlayerIndex].hand[i] = penaltyCard;
+        for (let i = 0; i < eliminatingPlayer.hand.length; i++) {
+          if (eliminatingPlayer.hand[i] === null) {
+            eliminatingPlayer.hand[i] = penaltyCard;
             penaltyCard.position = i;
             addedToPosition = true;
+            console.log(`📌 Added penalty card to null position ${i}`);
             break;
           }
         }
 
         if (!addedToPosition) {
           // No null positions, add to end
-          penaltyCard.position = handLength;
-          gameState.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+          penaltyCard.position = eliminatingPlayer.hand.length;
+          eliminatingPlayer.hand.push(penaltyCard);
+          console.log(
+            `📌 Added penalty card to end position ${penaltyCard.position}`
+          );
         }
 
         DualPlayerMockSocket.broadcastToAll("penalty-card", {
@@ -682,6 +664,155 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     };
 
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
+  }
+
+  private handleCompleteEliminationCardGive({
+    roomId,
+    eliminatingPlayerId,
+    cardOwnerId,
+    cardOwnerName,
+    selectedCardIndex,
+    targetCardIndex,
+    eliminatedCard,
+  }: {
+    roomId: string;
+    eliminatingPlayerId: string;
+    cardOwnerId: string;
+    cardOwnerName: string;
+    selectedCardIndex: number;
+    targetCardIndex: number;
+    eliminatedCard: Card;
+  }): void {
+    if (!DualPlayerMockSocket.sharedRooms[roomId]) return;
+
+    const gameState = DualPlayerMockSocket.sharedRooms[roomId];
+
+    // Find the players
+    const eliminatingPlayerIndex = gameState.players.findIndex(
+      (p) => p.id === eliminatingPlayerId
+    );
+    const cardOwnerIndex = gameState.players.findIndex(
+      (p) => p.id === cardOwnerId
+    );
+
+    if (eliminatingPlayerIndex === -1 || cardOwnerIndex === -1) {
+      console.error("❌ Players not found for card transfer");
+      return;
+    }
+
+    // CRITICAL FIX: Validate indices and handle null cards properly
+    const eliminatingPlayer = gameState.players[eliminatingPlayerIndex];
+    const cardOwner = gameState.players[cardOwnerIndex];
+
+    // Ensure the selected card index is valid and points to a non-null card
+    if (
+      selectedCardIndex < 0 ||
+      selectedCardIndex >= eliminatingPlayer.hand.length ||
+      eliminatingPlayer.hand[selectedCardIndex] === null
+    ) {
+      console.error(`❌ Invalid selected card index: ${selectedCardIndex}`);
+      console.error("Eliminating player hand:", eliminatingPlayer.hand);
+      return;
+    }
+
+    // Ensure the target card index is valid
+    if (targetCardIndex < 0 || targetCardIndex >= cardOwner.hand.length) {
+      console.error(`❌ Invalid target card index: ${targetCardIndex}`);
+      return;
+    }
+
+    // Get the card to give from eliminating player
+    const cardToGive = eliminatingPlayer.hand[selectedCardIndex];
+
+    if (!cardToGive) {
+      console.error("❌ Selected card is null or doesn't exist");
+      console.error("Selected index:", selectedCardIndex);
+      console.error("Eliminating player hand:", eliminatingPlayer.hand);
+      return;
+    }
+
+    // Log the transfer for debugging
+    console.log(
+      `🎁 Transfer: ${eliminatingPlayer.name} giving ${cardToGive.rank} (index ${selectedCardIndex}) to ${cardOwner.name} (position ${targetCardIndex})`
+    );
+
+    // Perform the card transfer
+    // 1. Place the given card in the eliminated card's position
+    cardOwner.hand[targetCardIndex] = { ...cardToGive };
+    cardOwner.hand[targetCardIndex].position = targetCardIndex;
+
+    // 2. Replace the given card with null in eliminating player's hand
+    eliminatingPlayer.hand[selectedCardIndex] = null;
+
+    console.log(
+      `🎁 ${eliminatingPlayer.name} gave ${cardToGive.rank} to ${cardOwner.name} at position ${targetCardIndex}`
+    );
+
+    // Emit the card transfer event ONCE
+    const transferData = {
+      eliminatingPlayerId: eliminatingPlayerId,
+      eliminatingPlayerName: eliminatingPlayer.name,
+      cardOwnerId: cardOwnerId,
+      cardOwnerName: cardOwnerName,
+      eliminatedCard: eliminatedCard,
+      givenCard: cardToGive,
+      position: targetCardIndex,
+    };
+
+    // Use a single broadcast to prevent duplicates
+    DualPlayerMockSocket.broadcastToAll(
+      "elimination-card-transfer",
+      transferData
+    );
+
+    // Reset elimination tracking for the next round
+    // Only reset for other players, keep the eliminating player marked until next discard
+    gameState.players.forEach((player, idx) => {
+      if (idx !== eliminatingPlayerIndex) {
+        player.hasEliminatedThisRound = false;
+      }
+    });
+
+    // Clear any active powers and reset turn state
+    gameState.players.forEach((player) => {
+      if (player.activePower) {
+        player.activePower = undefined;
+      }
+    });
+
+    // Update game state with a single broadcast
+    DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
+  }
+
+  // Additional helper function to validate hand integrity after elimination
+  private validateHandIntegrity(
+    hand: (Card | null)[],
+    playerName: string
+  ): boolean {
+    let nullCount = 0;
+    let cardCount = 0;
+
+    for (let i = 0; i < hand.length; i++) {
+      if (hand[i] === null) {
+        nullCount++;
+      } else {
+        cardCount++;
+        // Ensure position property matches array index
+        if (hand[i]!.position !== i) {
+          console.warn(
+            `⚠️ Position mismatch for ${playerName}: card at index ${i} has position ${
+              hand[i]!.position
+            }`
+          );
+          hand[i]!.position = i;
+        }
+      }
+    }
+
+    console.log(
+      `🔍 ${playerName} hand integrity: ${cardCount} cards, ${nullCount} eliminated positions`
+    );
+    return true;
   }
 
   private handleUsePowerOnOwnCard({

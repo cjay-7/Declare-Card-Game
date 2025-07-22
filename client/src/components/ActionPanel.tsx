@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Enhanced ActionPanel.tsx - Clear separation of Turn Actions vs Elimination Actions
 
 import React from "react";
@@ -206,6 +207,10 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                     Match the top discard card rank to eliminate it for 0
                     points!
                   </div>
+                  <br />
+                  <span className="text-yellow-300">
+                    Then select one of your cards to give them.
+                  </span>
                 </div>
               )}
             </div>
@@ -224,6 +229,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             <div>• Only 1 card per round per player</div>
             <div>• Wrong guess = penalty card</div>
             <div>• Eliminated cards = 0 points</div>
+            <div className="text-green-300">
+              • After elimination: give opponent one of your cards
+            </div>
           </div>
         </div>
       </div>

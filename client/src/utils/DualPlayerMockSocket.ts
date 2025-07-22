@@ -475,7 +475,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
     const cardIndex = gameState.players[playerIndex].hand.findIndex(
-      (c) => c!.id === handCardId
+      (c) => c && c.id === handCardId
     );
 
     if (playerIndex !== -1 && cardIndex !== -1) {

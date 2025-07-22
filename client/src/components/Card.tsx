@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // client/src/components/Card.tsx - Updated with highlight support
 import React, { useState, useEffect } from "react";
 
@@ -19,7 +20,7 @@ interface CardProps {
     | "K";
   isRevealed?: boolean;
   isSelected?: boolean;
-  isHighlighted?: boolean;
+  isHighlighted?: boolean | null;
   onClick?: () => void;
   animate?: "draw" | "discard" | "swap" | "reveal" | "none";
 }

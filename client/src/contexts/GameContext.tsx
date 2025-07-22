@@ -651,16 +651,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleSwapWithDrawnCard = (handCardId: string) => {
+    console.log(
+      `[${currentPlayerId}] handleSwapWithDrawnCard called with handCardId: ${handCardId}`
+    );
+    console.log(
+      `[${currentPlayerId}] Current state - isPlayerTurn: ${isPlayerTurn}, roomId: ${roomId}, myPlayer: ${myPlayer?.name}, drawnCard: ${drawnCard?.rank}`
+    );
+
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
       console.log(
-        `[${currentPlayerId}] Cannot swap with drawn card - missing requirements`
+        `[${currentPlayerId}] ❌ Cannot swap with drawn card - missing requirements:`,
+        {
+          isPlayerTurn,
+          hasRoomId: !!roomId,
+          hasMyPlayer: !!myPlayer,
+          hasDrawnCard: !!drawnCard,
+        }
       );
       return;
     }
 
     console.log(
-      `[${currentPlayerId}] Swapping drawn card with hand card:`,
-      handCardId
+      `[${currentPlayerId}] ✅ Swapping drawn card ${drawnCard.rank} (${drawnCard.id}) with hand card (${handCardId})`
     );
 
     setCardAnimation("swap");
@@ -678,6 +690,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setDrawnCard(null);
     setSelectedPower(null);
     setPowerInstructions(null);
+
+    console.log(`[${currentPlayerId}] ✅ Swap command sent, states cleared`);
   };
 
   const handleDiscardDrawnCard = () => {
@@ -828,22 +842,27 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleSelectCard = (card: Card) => {
+    console.log(`[${currentPlayerId}] handleSelectCard called with:`, card);
+
     if (!card.id) {
       console.log(`[${currentPlayerId}] Card has no ID:`, card);
       return;
     }
 
-    // If there's a drawn card, clicking a hand card should swap them
+    // PRIORITY 1: If there's a drawn card, clicking a hand card should swap them
     if (drawnCard) {
       console.log(
-        `[${currentPlayerId}] Swapping drawn card with selected card:`,
-        card
+        `[${currentPlayerId}] SWAPPING: drawn card ${drawnCard.rank} with hand card ${card.rank} (ID: ${card.id})`
       );
       handleSwapWithDrawnCard(card.id);
       return;
     }
 
-    // Otherwise, select/deselect for elimination
+    console.log(
+      `[${currentPlayerId}] No drawn card, handling as regular selection`
+    );
+
+    // PRIORITY 2: Otherwise, select/deselect for elimination
     if (selectedCard && selectedCard.cardId === card.id) {
       console.log(`[${currentPlayerId}] Deselecting card:`, card);
       setSelectedCard(null);
@@ -854,17 +873,38 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleCardClick = (playerId: string, cardIndex: number) => {
+    console.log(
+      `[${currentPlayerId}] handleCardClick called - playerId: ${playerId}, cardIndex: ${cardIndex}`
+    );
+
     if (!roomId || !myPlayer) {
       console.log(
         `[${currentPlayerId}] Cannot handle card click - missing room or player data`
       );
       return;
-      
+    }
+
+    // Get the actual card being clicked
+    const targetPlayer = gameState?.players.find((p) => p.id === playerId);
+    const clickedCard = targetPlayer?.hand[cardIndex];
+
+    console.log(`[${currentPlayerId}] Clicked card:`, clickedCard);
+    console.log(`[${currentPlayerId}] Current drawn card:`, drawnCard);
+
+    // PRIORITY 1: If this is the current player's card and there's a drawn card, handle swap
+    if (playerId === myPlayer.id && drawnCard && clickedCard) {
+      console.log(
+        `[${currentPlayerId}] DIRECT SWAP: Swapping drawn ${drawnCard.rank} with clicked ${clickedCard.rank}`
+      );
+      handleSwapWithDrawnCard(clickedCard.id);
+      return;
     }
 
     // Check if current player has an active power
     const currentPlayer = gameState?.players.find((p) => p.id === myPlayer.id);
     const activePower = currentPlayer?.activePower;
+
+    console.log(`[${currentPlayerId}] Active power:`, activePower);
 
     if (activePower) {
       // Handle power usage
@@ -893,15 +933,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           cardIndex,
         });
       } else if (["Q", "K"].includes(activePower)) {
-        // Handle swap power selection
+        // Handle Q/K swap selection
         const newSelection = { playerId, cardIndex };
-
-        // Check if this card is already selected
         const existingIndex = swapSelections.findIndex(
           (sel) => sel.playerId === playerId && sel.cardIndex === cardIndex
         );
 
-        if (existingIndex >= 0) {
+        if (existingIndex !== -1) {
           // Deselect if already selected
           const newSelections = swapSelections.filter(
             (_, index) => index !== existingIndex
@@ -911,14 +949,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             `[${currentPlayerId}] Deselected card for ${activePower} power`
           );
         } else if (swapSelections.length < 2) {
-          // Add to selections if we have room
+          // Add new selection
           const newSelections = [...swapSelections, newSelection];
           setSwapSelections(newSelections);
           console.log(
-            `[${currentPlayerId}] Selected card ${newSelections.length}/2 for ${activePower} power`
+            `[${currentPlayerId}] Selected card ${
+              swapSelections.length + 1
+            }/2 for ${activePower} power`
           );
 
-          // If we have 2 selections, execute the swap
+          // If we have 2 cards selected, execute the swap
           if (newSelections.length === 2) {
             console.log(
               `[${currentPlayerId}] Executing ${activePower} power swap`
@@ -931,33 +971,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               card2PlayerId: newSelections[1].playerId,
               card2Index: newSelections[1].cardIndex,
             });
-
-            // Reset selections
             setSwapSelections([]);
           }
         }
-
-        // Update power instructions
-        setPowerInstructions(getPowerInstructions(activePower));
       }
-      return;
-    }
+    } else {
+      console.log(`[${currentPlayerId}] Regular card click - no active power`);
 
-    // Get the target player
-    const targetPlayer = gameState?.players.find(p => p.id === playerId);
-    if (!targetPlayer) {
-      console.error("Target player not found");
-      return;
+      // For own cards without active power, delegate to handleSelectCard
+      if (playerId === myPlayer.id && clickedCard) {
+        console.log(`[${currentPlayerId}] Delegating to handleSelectCard`);
+        handleSelectCard(clickedCard);
+      }
     }
-
-    // Check if the card at this index is null (eliminated)
-    if (targetPlayer.hand[cardIndex] === null) {
-      console.log(`[${currentPlayerId}] Cannot interact with eliminated card at position ${cardIndex}`);
-      return;
-    }
-
-    // No active power - just regular card click (no special behavior)
-    console.log(`[${currentPlayerId}] Regular card click - no active power`);
   };
 
   // Function to view the bottom two cards at the start of the game

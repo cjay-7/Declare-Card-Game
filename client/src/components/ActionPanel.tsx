@@ -1,4 +1,5 @@
-// components/ActionPanel.tsx - Updated with elimination fixes
+// Enhanced ActionPanel.tsx - Clear separation of Turn Actions vs Elimination Actions
+
 import React from "react";
 import { useGameContext } from "../contexts/GameContext";
 
@@ -18,35 +19,11 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   // Check if current player has an active power
   const currentPlayer = gameState?.players.find((p) => p.id === myPlayer?.id);
   const activePower = currentPlayer?.activePower;
-  const isSelectingCardToGive = currentPlayer?.isSelectingCardToGive;
 
-  // FIX 1 & 2: Updated elimination eligibility check
+  // Check elimination eligibility
   const canEliminate =
-    gameState?.discardPile && 
-    gameState.discardPile.length > 0 && 
-    !gameState.eliminationUsedThisRound && // Global check
-    !currentPlayer?.hasEliminatedThisRound; // Individual check
-
-  // FIX 3: Show card selection UI when giving card
-  if (isSelectingCardToGive) {
-    return (
-      <div className="p-4 bg-yellow-600 rounded-lg">
-        <div className="text-center text-white">
-          <div className="text-2xl mb-2">🎯</div>
-          <h3 className="font-bold text-lg">Choose Card to Give</h3>
-          <p className="text-sm">Select one of your cards to give to your opponent</p>
-          <p className="text-xs mt-1 opacity-80">Click on any of your non-eliminated cards</p>
-          
-          <div className="mt-3 p-2 bg-yellow-700 rounded text-xs">
-            <div className="font-medium">Instructions:</div>
-            <div>• Click on one of your cards (not eliminated ones)</div>
-            <div>• The card will be transferred to your opponent</div>
-            <div>• This completes the elimination process</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    gameState?.discardPile && gameState.discardPile.length > 0;
+  const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
 
   const getPowerInstructions = (power: string) => {
     switch (power) {
@@ -77,107 +54,148 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       case "K":
         return {
           title: "King Power: Seen Swap",
-          description: `Select 2 cards to swap. Both cards will be revealed to all players before swapping. (${swapSelections.length}/2 selected)`,
+          description: `Select 2 cards to swap. Both cards will be revealed to all players before swapping! (${swapSelections.length}/2 selected)`,
           icon: "👑",
-          color: "bg-red-600",
+          color: "bg-yellow-600",
+          warning: true,
         };
       default:
         return null;
     }
   };
 
-  const powerInfo = activePower ? getPowerInstructions(activePower) : null;
+  // If player has an active power, show power UI
+  if (activePower) {
+    const powerInfo = getPowerInstructions(activePower);
+    if (!powerInfo) return null;
 
+    return (
+      <div
+        className={`p-4 rounded-lg ${powerInfo.color} border-2 border-opacity-50`}
+      >
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <span className="text-2xl mr-2">{powerInfo.icon}</span>
+            <h3 className="font-bold text-white text-lg">{powerInfo.title}</h3>
+            <span className="text-2xl ml-2">{powerInfo.icon}</span>
+          </div>
+
+          <div className="text-sm text-white mb-3">{powerInfo.description}</div>
+
+          {powerInfo.warning && (
+            <div className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-2 mb-3">
+              <div className="flex items-center justify-center text-red-200 text-xs">
+                <span className="mr-1">⚠️</span>
+                <strong>Warning:</strong> Both cards will be visible to ALL
+                players!
+                <span className="ml-1">⚠️</span>
+              </div>
+            </div>
+          )}
+
+          {["Q", "K"].includes(activePower) && swapSelections.length > 0 && (
+            <div className="text-xs text-white bg-black bg-opacity-20 rounded p-2">
+              Selected:{" "}
+              {swapSelections.map((sel, idx) => (
+                <span
+                  key={idx}
+                  className="inline-block mx-1 px-2 py-1 bg-white bg-opacity-20 rounded"
+                >
+                  {sel.playerId === myPlayer?.id ? "Your" : "Opponent's"} card{" "}
+                  {sel.cardIndex + 1}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="text-xs text-white text-opacity-75 mt-2">
+            Click on cards to use your power
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main action panel
   return (
     <div className="space-y-4">
-      {/* Turn Actions Section */}
-      {isPlayerTurn && (
-        <div className="p-3 bg-gray-800 rounded-lg">
-          <div className="text-center">
-            <div className="text-green-400 text-sm font-medium mb-2">
-              🎯 Your Turn
-            </div>
-            
+      {/* Turn-Based Actions Section */}
+      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-blue-500">
+        <div className="flex items-center mb-2">
+          <span className="text-blue-400 mr-2">🎯</span>
+          <h3 className="font-semibold text-white">Turn Actions</h3>
+          {isPlayerTurn && (
+            <span className="ml-2 text-green-400 text-sm animate-pulse">
+              ● Your Turn
+            </span>
+          )}
+        </div>
+
+        {isPlayerTurn ? (
+          <div className="space-y-3">
             {drawnCard ? (
-              <div className="space-y-3">
-                <div className="p-2 bg-gray-700 rounded text-sm text-white">
-                  <div className="font-medium">You drew: {drawnCard.rank} of {drawnCard.suit}</div>
-                  <div className="text-xs text-gray-300 mt-1">
-                    Choose to swap with one of your cards or discard
-                  </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-300 mb-2">
+                  You drew a card! Choose what to do:
                 </div>
-                
-                <div className="flex gap-2 text-xs">
-                  <div className="flex-1 p-2 bg-blue-700 rounded text-white text-center">
-                    Click your card to swap
-                  </div>
-                  <div className="flex-1 p-2 bg-red-700 rounded text-white text-center">
-                    Click here to discard
-                  </div>
+                <div className="text-xs text-blue-300">
+                  • Click hand card to swap with drawn card
+                  <br />• Click discard pile to discard drawn card
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
-                <button className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                  Draw Card
-                </button>
-                <button 
-                  onClick={onDeclare}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Declare
-                </button>
+                <div className="text-center">
+                  <div className="text-sm text-gray-300 mb-2">
+                    Choose your turn action:
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    • Click deck to draw a card
+                    <br />• Click "Declare" if you think you have the lowest
+                    total
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={onDeclare}
+                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
+                    title="Declare your hand (must name all remaining card ranks)"
+                  >
+                    🎯 Declare Hand
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* FIX 2: Power Actions Section - can coexist with elimination */}
-      {powerInfo && (
-        <div className={`p-3 ${powerInfo.color} rounded-lg`}>
-          <div className="text-center text-white">
-            <div className="text-2xl mb-1">{powerInfo.icon}</div>
-            <h4 className="font-bold">{powerInfo.title}</h4>
-            <p className="text-sm mt-1">{powerInfo.description}</p>
-            
-            <div className="mt-2 text-xs opacity-80">
-              {activePower === "Q" || activePower === "K" 
-                ? "Select cards from any player's hand"
-                : activePower === "7" || activePower === "8"
-                ? "Select from your own cards"
-                : "Select from opponent's cards"
-              }
+        ) : (
+          <div className="text-center text-gray-400">
+            <div className="text-sm">Waiting for your turn...</div>
+            <div className="text-xs mt-1">
+              Current turn:{" "}
+              {gameState?.players[gameState.currentPlayerIndex]?.name ||
+                "Unknown"}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* FIX 2: Elimination Section - shown even with active power */}
-      <div className="p-3 bg-gray-700 rounded-lg">
-        <div className="text-center">
-          <div className="text-sm font-medium text-gray-300 mb-2">
-            🎯 Elimination
-          </div>
-          
-          {gameState?.discardPile && gameState.discardPile.length > 0 ? (
-            <div>
-              {/* FIX 1: Updated elimination availability */}
-              {gameState.eliminationUsedThisRound ? (
-                <div className="text-center text-gray-400 text-sm">
-                  <div className="text-red-400 mb-1">❌ Elimination Used</div>
-                  <div>Someone already eliminated a card this round.</div>
-                  <div className="text-xs mt-1">
-                    Wait for the next discard to eliminate again.
-                  </div>
-                </div>
-              ) : currentPlayer?.hasEliminatedThisRound ? (
-                <div className="text-center text-gray-400 text-sm">
-                  <div className="text-orange-400 mb-1">⏳ Already Attempted</div>
-                  <div>You already tried to eliminate this round.</div>
-                  <div className="text-xs mt-1">
-                    Wait for someone else to discard to eliminate again.
-                  </div>
+      {/* Elimination Actions Section - Always Available */}
+      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-red-500">
+        <div className="flex items-center mb-2">
+          <span className="text-red-400 mr-2">⚡</span>
+          <h3 className="font-semibold text-white">Elimination Actions</h3>
+          <span className="ml-2 text-yellow-400 text-sm">Always Available</span>
+        </div>
+
+        <div className="space-y-2">
+          {canEliminate ? (
+            <div className="text-center">
+              {hasAlreadyEliminated ? (
+                <div className="text-yellow-400 text-sm">
+                  ⏳ You already eliminated a card this round.
+                  <br />
+                  Wait for someone else to discard to eliminate again.
                 </div>
               ) : (
                 <div>
@@ -185,15 +203,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                     Elimination available! Click ❌ on matching cards.
                   </div>
                   <div className="text-xs text-green-300">
-                    Match the top discard card rank ({gameState.discardPile[gameState.discardPile.length - 1]?.rank}) to eliminate it for 0 points!
+                    Match the top discard card rank to eliminate it for 0
+                    points!
                   </div>
-                  
-                  {/* FIX 2: Show that power and elimination can both be used */}
-                  {activePower && (
-                    <div className="text-xs text-blue-300 mt-2 p-1 bg-blue-900 rounded">
-                      💡 You can use your {activePower} power AND eliminate!
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -206,13 +218,12 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           )}
 
           {/* Elimination Rules */}
-          <div className="text-xs text-gray-400 bg-gray-800 rounded p-2 mt-3">
+          <div className="text-xs text-gray-400 bg-gray-700 rounded p-2">
             <div className="font-medium mb-1">Elimination Rules:</div>
             <div>• Match rank of top discard card</div>
-            <div>• Only 1 successful elimination per round (all players)</div>
+            <div>• Only 1 card per round per player</div>
             <div>• Wrong guess = penalty card</div>
             <div>• Eliminated cards = 0 points</div>
-            <div>• Choose which card to give opponent</div>
           </div>
         </div>
       </div>
@@ -233,13 +244,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="flex justify-between">
             <span>Round:</span>
             <span className="text-white">{gameState?.roundNumber || 1}</span>
-          </div>
-          {/* NEW: Show elimination status */}
-          <div className="flex justify-between">
-            <span>Elimination used:</span>
-            <span className={gameState?.eliminationUsedThisRound ? "text-red-400" : "text-green-400"}>
-              {gameState?.eliminationUsedThisRound ? "Yes" : "No"}
-            </span>
           </div>
         </div>
 

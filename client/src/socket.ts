@@ -1,4 +1,4 @@
-// client/src/socket.ts - Fixed implementation with proper off method
+// client/src/socket.ts - Clean implementation for 2-player same device
 import DualPlayerMockSocket from "./utils/DualPlayerMockSocket";
 
 // Global player state
@@ -20,24 +20,9 @@ const socket = {
     );
   },
 
-  // FIX: Properly handle off method for both instances
   off: (event: string, listener: (...args: any[]) => void) => {
-    // Remove from both player instances to ensure cleanup
-    try {
-      const player1Instance = DualPlayerMockSocket.getInstance("player1");
-      const player2Instance = DualPlayerMockSocket.getInstance("player2");
-
-      if (player1Instance && typeof player1Instance.off === "function") {
-        player1Instance.off(event, listener);
-      }
-
-      if (player2Instance && typeof player2Instance.off === "function") {
-        player2Instance.off(event, listener);
-      }
-    } catch (error) {
-      console.warn(`Error removing listener for ${event}:`, error);
-    }
-
+    DualPlayerMockSocket.getInstance("player1").off(event, listener);
+    DualPlayerMockSocket.getInstance("player2").off(event, listener);
     return socket;
   },
 
@@ -93,23 +78,34 @@ const updateSwitcherUI = () => {
         transition: all 0.2s ease;
       ">Player 2</button>
     </div>
+    <div style="font-size:10px;text-align:center;margin-top:8px;color:#9ca3af;">
+      Click to switch player perspective
+    </div>
   `;
 
-  // Re-attach event listeners
-  const btn1 = document.getElementById("switch-p1");
-  const btn2 = document.getElementById("switch-p2");
+  // Add event listeners
+  const p1Button = document.getElementById("switch-p1");
+  const p2Button = document.getElementById("switch-p2");
 
-  if (btn1) {
-    btn1.onclick = () => socket.switchToPlayer("player1");
+  if (p1Button) {
+    p1Button.onclick = () => {
+      console.log("Switching to Player 1");
+      socket.switchToPlayer("player1");
+    };
   }
-  if (btn2) {
-    btn2.onclick = () => socket.switchToPlayer("player2");
+  if (p2Button) {
+    p2Button.onclick = () => {
+      console.log("Switching to Player 2");
+      socket.switchToPlayer("player2");
+    };
   }
+
+  console.log("🎮 Player switcher UI updated");
 };
 
-// Function to add switcher UI
+// Add switcher UI only once
 const addSwitcherUI = () => {
-  if (switcherAdded) return;
+  if (switcherAdded || document.getElementById("player-switcher")) return;
 
   const div = document.createElement("div");
   div.id = "player-switcher";
@@ -118,25 +114,42 @@ const addSwitcherUI = () => {
     top: 10px;
     right: 10px;
     z-index: 9999;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0,0,0,0.9);
     color: white;
     padding: 12px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-family: Arial, sans-serif;
-    border: 1px solid #444;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    min-width: 160px;
   `;
 
   document.body.appendChild(div);
+  updateSwitcherUI(); // Call updateSwitcherUI after appending to DOM
   switcherAdded = true;
-  updateSwitcherUI();
+
+  console.log("🎮 Player switcher UI added");
 };
 
 // Initialize switcher when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", addSwitcherUI);
 } else {
-  addSwitcherUI();
+  // DOM is already loaded
+  setTimeout(addSwitcherUI, 1000); // Increase timeout to ensure page is fully loaded
 }
+
+// Manual initialization - try to add switcher every 2 seconds until it exists
+const ensureSwitcher = () => {
+  if (!document.getElementById("player-switcher")) {
+    console.log("Attempting to create player switcher...");
+    addSwitcherUI();
+  }
+};
+
+// Try multiple times to ensure switcher is created
+setTimeout(ensureSwitcher, 2000);
+setTimeout(ensureSwitcher, 5000);
+setTimeout(ensureSwitcher, 10000);
 
 export default socket;

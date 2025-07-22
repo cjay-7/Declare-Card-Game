@@ -1,31 +1,12 @@
-// models/Game.ts - Updated with elimination fixes
+// server/src/models/Game.ts
+// server/src/models/Game.ts
+import type { Card } from "./Card";
+import type { Player } from "./Player";
+
 export type GameStatus = "waiting" | "playing" | "ended";
 
-export interface Card {
-  id: string;
-  suit: "hearts" | "diamonds" | "clubs" | "spades";
-  rank: "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
-  value: number;
-  isRevealed: boolean;
-  position?: number;
-}
-
-export interface Player {
-  id: string;
-  name: string;
-  isHost: boolean;
-  connected: boolean;
-  hand: (Card | null)[]; // Allow null for eliminated positions
-  score: number;
-  knownCards: string[];
-  skippedTurn: boolean;
-  hasEliminatedThisRound: boolean;
-  activePower?: string;
-  isSelectingCardToGive?: boolean; // NEW: For card selection phase
-}
-
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "eliminate" | "select-give";
+  type: "draw" | "swap" | "discard" | "declare" | "match" | "view";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;
@@ -48,17 +29,6 @@ export interface Game {
   lastAction: GameAction | null;
   createdAt: Date;
   updatedAt: Date;
-  
-  // NEW: Global elimination tracking
-  eliminationUsedThisRound: boolean;
-  
-  // NEW: Pending card selection for elimination
-  pendingEliminationGive?: {
-    eliminatingPlayerId: string;
-    targetPlayerId: string;
-    targetCardIndex: number;
-    eliminatedCard: Card;
-  };
 }
 
 /**
@@ -80,7 +50,6 @@ export function createGame(id: string): Game {
     lastAction: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    eliminationUsedThisRound: false, // NEW
   };
 }
 
@@ -137,7 +106,7 @@ export function getTotalRemainingCards(game: Game): number {
   const deckCards = game.deck.length;
   const discardCards = game.discardPile.length;
   const handCards = game.players.reduce(
-    (sum, player) => sum + player.hand.filter(card => card !== null).length,
+    (sum, player) => sum + player.hand.length,
     0
   );
 

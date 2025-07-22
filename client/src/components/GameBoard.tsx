@@ -1,4 +1,4 @@
-// components/GameBoard.tsx - FINAL PROPER LAYOUT THAT ACTUALLY WORKS
+// client/src/components/GameBoard.tsx - Updated with player switching
 import React, { useEffect, useState } from "react";
 import socket from "../socket";
 import { useGameContext } from "../contexts/GameContext";
@@ -21,37 +21,40 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   initialRoomId,
   initialPlayerName,
 }) => {
-  // Get what's available from GameContext with safe fallbacks
-  const gameContext = useGameContext();
-
-  // Safely destructure what exists
   const {
     setPlayerName,
     setRoomId,
     gameState,
+    isPlayerTurn,
     myPlayer,
+    handleDrawCard,
+    handleDeclare,
+    handleConfirmDeclare,
+    handleDiscardDrawnCard,
     drawnCard,
-    setDrawnCard,
+    handleSelectCard,
+    selectedCard,
+    selectedPower,
+    powerInstructions,
+    handleCardClick,
     showDeclareModal,
     setShowDeclareModal,
-  } = gameContext;
+    canDiscardDrawnCard,
+    currentPlayerId,
+    refreshPlayerData,
+  } = useGameContext();
 
-  // Local state
+  // State to track the opponent we're currently viewing
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
-  const currentPlayerId = socket.getCurrentPlayer();
 
-  // Check game state
-  const isPlayerTurn =
-    gameState?.players?.[gameState.currentPlayerIndex]?.id === currentPlayerId;
-  const gameStarted = gameState?.gameStatus === "playing";
-  const gameEnded = gameState?.gameStatus === "ended";
-
-  // Listen for player switches
+  // Listen for player switches and rejoin if necessary
   useEffect(() => {
     const handlePlayerSwitch = () => {
       console.log(`GameBoard: Player switched to ${socket.getCurrentPlayer()}`);
+      refreshPlayerData();
 
+      // If we've already joined, rejoin as the new player WITHOUT leaving first
       if (hasJoined) {
         const newPlayerName =
           socket.getCurrentPlayer() === "player1" ? "Player 1" : "Player 2";
@@ -62,22 +65,23 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           playerName: newPlayerName,
         });
 
-        if (setPlayerName) {
-          setPlayerName(newPlayerName);
-        }
+        setPlayerName(newPlayerName);
       }
     };
 
     window.addEventListener("player-switched", handlePlayerSwitch);
-    return () =>
+
+    return () => {
       window.removeEventListener("player-switched", handlePlayerSwitch);
-  }, [hasJoined, initialRoomId, setPlayerName]);
+    };
+  }, [hasJoined, initialRoomId, setPlayerName, refreshPlayerData]);
 
-  // Join room on mount
   useEffect(() => {
-    if (setPlayerName) setPlayerName(initialPlayerName);
-    if (setRoomId) setRoomId(initialRoomId);
+    // Set player name and room ID in context
+    setPlayerName(initialPlayerName);
+    setRoomId(initialRoomId);
 
+    // Join the room
     console.log(
       `[${currentPlayerId}] Joining room ${initialRoomId} as ${initialPlayerName}`
     );
@@ -88,7 +92,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
     setHasJoined(true);
 
+    // Don't leave room on unmount - let players stay in room when switching
     return () => {
+      // Only leave if component is actually being unmounted (not just player switching)
       console.log(`GameBoard unmounting for ${currentPlayerId}`);
     };
   }, [
@@ -99,356 +105,465 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     currentPlayerId,
   ]);
 
-  // Game action handlers
   const handleStartGame = () => {
     console.log(`[${currentPlayerId}] Starting game in room ${initialRoomId}`);
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
-  const handleDrawCard = () => {
-    if (!isPlayerTurn || !myPlayer) {
-      console.log(
-        `[${currentPlayerId}] Cannot draw card - not your turn or missing data`
-      );
-      return;
-    }
-
-    console.log(`[${currentPlayerId}] Drawing card...`);
-    socket.emit("draw-card", { roomId: initialRoomId, playerId: myPlayer.id });
-  };
-
-  const handleDeclare = () => {
-    if (setShowDeclareModal) {
-      setShowDeclareModal(true);
-    }
-  };
-
-  const handleConfirmDeclare = (declaredRanks: string[]) => {
-    if (!myPlayer) return;
-
-    console.log(`[${currentPlayerId}] Declaring with ranks:`, declaredRanks);
-    socket.emit("declare", {
-      roomId: initialRoomId,
-      playerId: myPlayer.id,
-      declaredRanks,
-    });
-
-    if (setShowDeclareModal) {
-      setShowDeclareModal(false);
-    }
-  };
-
-  const handleDiscardDrawnCard = () => {
-    if (!drawnCard || !myPlayer) return;
-
-    console.log(`[${currentPlayerId}] Discarding drawn card:`, drawnCard);
-    socket.emit("discard-drawn-card", {
-      roomId: initialRoomId,
-      playerId: myPlayer.id,
-      cardId: drawnCard.id,
-    });
-
-    if (setDrawnCard) {
-      setDrawnCard(null);
-    }
-  };
-
   const handlePlayAgain = () => {
+    // Reset the game and restart
     console.log(
       `[${currentPlayerId}] Restarting game in room ${initialRoomId}`
     );
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
-  // Get game data
+  // Get current player's hand from game state
   const myHand = myPlayer?.hand || [];
-  const topDiscardCard = gameState?.discardPile?.length
+
+  // Get top card from discard pile
+  const topDiscardCard = gameState?.discardPile.length
     ? gameState.discardPile[gameState.discardPile.length - 1]
     : null;
+
+  // Check if current player is host
   const currentSocketId = socket.getId();
   const isHost =
     gameState?.players.find((p) => p.id === currentSocketId)?.isHost || false;
+
+  console.log(
+    `Host check: Current socket ID: ${currentSocketId}, Is host: ${isHost}`
+  );
+  console.log(
+    `All players:`,
+    gameState?.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+    }))
+  );
+
+  // Check if game has started
+  const gameStarted = gameState?.gameStatus === "playing";
+
+  // Check if game has ended
+  const gameEnded = gameState?.gameStatus === "ended";
+
+  // Get remaining deck size
   const deckSize = gameState?.deck.length || 0;
+
+  // Get a random opponent for display (if any)
   const opponents =
     gameState?.players.filter((p) => p.id !== myPlayer?.id) || [];
   const opponent = selectedOpponent
     ? opponents.find((p) => p.id === selectedOpponent)
-    : opponents[0];
+    : opponents[0] || null;
 
-  // Loading state
-  if (!gameState) {
+  const renderOpponentHand = () => {
+    if (!opponent || !opponent.hand.length) return null;
+
+    // Return our HandGrid component for opponent cards
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-        <div className="text-center">
-          <div className="text-xl mb-4">Loading game...</div>
-          <div className="text-sm text-gray-400">Room: {initialRoomId}</div>
-          <div className="text-sm text-gray-400">
-            Player: {initialPlayerName}
+      <HandGrid
+        cards={opponent.hand}
+        playerId={opponent.id}
+        isCurrentPlayer={false}
+        isPlayerTurn={false}
+      />
+    );
+  };
+
+  const renderMyHand = () => {
+    if (!myHand.length) return null;
+
+    // Return our HandGrid component for player cards
+    return (
+      <HandGrid
+        cards={myHand}
+        playerId={myPlayer?.id || ""}
+        isCurrentPlayer={true}
+        isPlayerTurn={isPlayerTurn}
+      />
+    );
+  };
+
+  const renderOpponentSelector = () => {
+    if (!opponents.length) return null;
+
+    return (
+      <div className="flex justify-center mb-2">
+        <select
+          value={selectedOpponent || ""}
+          onChange={(e) => setSelectedOpponent(e.target.value || null)}
+          className="bg-gray-700 text-white px-2 py-1 rounded"
+        >
+          <option value="">Select Opponent</option>
+          {opponents.map((op) => (
+            <option
+              key={op.id}
+              value={op.id}
+            >
+              {op.name}{" "}
+              {op.id === gameState?.players[gameState.currentPlayerIndex]?.id
+                ? "(Turn)"
+                : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
+  if (!gameStarted) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-900 text-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold">Room: {initialRoomId}</h1>
+              <h2 className="text-lg">You: {initialPlayerName}</h2>
+              <div className="text-sm text-gray-400 mt-1">
+                Playing as:{" "}
+                {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+              </div>
+            </div>
+            <div>
+              {isHost &&
+                gameState?.players &&
+                gameState.players.length >= 2 && (
+                  <button
+                    onClick={handleStartGame}
+                    className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 font-semibold"
+                  >
+                    Start Game
+                  </button>
+                )}
+              {!isHost && (
+                <div className="text-gray-400 text-sm">
+                  Waiting for host to start...
+                </div>
+              )}
+              {gameState?.players && gameState.players.length < 2 && (
+                <div className="text-yellow-400 text-sm">
+                  Need at least 2 players to start
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-6 bg-gray-800 rounded-lg text-center">
+            <h2 className="text-xl font-bold mb-2">
+              {isHost
+                ? "You are the host! Click 'Start Game' when ready!"
+                : "Waiting for host to start the game..."}
+            </h2>
+            <p className="text-gray-300 mb-4">
+              Players: {gameState?.players.length || 0}/8
+            </p>
+
+            {/* Host indicator */}
+            {gameState?.players && gameState.players.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-yellow-400">
+                  Host:{" "}
+                  {gameState.players.find((p) => p.isHost)?.name || "Unknown"}
+                </p>
+              </div>
+            )}
+
+            {gameState?.players && gameState.players.length > 0 && (
+              <div className="mt-4">
+                <h3 className="font-semibold mb-3">Players in Room:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto">
+                  {gameState.players.map((player) => (
+                    <div
+                      key={player.id}
+                      className={`p-3 rounded-lg border ${
+                        player.id === currentSocketId
+                          ? "bg-blue-900 border-blue-600"
+                          : "bg-gray-700 border-gray-600"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                          {player.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span
+                          className={`font-medium ${
+                            player.isHost ? "text-yellow-400" : "text-white"
+                          }`}
+                        >
+                          {player.name}
+                          {player.isHost && " 👑"}
+                          {player.id === currentSocketId && " (You)"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Instructions for 2-player mode */}
+            <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-600">
+              <h3 className="text-sm font-bold text-blue-300 mb-2">
+                2-Player Mode Instructions
+              </h3>
+              <div className="text-xs text-blue-200 space-y-1">
+                <div>
+                  • Use the player switcher (top right) to alternate between
+                  players
+                </div>
+                <div>
+                  • Both players join the same room with different names
+                </div>
+                <div>
+                  • Switch perspectives when it's the other player's turn
+                </div>
+                <div>
+                  • Current player:{" "}
+                  <span className="font-bold">
+                    {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    );
-  }
-
-  // Game ended state
-  if (gameEnded) {
-    return (
-      <GameEndScreen
-        gameState={gameState}
-        myPlayer={myPlayer}
-        onPlayAgain={handlePlayAgain}
-      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">🎴 Declare</h1>
-          <div className="text-gray-300 text-sm">
-            Room: {initialRoomId} | You: {initialPlayerName} |
-            {gameStarted
-              ? ` Round ${gameState.roundNumber}`
-              : " Waiting to start"}
+    <div className="min-h-screen p-6 bg-gray-900 text-white">
+      {/* Game End Screen */}
+      {gameEnded && <GameEndScreen onPlayAgain={handlePlayAgain} />}
+
+      {/* Declare Modal */}
+      <DeclareModal
+        isOpen={showDeclareModal}
+        onClose={() => setShowDeclareModal(false)}
+        onConfirm={handleConfirmDeclare}
+        playerHand={myHand}
+      />
+
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h4 className="text-xl font-bold">Room: {initialRoomId}</h4>
+            <h5 className="text-sm text-gray-300">You: {initialPlayerName}</h5>
+            <div className="text-xs text-gray-400">
+              Playing as:{" "}
+              {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
+            </div>
+          </div>
+
+          <div className="text-right">
+            <p className="text-sm">
+              {isPlayerTurn
+                ? "🟢 Your Turn"
+                : `⏳ ${
+                    gameState?.players[gameState.currentPlayerIndex]?.name
+                  }'s Turn`}
+            </p>
+            <div className="text-xs text-gray-400 mt-1">
+              Round {gameState?.roundNumber || 1}
+            </div>
           </div>
         </div>
 
-        {/* PRE-GAME LOBBY */}
-        {!gameStarted && (
-          <div className="text-center mb-8">
-            <div className="bg-gray-700 rounded-lg p-6 mb-4 max-w-md mx-auto">
-              <h2 className="text-xl font-bold text-white mb-4">Game Lobby</h2>
-              <div className="text-gray-300 mb-4">
-                Players: {gameState.players.length}/2
-              </div>
-
-              <div className="space-y-2 mb-4">
-                {gameState.players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex justify-between items-center bg-gray-600 rounded p-2"
-                  >
-                    <span className="text-white">{player.name}</span>
-                    <span className="text-gray-400 text-sm">
-                      {player.isHost ? "Host" : "Player"}
-                      {player.id === currentSocketId ? " (You)" : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {isHost && gameState.players.length >= 2 && (
-                <button
-                  onClick={handleStartGame}
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                >
-                  Start Game
-                </button>
-              )}
-
-              {!isHost && (
-                <div className="text-gray-400 text-sm">
-                  Waiting for host to start the game...
+        {/* Main Game Board Layout */}
+        <div className="flex flex-col gap-6 w-full">
+          {/* Opponent's Cards Section */}
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <h3 className="text-center mb-3 font-semibold">
+              {opponent ? "Opponent" : "No Opponents"}
+            </h3>
+            {opponent ? (
+              <>
+                <div className="mb-3">
+                  <PlayerInfo
+                    name={opponent.name}
+                    isHost={opponent.isHost}
+                    isCurrentTurn={
+                      gameState?.players[gameState.currentPlayerIndex]?.id ===
+                      opponent.id
+                    }
+                    isCurrentPlayer={false}
+                  />
                 </div>
+                {renderOpponentHand()}
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                Waiting for another player...
+              </div>
+            )}
+            {renderOpponentSelector()}
+          </div>
+
+          {/* Middle Section - Deck and Discard Pile */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-800 p-4 rounded-lg relative">
+              <h3 className="text-center mb-3 font-semibold">Deck</h3>
+              <div className="flex justify-center">
+                <Deck
+                  cardsRemaining={deckSize}
+                  onDeckClick={
+                    isPlayerTurn && !drawnCard ? handleDrawCard : undefined
+                  }
+                />
+              </div>
+              {isPlayerTurn && !drawnCard && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               )}
+              <div className="text-center mt-2 text-xs text-gray-400">
+                {isPlayerTurn && !drawnCard
+                  ? "Click to draw"
+                  : `${deckSize} cards`}
+              </div>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-center mb-3 font-semibold">Discard</h3>
+              <div className="flex justify-center">
+                <div
+                  onClick={
+                    drawnCard && isPlayerTurn
+                      ? handleDiscardDrawnCard
+                      : undefined
+                  }
+                  className={
+                    drawnCard && isPlayerTurn
+                      ? "cursor-pointer hover:scale-105 transition-transform"
+                      : ""
+                  }
+                >
+                  <DiscardPile
+                    topCard={topDiscardCard}
+                    count={gameState?.discardPile.length || 0}
+                    onDiscardClick={
+                      drawnCard && isPlayerTurn
+                        ? handleDiscardDrawnCard
+                        : undefined
+                    }
+                  />
+                </div>
+              </div>
+              <div className="text-center mt-2 text-xs text-gray-400">
+                {drawnCard && isPlayerTurn ? (
+                  <span className="text-green-300">
+                    Click to discard drawn card
+                  </span>
+                ) : topDiscardCard ? (
+                  `Top: ${topDiscardCard.rank}${
+                    topDiscardCard.suit === "hearts"
+                      ? "♥"
+                      : topDiscardCard.suit === "diamonds"
+                      ? "♦"
+                      : topDiscardCard.suit === "clubs"
+                      ? "♣"
+                      : "♠"
+                  }`
+                ) : (
+                  "Empty"
+                )}
+              </div>
             </div>
           </div>
-        )}
 
-        {/* MAIN GAME LAYOUT - 3 COLUMNS */}
-        {gameStarted && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            {/* LEFT COLUMN - OPPONENT */}
-            <div className="space-y-4">
-              <div className="bg-gray-700 rounded-lg p-6">
-                <h3 className="text-center text-white font-bold text-lg mb-4">
-                  Opponent
-                </h3>
-
-                {opponent ? (
-                  <>
-                    <PlayerInfo
-                      player={opponent}
-                      isCurrentPlayer={false}
-                      isPlayerTurn={
-                        gameState.currentPlayerIndex ===
-                        gameState.players.findIndex((p) => p.id === opponent.id)
-                      }
-                    />
-                    <div className="mt-6">
-                      <HandGrid
-                        cards={opponent.hand}
-                        playerId={opponent.id}
-                        isCurrentPlayer={false}
-                        isPlayerTurn={false}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    Waiting for opponent...
-                  </div>
-                )}
-
-                {/* Opponent selector if multiple */}
-                {opponents.length > 1 && (
-                  <div className="mt-4">
-                    <label className="block text-gray-300 text-sm mb-2">
-                      Viewing:
-                    </label>
-                    <select
-                      value={selectedOpponent || opponents[0]?.id || ""}
-                      onChange={(e) => setSelectedOpponent(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-600 text-white rounded"
-                    >
-                      {opponents.map((opp) => (
-                        <option
-                          key={opp.id}
-                          value={opp.id}
-                        >
-                          {opp.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* CENTER COLUMN - GAME AREA */}
-            <div className="space-y-6">
-              {/* Deck and Discard Area */}
-              <div className="bg-gray-700 rounded-lg p-6">
-                <h3 className="text-center text-white font-bold text-lg mb-6">
-                  Game Area
-                </h3>
-
-                <div className="flex justify-center items-center space-x-12">
-                  {/* Deck */}
-                  <div className="text-center">
-                    <div className="mb-2">
-                      <Deck
-                        cardCount={deckSize}
-                        onDrawCard={handleDrawCard}
-                        canDraw={isPlayerTurn && !drawnCard}
-                      />
-                    </div>
-                    <div className="text-xs text-gray-300">
-                      {isPlayerTurn && !drawnCard
-                        ? "Click to draw"
-                        : `${deckSize} cards`}
-                    </div>
-                  </div>
-
-                  {/* Discard Pile */}
-                  <div className="text-center">
-                    <div className="mb-2">
-                      <DiscardPile
-                        topCard={topDiscardCard}
-                        cardCount={gameState.discardPile.length}
-                        onDiscardClick={
-                          drawnCard && isPlayerTurn
-                            ? handleDiscardDrawnCard
-                            : undefined
-                        }
-                      />
-                    </div>
-                    <div className="text-xs text-gray-300">
-                      {drawnCard && isPlayerTurn
-                        ? "Click to discard"
-                        : "Discard pile"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Drawn Card */}
-              {drawnCard && (
-                <div className="bg-gray-700 rounded-lg p-6">
-                  <h3 className="text-center text-white font-bold mb-4">
-                    You Drew
-                  </h3>
-                  <div className="flex justify-center">
-                    <Card
-                      card={drawnCard}
-                      isRevealed={true}
-                      onClick={handleDiscardDrawnCard}
-                      className="cursor-pointer hover:ring-2 hover:ring-red-400 transition-all"
-                    />
-                  </div>
-                  <div className="text-center mt-4 text-gray-300 text-sm">
-                    Click to discard, or click your cards to swap
-                  </div>
-                </div>
-              )}
-
-              {/* Turn Indicator */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <div className="text-center">
-                  {isPlayerTurn ? (
-                    <div className="text-green-400 font-bold text-lg">
-                      🎯 Your Turn
-                    </div>
-                  ) : (
-                    <div className="text-gray-300">
-                      Waiting for{" "}
-                      {gameState.players[gameState.currentPlayerIndex]?.name}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT COLUMN - YOUR CARDS & ACTIONS */}
-            <div className="space-y-4">
-              {/* Your Cards */}
-              <div className="bg-gray-700 rounded-lg p-6">
-                <h3 className="text-center text-white font-bold text-lg mb-4">
-                  Your Cards
-                </h3>
-
-                {myPlayer && (
-                  <>
-                    <PlayerInfo
-                      player={myPlayer}
-                      isCurrentPlayer={true}
-                      isPlayerTurn={isPlayerTurn}
-                    />
-                    <div className="mt-6">
-                      <HandGrid
-                        cards={myHand}
-                        playerId={myPlayer.id}
-                        isCurrentPlayer={true}
-                        isPlayerTurn={isPlayerTurn}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Action Panel */}
-              <ActionPanel
-                isPlayerTurn={isPlayerTurn}
-                onDeclare={handleDeclare}
-                drawnCard={drawnCard}
+          {/* My Cards Section */}
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <div className="mb-3">
+              <PlayerInfo
+                name={myPlayer?.name || initialPlayerName}
+                isHost={isHost}
+                isCurrentTurn={isPlayerTurn}
+                isCurrentPlayer={true}
               />
             </div>
+            {renderMyHand()}
           </div>
-        )}
 
-        {/* Declare Modal */}
-        {showDeclareModal && (
-          <DeclareModal
-            isOpen={showDeclareModal}
-            onClose={() => setShowDeclareModal && setShowDeclareModal(false)}
-            onConfirm={handleConfirmDeclare}
-          />
-        )}
+          {/* Drawn Card Section */}
+          {drawnCard && (
+            <div className="bg-gray-800 p-4 rounded-lg">
+              <h3 className="text-center mb-3 font-semibold">Drawn Card</h3>
+              <div className="flex justify-center">
+                <Card
+                  suit={drawnCard.suit}
+                  rank={drawnCard.rank}
+                  isRevealed={true}
+                  isSelected={false}
+                />
+              </div>
+              <div className="text-center mt-2 text-xs text-gray-400">
+                Click hand card to swap • Click discard pile to discard
+              </div>
+              {selectedPower && (
+                <div className="text-center mt-1 text-xs text-purple-300">
+                  Power preview: {selectedPower} (activates when discarded)
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Special Power Instructions */}
+          {powerInstructions && (
+            <div className="bg-purple-800 p-4 rounded-lg">
+              <div className="flex items-center justify-center">
+                <div>
+                  <h3 className="text-lg font-bold text-center mb-2">
+                    Special Power Active
+                  </h3>
+                  <p className="text-center">{powerInstructions}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Panel */}
+          <div className="mt-2">
+            <ActionPanel
+              isPlayerTurn={isPlayerTurn}
+              onDeclare={handleDeclare}
+              drawnCard={drawnCard}
+            />
+          </div>
+
+          {/* Current Player Turn Indicator */}
+          <div className="bg-gray-700 p-3 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <span className="text-gray-300">Current Turn:</span>
+                <span className="ml-2 font-semibold text-white">
+                  {gameState?.players[gameState.currentPlayerIndex]?.name ||
+                    "Unknown"}
+                </span>
+              </div>
+              <div className="text-xs text-gray-400">
+                {isPlayerTurn && (
+                  <span className="text-green-400 animate-pulse">
+                    ● Your turn
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Game Status */}
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="bg-gray-700 p-2 rounded text-center">
+              <div className="text-gray-300">Players</div>
+              <div className="font-bold">{gameState?.players.length || 0}</div>
+            </div>
+            <div className="bg-gray-700 p-2 rounded text-center">
+              <div className="text-gray-300">Cards Left</div>
+              <div className="font-bold">{deckSize}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-export default GameBoard;

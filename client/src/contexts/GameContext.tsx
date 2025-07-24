@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// client/src/contexts/GameContext.tsx - Updated with King power card revelation
+// client/src/contexts/GameContext.tsx - Updated with separated power activation
 import React, {
   createContext,
   useState,
@@ -70,6 +70,18 @@ interface GameContextType {
     selections: Array<{ playerId: string; cardIndex: number }>
   ) => void;
 
+  // NEW: Power activation state
+  pendingPowerActivation: {
+    cardRank: string;
+    playerId: string;
+  } | null;
+  setPendingPowerActivation: (
+    data: {
+      cardRank: string;
+      playerId: string;
+    } | null
+  ) => void;
+
   // Temporary reveal state
   temporaryRevealedCards: number[];
   setTemporaryRevealedCards: (indices: number[]) => void;
@@ -96,6 +108,10 @@ interface GameContextType {
   handleSelectCard: (card: Card) => void;
   handleCardClick: (playerId: string, cardIndex: number) => void;
   handleViewBottomCards: () => void;
+
+  // NEW: Power activation actions
+  handleActivatePower: () => void;
+  handleSkipPowerActivation: () => void;
 
   // UI state
   showDeclareModal: boolean;
@@ -156,6 +172,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [lastAction, setLastAction] = useState<GameAction | null>(null);
   const [hasDrawnFirstCard, setHasDrawnFirstCard] = useState(false);
 
+  // NEW: Power activation state
+  const [pendingPowerActivation, setPendingPowerActivation] = useState<{
+    cardRank: string;
+    playerId: string;
+  } | null>(null);
+
   // Swap selection state for Q/K powers
   const [swapSelections, setSwapSelections] = useState<
     Array<{ playerId: string; cardIndex: number }>
@@ -191,9 +213,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     } | null;
   } | null>(null);
 
-  const [hasShownTransferNotification, setHasShownTransferNotification] =
-    useState(false);
-
   // Listen for player switches
   useEffect(() => {
     const handlePlayerSwitch = (event: CustomEvent) => {
@@ -206,6 +225,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setTemporaryRevealedCards([]);
       setOpponentRevealedCard(null);
       setKingPowerReveal(null);
+      setPendingPowerActivation(null); // NEW: Reset pending power activation
 
       console.log(`GameContext: Switched to ${playerId}`);
     };
@@ -266,6 +286,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setTemporaryRevealedCards([]);
       setOpponentRevealedCard(null);
       setKingPowerReveal(null);
+      setPendingPowerActivation(null); // NEW: Reset pending power activation
     }
   }, [gameState?.gameStatus]);
 
@@ -324,9 +345,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           setSwapSelections([]);
         }
       } else {
-        setSelectedPower(null);
-        setPowerInstructions(null);
-        setSwapSelections([]);
+        // Only clear power state if there's no pending activation
+        if (!pendingPowerActivation) {
+          setSelectedPower(null);
+          setPowerInstructions(null);
+          setSwapSelections([]);
+        }
       }
     };
 
@@ -345,13 +369,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           setCardAnimation("draw");
           setAnimatingCardId(cardData.card.id);
 
-          // Only show power preview, don't activate power until discarded
+          // UPDATED: Only show power preview, don't activate power until discarded
           if (
             ["7", "8", "9", "10", "J", "Q", "K"].includes(cardData.card.rank)
           ) {
             setSelectedPower(cardData.card.rank);
             setPowerInstructions(
-              `Drawn ${cardData.card.rank} - power will activate when discarded`
+              `Drawn ${cardData.card.rank} - power will activate when discarded (optional)`
             );
           } else {
             setSelectedPower(null);
@@ -366,7 +390,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setCardAnimation("draw");
         setAnimatingCardId((cardData as Card).id);
 
-        // Only show power preview, don't activate power until discarded
+        // UPDATED: Only show power preview, don't activate power until discarded
         if (
           ["7", "8", "9", "10", "J", "Q", "K"].includes((cardData as Card).rank)
         ) {
@@ -374,12 +398,33 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           setPowerInstructions(
             `Drawn ${
               (cardData as Card).rank
-            } - power will activate when discarded`
+            } - power will activate when discarded (optional)`
           );
         } else {
           setSelectedPower(null);
           setPowerInstructions(null);
         }
+      }
+    };
+
+    // NEW: Handle power discard completion event
+    const handlePowerDiscardCompleted = (data: {
+      playerId: string;
+      cardRank: string;
+      canActivate: boolean;
+    }) => {
+      console.log(`[${currentPlayerId}] Power discard completed:`, data);
+
+      // If this player discarded a power card, offer them the option to activate it
+      if (data.playerId === currentPlayerId && data.canActivate) {
+        setPendingPowerActivation({
+          cardRank: data.cardRank,
+          playerId: data.playerId,
+        });
+        setSelectedPower(data.cardRank);
+        setPowerInstructions(
+          `${data.cardRank} discarded - click "Activate Power" to use it (optional)`
+        );
       }
     };
 
@@ -457,7 +502,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // For now, just log and proceed with the swap automatically
     };
 
-    // NEW: Handle King power reveal event
+    // Handle King power reveal event
     const handleKingPowerReveal = (data: KingPowerReveal) => {
       console.log(`[${currentPlayerId}] King power reveal:`, data);
 
@@ -501,7 +546,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // NEW: Handle King power swap completed event
+    // Handle King power swap completed event
     const handlePowerSwapCompleted = (data: {
       powerUserId: string;
       powerUserName: string;
@@ -519,50 +564,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setKingPowerReveal(null);
       setTemporaryRevealedCards([]);
       setOpponentRevealedCard(null);
+      setSwapSelections([]);
     };
-
-    socket.on("game-state-update", handleGameStateUpdate);
-    socket.on("card-drawn", handleCardDrawn);
-    socket.on("card-revealed", handleCardRevealed);
-    socket.on("game-ended", handleGameEnded);
-    socket.on("penalty-card", handlePenaltyCard);
-    socket.on("power-peek-result", handlePowerPeekResult);
-    socket.on("power-swap-preview", handlePowerSwapPreview);
-    socket.on("king-power-reveal", handleKingPowerReveal);
-    socket.on("power-swap-completed", handlePowerSwapCompleted);
-    // Add this handler in the socket event listeners section of GameContext.tsx
-
-    // Handle elimination card transfer with deduplication
-    let lastTransferTimestamp = 0;
-    const handleEliminationCardTransfer = (data: any) => {
-      // Deduplicate based on timestamp
-      const currentTime = Date.now();
-      if (currentTime - lastTransferTimestamp < 100) {
-        console.log(
-          `[${currentPlayerId}] Ignoring duplicate elimination transfer event`
-        );
-        return;
-      }
-      lastTransferTimestamp = currentTime;
-
-      console.log(`[${currentPlayerId}] Elimination card transfer:`, data);
-
-      // Show notification only once
-      if (!hasShownTransferNotification) {
-        setLastAction({
-          type: "elimination-transfer",
-          playerId: data.eliminatingPlayerId || currentPlayerId,
-          message: `${data.eliminatingPlayerName} eliminated ${data.eliminatedCard.rank} from ${data.cardOwnerName}'s hand and gave them a ${data.givenCard.rank}!`,
-          timestamp: Date.now(),
-        });
-        setHasShownTransferNotification(true);
-
-        // Reset flag after a delay
-        setTimeout(() => setHasShownTransferNotification(false), 1000);
-      }
-    };
-
-    socket.on("elimination-card-transfer", handleEliminationCardTransfer);
 
     const handleEliminationCardSelectionRequired = (data: {
       eliminatingPlayerId: string;
@@ -585,14 +588,40 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    socket.on("game-state-update", handleGameStateUpdate);
+    socket.on("card-drawn", handleCardDrawn);
+    socket.on("power-discard-completed", handlePowerDiscardCompleted); // NEW
+    socket.on("card-revealed", handleCardRevealed);
+    socket.on("game-ended", handleGameEnded);
+    socket.on("penalty-card", handlePenaltyCard);
+    socket.on("power-peek-result", handlePowerPeekResult);
+    socket.on("power-swap-preview", handlePowerSwapPreview);
+    socket.on("king-power-reveal", handleKingPowerReveal);
+    socket.on("power-swap-completed", handlePowerSwapCompleted);
     socket.on(
       "elimination-card-selection-required",
       handleEliminationCardSelectionRequired
     );
 
+    socket.on("elimination-card-transfer", (data) => {
+      console.log(`[${currentPlayerId}] Elimination card transfer:`, data);
+      const {
+        eliminatingPlayerName,
+        cardOwnerName,
+        eliminatedCard,
+        givenCard,
+        position,
+      } = data;
+
+      // Show notification about the card transfer
+      const message = `${eliminatingPlayerName} eliminated ${eliminatedCard.rank} from ${cardOwnerName}'s hand and gave them a ${givenCard.rank}!`;
+      console.log(message);
+    });
+
     return () => {
       socket.off("game-state-update", handleGameStateUpdate);
       socket.off("card-drawn", handleCardDrawn);
+      socket.off("power-discard-completed", handlePowerDiscardCompleted); // NEW
       socket.off("card-revealed", handleCardRevealed);
       socket.off("game-ended", handleGameEnded);
       socket.off("penalty-card", handlePenaltyCard);
@@ -605,7 +634,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         handleEliminationCardSelectionRequired
       );
     };
-  }, [currentPlayerId]); // Add currentPlayerId as dependency
+  }, [currentPlayerId, pendingPowerActivation]); // Add pendingPowerActivation as dependency
 
   // Helper function to get power instructions
   const getPowerInstructions = (power: string): string => {
@@ -637,7 +666,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [cardAnimation, animatingCardId]);
 
-  // Game action handlers (keeping all existing handlers the same)
+  // Game action handlers
   const handleDrawCard = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
       console.log(
@@ -713,10 +742,57 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       cardId: drawnCard.id,
     });
 
-    // Reset selections - but don't clear power instructions yet
-    // They will be updated by the game state when power activates
+    // Reset selections - power activation will be handled by server response
     setSelectedCard(null);
     setDrawnCard(null);
+    // Don't clear power state here - wait for server response
+  };
+
+  // NEW: Handle power activation
+  const handleActivatePower = () => {
+    if (!pendingPowerActivation || !roomId || !myPlayer) {
+      console.log(
+        `[${currentPlayerId}] Cannot activate power - no pending activation`
+      );
+      return;
+    }
+
+    console.log(
+      `[${currentPlayerId}] Activating power:`,
+      pendingPowerActivation.cardRank
+    );
+
+    socket.emit("activate-power", {
+      roomId,
+      playerId: myPlayer.id,
+      power: pendingPowerActivation.cardRank,
+    });
+
+    // Clear pending activation but keep power instructions for actual usage
+    setPendingPowerActivation(null);
+  };
+
+  // NEW: Handle skipping power activation
+  const handleSkipPowerActivation = () => {
+    if (!pendingPowerActivation || !roomId || !myPlayer) {
+      return;
+    }
+
+    console.log(
+      `[${currentPlayerId}] Skipping power activation:`,
+      pendingPowerActivation.cardRank
+    );
+
+    socket.emit("skip-power-activation", {
+      roomId,
+      playerId: myPlayer.id,
+      power: pendingPowerActivation.cardRank,
+    });
+
+    // Clear all power-related state
+    setPendingPowerActivation(null);
+    setSelectedPower(null);
+    setPowerInstructions(null);
   };
 
   const handleEliminateCard = (cardId: string) => {
@@ -752,6 +828,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     setSelectedCard(null);
   };
+
   const handleEliminationCardSelected = (cardIndex: number) => {
     if (!eliminationCardSelection?.eliminatedCardInfo) return;
 
@@ -763,36 +840,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       eliminatedCard,
     } = eliminationCardSelection.eliminatedCardInfo;
 
-    // CRITICAL FIX: Get the actual card from the non-padded hand array
-    const eliminatingPlayer = gameState?.players.find(
-      (p) => p.id === eliminatingPlayerId
-    );
-    if (!eliminatingPlayer) {
-      console.error("Eliminating player not found");
-      return;
-    }
-
-    // Find the actual card at the selected index, skipping null positions
-    let actualCardIndex = -1;
-    let nonNullCount = 0;
-
-    for (let i = 0; i < eliminatingPlayer.hand.length; i++) {
-      if (eliminatingPlayer.hand[i] !== null) {
-        if (nonNullCount === cardIndex) {
-          actualCardIndex = i;
-          break;
-        }
-        nonNullCount++;
-      }
-    }
-
-    if (actualCardIndex === -1) {
-      console.error(`No valid card found at UI index ${cardIndex}`);
-      return;
-    }
-
     console.log(
-      `[${currentPlayerId}] Selected card at UI index ${cardIndex} (actual index ${actualCardIndex}) to give to ${cardOwnerName}`
+      `[${currentPlayerId}] Selected card at index ${cardIndex} to give to ${cardOwnerName}`
     );
 
     socket.emit("complete-elimination-card-give", {
@@ -800,7 +849,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       eliminatingPlayerId,
       cardOwnerId,
       cardOwnerName,
-      selectedCardIndex: actualCardIndex, // Use the actual array index, not UI index
+      selectedCardIndex: cardIndex,
       targetCardIndex: targetIndex,
       eliminatedCard,
     });
@@ -808,6 +857,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // Clear the selection state
     setEliminationCardSelection(null);
   };
+
   const handleDeclare = () => {
     if (!isPlayerTurn || !roomId || !myPlayer) {
       console.log(
@@ -838,6 +888,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setDrawnCard(null);
     setSelectedPower(null);
     setPowerInstructions(null);
+    setPendingPowerActivation(null);
     setShowDeclareModal(false);
   };
 
@@ -881,22 +932,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       console.log(
         `[${currentPlayerId}] Cannot handle card click - missing room or player data`
       );
-      return;
-    }
-
-    // Get the actual card being clicked
-    const targetPlayer = gameState?.players.find((p) => p.id === playerId);
-    const clickedCard = targetPlayer?.hand[cardIndex];
-
-    console.log(`[${currentPlayerId}] Clicked card:`, clickedCard);
-    console.log(`[${currentPlayerId}] Current drawn card:`, drawnCard);
-
-    // PRIORITY 1: If this is the current player's card and there's a drawn card, handle swap
-    if (playerId === myPlayer.id && drawnCard && clickedCard) {
-      console.log(
-        `[${currentPlayerId}] DIRECT SWAP: Swapping drawn ${drawnCard.rank} with clicked ${clickedCard.rank}`
-      );
-      handleSwapWithDrawnCard(clickedCard.id);
       return;
     }
 
@@ -974,16 +1009,30 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setSwapSelections([]);
           }
         }
-      }
-    } else {
-      console.log(`[${currentPlayerId}] Regular card click - no active power`);
 
-      // For own cards without active power, delegate to handleSelectCard
-      if (playerId === myPlayer.id && clickedCard) {
-        console.log(`[${currentPlayerId}] Delegating to handleSelectCard`);
-        handleSelectCard(clickedCard);
+        // Update power instructions
+        setPowerInstructions(getPowerInstructions(activePower));
       }
+      return;
     }
+
+    // Get the target player
+    const targetPlayer = gameState?.players.find((p) => p.id === playerId);
+    if (!targetPlayer) {
+      console.error("Target player not found");
+      return;
+    }
+
+    // Check if the card at this index is null (eliminated)
+    if (targetPlayer.hand[cardIndex] === null) {
+      console.log(
+        `[${currentPlayerId}] Cannot interact with eliminated card at position ${cardIndex}`
+      );
+      return;
+    }
+
+    // No active power - just regular card click (no special behavior)
+    console.log(`[${currentPlayerId}] Regular card click - no active power`);
   };
 
   // Function to view the bottom two cards at the start of the game
@@ -1022,6 +1071,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSwapSelections([]);
     setShowDeclareModal(false);
     setEliminationCardSelection(null);
+    setPendingPowerActivation(null); // NEW: Reset pending power activation
   };
 
   return (
@@ -1053,6 +1103,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setKingPowerReveal,
         swapSelections,
         setSwapSelections,
+        pendingPowerActivation, // NEW
+        setPendingPowerActivation, // NEW
         handleDrawCard,
         handleSwapWithDrawnCard,
         handleDiscardDrawnCard,
@@ -1062,6 +1114,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         handleSelectCard,
         handleCardClick,
         handleViewBottomCards,
+        handleActivatePower, // NEW
+        handleSkipPowerActivation, // NEW
         showDeclareModal,
         setShowDeclareModal,
         canDiscardDrawnCard,

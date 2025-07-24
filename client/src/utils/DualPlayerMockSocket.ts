@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// client/src/utils/DualPlayerMockSocket.ts - Updated King power to properly reveal cards
+// client/src/utils/DualPlayerMockSocket.ts - Updated with separated power activation
 import { BrowserEventEmitter } from "./BrowserEventEmitter";
 import {
   createDeck,
@@ -15,6 +15,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   private static instances: Map<string, DualPlayerMockSocket> = new Map();
   private static sharedRooms: Record<string, GameState> = {};
   private static drawnCards: Record<string, Card> = {};
+  private static pendingPowers: Record<
+    string,
+    { power: string; playerId: string }
+  > = {}; // NEW: Track pending power activations
 
   private connected = true;
   private id: string;
@@ -119,7 +123,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       event === "use-power-on-own-card" ||
       event === "use-power-on-opponent-card" ||
       event === "complete-elimination-card-give" ||
-      event === "use-power-swap"
+      event === "use-power-swap" ||
+      event === "activate-power" || // NEW
+      event === "skip-power-activation" // NEW
     ) {
       this.handleClientEvents(event, data);
       return true;
@@ -165,7 +171,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         this.handleCompleteEliminationCardGive(data);
         break;
       case "discard-drawn-card":
-        this.handleDiscardDrawnCard(data);
+        this.handleDiscardDrawnCard(data); // UPDATED: No longer immediately activates powers
+        break;
+      case "activate-power": // NEW: Explicit power activation
+        this.handleActivatePower(data);
+        break;
+      case "skip-power-activation": // NEW: Skip power activation
+        this.handleSkipPowerActivation(data);
         break;
       case "swap-drawn-card":
         this.handleSwapDrawnCard(data);
@@ -186,8 +198,6 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         console.log(`❓ Unhandled event: ${event}`);
     }
   }
-
-  // ... (keeping all the existing handler methods the same until handleUsePowerSwap)
 
   private handleJoinRoom({
     roomId,
@@ -337,6 +347,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     });
 
     DualPlayerMockSocket.drawnCards = {};
+    DualPlayerMockSocket.pendingPowers = {}; // NEW: Reset pending powers
 
     DualPlayerMockSocket.broadcastToAll("start-game", { roomId });
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
@@ -384,6 +395,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
   }
 
+  // UPDATED: Separated discard from power activation
   private handleDiscardDrawnCard({
     roomId,
     playerId,
@@ -405,17 +417,18 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       return;
     }
 
+    // Add to discard pile
     gameState.discardPile.push(drawnCard);
     console.log(
       `♻️ ${currentPlayer.name} discarded: ${drawnCard.rank} of ${drawnCard.suit}`
     );
 
-    // Reset elimination tracking
+    // Reset elimination tracking for all players when new card is discarded
     gameState.players.forEach((player) => {
       player.hasEliminatedThisRound = false;
     });
 
-    // Apply card powers
+    // UPDATED: Handle Jack immediately (since it's just turn skip, no choice needed)
     if (drawnCard.rank === "J") {
       const nextPlayerIndex =
         (gameState.currentPlayerIndex + 1) % gameState.players.length;
@@ -425,34 +438,117 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       );
     }
 
-    if (["7", "8", "9", "10", "Q", "K"].includes(drawnCard.rank)) {
-      const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
-      if (playerIndex !== -1) {
-        gameState.players[playerIndex].activePower = drawnCard.rank;
-        console.log(
-          `⚡ ${drawnCard.rank} power activated for ${gameState.players[playerIndex].name}`
-        );
+    // UPDATED: Check if this is a power card that can be activated optionally
+    const canActivatePower = ["7", "8", "9", "10", "Q", "K"].includes(
+      drawnCard.rank
+    );
+    if (canActivatePower) {
+      // Store pending power activation instead of activating immediately
+      DualPlayerMockSocket.pendingPowers[playerId] = {
+        power: drawnCard.rank,
+        playerId: playerId,
+      };
 
-        delete DualPlayerMockSocket.drawnCards[playerId];
-        gameState.lastAction = {
-          type: "discard",
-          playerId,
-          cardId,
-          timestamp: Date.now(),
-        };
-        DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
-        return;
-      }
+      console.log(
+        `💡 ${drawnCard.rank} power available for ${currentPlayer.name} - waiting for activation decision`
+      );
+
+      // Notify the player they can activate the power
+      DualPlayerMockSocket.broadcastToAll("power-discard-completed", {
+        playerId,
+        cardRank: drawnCard.rank,
+        canActivate: true,
+      });
     }
 
+    // Clear the drawn card from storage
     delete DualPlayerMockSocket.drawnCards[playerId];
+
     gameState.lastAction = {
       type: "discard",
       playerId,
       cardId,
       timestamp: Date.now(),
     };
+
+    // UPDATED: Always move to next player after discard, regardless of power
     DualPlayerMockSocket.moveToNextPlayer(gameState);
+    DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
+
+    // IMPORTANT: Elimination window is now ALWAYS available immediately after discard
+    // Players can eliminate cards even while power activation is pending
+  }
+
+  // NEW: Handle explicit power activation
+  private handleActivatePower({
+    roomId,
+    playerId,
+    power,
+  }: {
+    roomId: string;
+    playerId: string;
+    power: string;
+  }): void {
+    const gameState = DualPlayerMockSocket.sharedRooms[roomId];
+    if (!gameState) return;
+
+    const pendingPower = DualPlayerMockSocket.pendingPowers[playerId];
+    if (!pendingPower || pendingPower.power !== power) {
+      console.log(`❌ No pending power or power mismatch for ${playerId}`);
+      return;
+    }
+
+    const player = gameState.players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    // Activate the power
+    player.activePower = power;
+    console.log(`⚡ ${player.name} activated ${power} power`);
+
+    // Clear pending power
+    delete DualPlayerMockSocket.pendingPowers[playerId];
+
+    // Note: We don't move to next player here - let the player use their power
+    // The turn will advance after they use the power
+
+    gameState.lastAction = {
+      type: "discard", // Keep as discard action
+      playerId,
+      timestamp: Date.now(),
+      message: `${player.name} activated ${power} power`,
+    };
+
+    DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
+  }
+
+  // NEW: Handle skipping power activation
+  private handleSkipPowerActivation({
+    roomId,
+    playerId,
+    power,
+  }: {
+    roomId: string;
+    playerId: string;
+    power: string;
+  }): void {
+    const gameState = DualPlayerMockSocket.sharedRooms[roomId];
+    if (!gameState) return;
+
+    const pendingPower = DualPlayerMockSocket.pendingPowers[playerId];
+    if (!pendingPower || pendingPower.power !== power) {
+      console.log(`❌ No pending power or power mismatch for ${playerId}`);
+      return;
+    }
+
+    const player = gameState.players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    console.log(`🚫 ${player.name} skipped ${power} power activation`);
+
+    // Clear pending power
+    delete DualPlayerMockSocket.pendingPowers[playerId];
+
+    // Power is wasted, continue with normal game flow
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
 
@@ -916,7 +1012,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     }
   }
 
-  // FIXED: King power implementation with proper card revelation
+  // King power implementation with proper card revelation
   private handleUsePowerSwap({
     roomId,
     playerId,
@@ -1077,8 +1173,6 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     // Update game state
     DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
-
-  // Updated declare handler in DualPlayerMockSocket.ts
 
   private handleDeclare({
     roomId,

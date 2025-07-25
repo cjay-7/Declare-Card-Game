@@ -814,6 +814,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Check if eliminations are currently blocked
+    if (gameState?.eliminationBlocked) {
+      console.log(
+        `[${currentPlayerId}] Cannot eliminate - eliminations are blocked after first elimination`
+      );
+      return;
+    }
+
     // Check if player has already eliminated this round
     if (myPlayer.hasEliminatedThisRound) {
       console.log(

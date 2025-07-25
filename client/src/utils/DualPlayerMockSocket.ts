@@ -15,6 +15,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
   private static instances: Map<string, DualPlayerMockSocket> = new Map();
   private static sharedRooms: Record<string, GameState> = {};
   private static drawnCards: Record<string, Card> = {};
+  private static eliminationLocks: Record<string, boolean> = {}; // Track elimination locks per room
 
   private connected = true;
   private id: string;
@@ -220,7 +221,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         declarer: null,
         lastAction: null,
         type: "view",
+        eliminationBlocked: false,
       };
+      DualPlayerMockSocket.eliminationLocks[roomId] = false; // Initialize elimination lock
       console.log(`🆕 Created new room: ${roomId}`);
     }
 
@@ -418,10 +421,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       `♻️ ${currentPlayer.name} discarded: ${drawnCard.rank} of ${drawnCard.suit}`
     );
 
-    // Reset elimination tracking
+    // Reset elimination tracking and lock
     gameState.players.forEach((player) => {
       player.hasEliminatedThisRound = false;
     });
+    DualPlayerMockSocket.eliminationLocks[roomId] = false;
+    gameState.eliminationBlocked = false;
+    console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
 
     // Apply card powers
     if (drawnCard.rank === "J") {
@@ -504,6 +510,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       gameState.players.forEach((player) => {
         player.hasEliminatedThisRound = false;
       });
+      DualPlayerMockSocket.eliminationLocks[roomId] = false;
+      gameState.eliminationBlocked = false;
+      console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
 
       delete DualPlayerMockSocket.drawnCards[playerId];
 
@@ -537,6 +546,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
 
+    // Check if elimination is already in progress for this room
+    if (DualPlayerMockSocket.eliminationLocks[roomId]) {
+      console.log(`🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`);
+      return;
+    }
+
     // Find the player trying to eliminate
     const eliminatingPlayerIndex = gameState.players.findIndex(
       (p) => p.id === playerId
@@ -548,6 +563,8 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       console.log("Player has already eliminated a card this round");
       return;
     }
+
+    // Don't set lock yet - wait to see if elimination is valid
 
     // Find which player owns the card being eliminated
     let cardOwnerIndex = -1;
@@ -583,7 +600,11 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
     if (canEliminate) {
-      // Valid elimination
+      // Valid elimination - NOW set the lock to prevent others
+      DualPlayerMockSocket.eliminationLocks[roomId] = true;
+      gameState.eliminationBlocked = true;
+      console.log(`🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`);
+
       const eliminatedCard = { ...cardToEliminate };
 
       console.log(
@@ -681,8 +702,11 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
     }
 
+    // Keep elimination lock active - only release on next discard
+    console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+
     gameState.lastAction = {
-      type: "discard",
+      type: "elimination",
       playerId,
       cardId,
       timestamp: Date.now(),

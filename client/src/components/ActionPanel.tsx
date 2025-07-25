@@ -24,7 +24,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
   // Check elimination eligibility
   const canEliminate =
-    gameState?.discardPile && gameState.discardPile.length > 0;
+    gameState?.discardPile && 
+    gameState.discardPile.length > 0 && 
+    !gameState.eliminationBlocked;
   const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
 
   const getPowerChoiceInstructions = (power: string) => {

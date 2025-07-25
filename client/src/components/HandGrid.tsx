@@ -203,7 +203,7 @@ const HandGrid: React.FC<HandGridProps> = ({
           currentPlayerData?.hasEliminatedThisRound || false;
 
         const showEliminateButton =
-          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !(activePower && usingPower);
+          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !(activePower && usingPower) && !gameState?.eliminationBlocked;
 
         // Check if this card is selected for swapping
         const isSelectedForSwap = swapSelections.some(

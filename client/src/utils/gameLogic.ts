@@ -15,6 +15,7 @@ export type GameState = {
   declarer: string | null;
   lastAction: GameAction | null;
   type: "view";
+  eliminationBlocked: boolean; // Indicates if eliminations are currently blocked
 };
 
 export type Player = {
@@ -64,6 +65,7 @@ export const initGameState = (
     declarer: null,
     lastAction: null,
     type: "view",
+    eliminationBlocked: false, // Initialize elimination block status
   };
 };
 

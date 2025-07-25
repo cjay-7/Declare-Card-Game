@@ -24,6 +24,8 @@ const io = new Server(server, {
 
 // Game rooms storage - store all active game rooms
 const rooms = {};
+// Track elimination locks to prevent multiple simultaneous eliminations
+const eliminationLocks = {};
 
 // Helper function to get current player
 const getCurrentPlayer = (room) => {
@@ -65,6 +67,7 @@ io.on("connection", (socket) => {
         declarer: null,
         lastAction: null,
       };
+      eliminationLocks[roomId] = false; // Initialize elimination lock
     }
 
     // Check if player is already in the room
@@ -87,6 +90,7 @@ io.on("connection", (socket) => {
         score: 0,
         knownCards: [],
         skippedTurn: false,
+        hasEliminatedThisRound: false,
         connected: true,
       };
 
@@ -229,6 +233,13 @@ io.on("connection", (socket) => {
       cardId: cardId,
       timestamp: Date.now(),
     };
+
+    // Reset elimination tracking and lock for new round
+    room.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
+    eliminationLocks[roomId] = false;
+    console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
 
     // Apply special card powers if needed
     if (discardedCard.rank === "J") {
@@ -476,6 +487,126 @@ io.on("connection", (socket) => {
 
     // Leave the socket room
     socket.leave(roomId);
+  });
+
+  // Handle card elimination
+  socket.on("eliminate-card", ({ roomId, playerId, cardId }) => {
+    const room = rooms[roomId];
+    if (!room || room.gameStatus !== "playing") return;
+
+    // Check if elimination is already in progress for this room
+    if (eliminationLocks[roomId]) {
+      console.log(`🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`);
+      socket.emit("error", { message: "Another elimination is in progress" });
+      return;
+    }
+
+    // Find the player trying to eliminate
+    const eliminatingPlayerIndex = room.players.findIndex(
+      (p) => p.id === playerId
+    );
+    if (eliminatingPlayerIndex === -1) {
+      socket.emit("error", { message: "Player not found" });
+      return;
+    }
+
+    // Check if this player has already eliminated a card this round
+    if (room.players[eliminatingPlayerIndex].hasEliminatedThisRound) {
+      console.log("Player has already eliminated a card this round");
+      socket.emit("error", { message: "You have already eliminated a card this round" });
+      return;
+    }
+
+    // Don't set lock yet - wait to see if elimination is valid
+
+    // Find which player owns the card being eliminated
+    let cardOwnerIndex = -1;
+    let cardIndex = -1;
+    let cardToEliminate = null;
+
+    for (let i = 0; i < room.players.length; i++) {
+      const foundCardIndex = room.players[i].hand.findIndex(
+        (c) => c && c.id === cardId
+      );
+      if (foundCardIndex !== -1) {
+        cardOwnerIndex = i;
+        cardIndex = foundCardIndex;
+        cardToEliminate = room.players[i].hand[foundCardIndex];
+        break;
+      }
+    }
+
+    if (cardOwnerIndex === -1 || cardIndex === -1 || !cardToEliminate) {
+      socket.emit("error", { message: "Card not found or already eliminated" });
+      return;
+    }
+
+    // Check if elimination is valid (matches top discard card rank)
+    const topDiscardCard = room.discardPile.length > 0 
+      ? room.discardPile[room.discardPile.length - 1] 
+      : null;
+
+    const canEliminate = topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
+
+    if (canEliminate) {
+      // Valid elimination - NOW set the lock to prevent others
+      eliminationLocks[roomId] = true;
+      console.log(`🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`);
+
+      const eliminatedCard = { ...cardToEliminate };
+      
+      console.log(`✅ ${room.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${room.players[cardOwnerIndex].name}`);
+      
+      // Add the eliminated card to discard pile
+      room.discardPile.push(eliminatedCard);
+      
+      // Set the eliminated position to null
+      room.players[cardOwnerIndex].hand[cardIndex] = null;
+      
+      // Mark the eliminating player as having eliminated this round
+      room.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+      
+      // Emit successful elimination event
+      io.to(roomId).emit("card-eliminated", {
+        eliminatingPlayerId: playerId,
+        cardOwnerId: room.players[cardOwnerIndex].id,
+        cardIndex: cardIndex,
+        eliminatedCard: eliminatedCard
+      });
+    } else {
+      // Invalid elimination - apply penalty
+      console.log("❌ Invalid elimination - applying penalty");
+      
+      if (room.deck.length > 0) {
+        const penaltyCard = room.deck.pop();
+        penaltyCard.isRevealed = false;
+        
+        // Add penalty card to eliminating player's hand
+        room.players[eliminatingPlayerIndex].hand.push(penaltyCard);
+        
+        io.to(roomId).emit("penalty-card", {
+          playerId,
+          penaltyCard,
+          reason: "Invalid elimination attempt"
+        });
+      }
+      
+      room.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+    }
+
+    // Keep elimination lock active - only release on next discard
+    console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+
+    // Record this action
+    room.lastAction = {
+      type: "elimination",
+      playerId: playerId,
+      cardId: cardId,
+      timestamp: Date.now(),
+    };
+
+    // Update game state for all players
+    io.to(roomId).emit("game-state-update", room);
   });
 
   // Handle disconnections

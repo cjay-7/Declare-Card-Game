@@ -38,10 +38,11 @@ const HandGrid: React.FC<HandGridProps> = ({
   // Check if current player has an active power
   const currentPlayer = gameState?.players.find((p) => p.id === socket.getId());
   const activePower = currentPlayer?.activePower;
+  const usingPower = currentPlayer?.usingPower;
 
   // Check if this hand should show power interaction hints
   const canUsePowerOnThisHand =
-    activePower &&
+    activePower && usingPower &&
     ((["7", "8"].includes(activePower) && isCurrentPlayer) ||
       (["9", "10"].includes(activePower) && !isCurrentPlayer) ||
       ["Q", "K"].includes(activePower));
@@ -71,13 +72,6 @@ const HandGrid: React.FC<HandGridProps> = ({
       }, ActivePower: ${activePower || "none"}`
     );
 
-    // Handle elimination card selection mode
-    if (isEliminationSelectionActive && isCurrentPlayer && card !== null) {
-      console.log(`Selecting card at index ${cardIndex} to give to opponent`);
-      handleEliminationCardSelected(cardIndex);
-      return;
-    }
-
     // Check if trying to interact with eliminated card
     if (card === null) {
       console.log(
@@ -86,8 +80,17 @@ const HandGrid: React.FC<HandGridProps> = ({
       return;
     }
 
-    // FIXED: Handle card swapping with drawn card FIRST (highest priority)
-    if (drawnCard && isCurrentPlayer && !activePower) {
+    // Handle power usage FIRST (highest priority when power is being used)
+    if (activePower && canUsePowerOnThisHand) {
+      console.log(
+        `[POWER] Using ${activePower} power on card at index ${cardIndex}`
+      );
+      handleCardClick(playerId, cardIndex);
+      return;
+    }
+
+    // Handle card swapping with drawn card (second priority)
+    if (drawnCard && isCurrentPlayer && !(activePower && usingPower)) {
       console.log(
         `[SWAP] Attempting to swap drawn card ${drawnCard.rank} with hand card ${card.rank}`
       );
@@ -95,12 +98,10 @@ const HandGrid: React.FC<HandGridProps> = ({
       return;
     }
 
-    // Handle power usage
-    if (activePower && canUsePowerOnThisHand) {
-      console.log(
-        `[POWER] Using ${activePower} power on card at index ${cardIndex}`
-      );
-      handleCardClick(playerId, cardIndex);
+    // Handle elimination card selection mode (third priority)
+    if (isEliminationSelectionActive && isCurrentPlayer && card !== null) {
+      console.log(`Selecting card at index ${cardIndex} to give to opponent`);
+      handleEliminationCardSelected(cardIndex);
       return;
     }
 
@@ -202,7 +203,7 @@ const HandGrid: React.FC<HandGridProps> = ({
           currentPlayerData?.hasEliminatedThisRound || false;
 
         const showEliminateButton =
-          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !activePower;
+          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !(activePower && usingPower);
 
         // Check if this card is selected for swapping
         const isSelectedForSwap = swapSelections.some(
@@ -213,7 +214,7 @@ const HandGrid: React.FC<HandGridProps> = ({
         const showPowerGlow = canUsePowerOnThisHand && card !== null;
 
         // Show swap glow effect when there's a drawn card to swap
-        const showSwapGlow = drawnCard && isCurrentPlayer && !activePower;
+        const showSwapGlow = drawnCard && isCurrentPlayer && !(activePower && usingPower);
 
         // Check if this is a temporarily revealed opponent card by power
         const isTemporarilyRevealedOpponentCard =

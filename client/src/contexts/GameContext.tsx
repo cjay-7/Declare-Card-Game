@@ -43,6 +43,8 @@ interface GameContextType {
   setDrawnCard: (card: Card | null) => void;
   roomId: string | null;
   setRoomId: (id: string) => void;
+  handleActivatePower: (powerType: string) => void;
+  handleSkipPower: (powerType: string) => void;
 
   eliminationCardSelection: {
     isActive: boolean;
@@ -311,19 +313,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         setEliminationCardSelection(null);
       }
 
-      // Update power instructions based on active power
+      // Update power instructions based on current player's power state
       const currentPlayer = updatedState.players.find(
         (p) => p.id === socket.getId()
       );
-      if (currentPlayer?.activePower) {
-        setSelectedPower(currentPlayer.activePower);
-        setPowerInstructions(getPowerInstructions(currentPlayer.activePower));
 
-        // Reset swap selections when power changes
+      if (currentPlayer?.activePower) {
+        if (currentPlayer.usingPower) {
+          // Player is actively using the power - show usage instructions
+          setSelectedPower(currentPlayer.activePower);
+          setPowerInstructions(
+            getPowerUsageInstructions(currentPlayer.activePower)
+          );
+        } else {
+          // Player has power available but hasn't chosen to use it yet - show choice prompt
+          setSelectedPower(currentPlayer.activePower);
+          setPowerInstructions(
+            getPowerChoiceInstructions(currentPlayer.activePower)
+          );
+        }
+
+        // Reset swap selections when power state changes
         if (["Q", "K"].includes(currentPlayer.activePower)) {
           setSwapSelections([]);
         }
       } else {
+        // No power available
         setSelectedPower(null);
         setPowerInstructions(null);
         setSwapSelections([]);
@@ -350,9 +365,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             ["7", "8", "9", "10", "J", "Q", "K"].includes(cardData.card.rank)
           ) {
             setSelectedPower(cardData.card.rank);
-            setPowerInstructions(
-              `Drawn ${cardData.card.rank} - power will activate when discarded`
-            );
+            if (cardData.card.rank === "J") {
+              setPowerInstructions(
+                `Drawn Jack - will automatically skip next player when discarded`
+              );
+            } else {
+              setPowerInstructions(
+                `Drawn ${cardData.card.rank} - you can choose to use its power or skip after discarding`
+              );
+            }
           } else {
             setSelectedPower(null);
             setPowerInstructions(null);
@@ -371,11 +392,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           ["7", "8", "9", "10", "J", "Q", "K"].includes((cardData as Card).rank)
         ) {
           setSelectedPower((cardData as Card).rank);
-          setPowerInstructions(
-            `Drawn ${
-              (cardData as Card).rank
-            } - power will activate when discarded`
-          );
+          if ((cardData as Card).rank === "J") {
+            setPowerInstructions(
+              `Drawn Jack - will automatically skip next player when discarded`
+            );
+          } else {
+            setPowerInstructions(
+              `Drawn ${
+                (cardData as Card).rank
+              } - you can choose to use its power or skip after discarding`
+            );
+          }
         } else {
           setSelectedPower(null);
           setPowerInstructions(null);
@@ -607,22 +634,45 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [currentPlayerId]); // Add currentPlayerId as dependency
 
-  // Helper function to get power instructions
-  const getPowerInstructions = (power: string): string => {
+  // Helper function to get power choice instructions (when power is available but not being used)
+  const getPowerChoiceInstructions = (power: string): string => {
     switch (power) {
       case "7":
       case "8":
-        return "Click on one of your own cards to peek at it";
+        return `${power} power available: You can peek at one of your own cards. Choose to use it or skip.`;
       case "9":
       case "10":
-        return "Click on an opponent's card to peek at it";
+        return `${power} power available: You can peek at one opponent's card. Choose to use it or skip.`;
       case "Q":
-        return `Select 2 cards to swap (unseen) - ${swapSelections.length}/2 selected`;
+        return "Queen power available: You can swap any two cards without seeing them first. Choose to use it or skip.";
       case "K":
-        return `Select 2 cards to swap (seen - cards will be revealed first) - ${swapSelections.length}/2 selected`;
+        return "King power available: You can swap any two cards (both will be revealed first). Choose to use it or skip.";
       default:
         return "";
     }
+  };
+
+  // Helper function to get power usage instructions (when player is actively using power)
+  const getPowerUsageInstructions = (power: string): string => {
+    switch (power) {
+      case "7":
+      case "8":
+        return `${power} power active: Click on one of your own cards to peek at it.`;
+      case "9":
+      case "10":
+        return `${power} power active: Click on one opponent's card to peek at it.`;
+      case "Q":
+        return `Queen power active: Click on two cards to swap them (unseen swap). ${swapSelections.length}/2 selected.`;
+      case "K":
+        return `King power active: Click on two cards to swap them (both cards will be revealed first). ${swapSelections.length}/2 selected.`;
+      default:
+        return "";
+    }
+  };
+
+  // Legacy function for backward compatibility
+  const getPowerInstructions = (power: string): string => {
+    return getPowerUsageInstructions(power);
   };
 
   // Reset animation after it completes
@@ -636,6 +686,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return () => clearTimeout(timer);
     }
   }, [cardAnimation, animatingCardId]);
+
+  // Power activation handlers
+  const handleActivatePower = (powerType: string) => {
+    console.log(`[${currentPlayerId}] Activating ${powerType} power`);
+    socket.emit("activate-power", {
+      roomId: "QUICK", // You might want to make this dynamic
+      playerId: socket.getId(),
+      powerType: powerType,
+    });
+  };
+
+  const handleSkipPower = (powerType: string) => {
+    console.log(`[${currentPlayerId}] Skipping ${powerType} power`);
+    socket.emit("skip-power", {
+      roomId: "QUICK", // You might want to make this dynamic
+      playerId: socket.getId(),
+      powerType: powerType,
+    });
+  };
 
   // Game action handlers (keeping all existing handlers the same)
   const handleDrawCard = () => {
@@ -704,19 +773,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     console.log(`[${currentPlayerId}] Discarding drawn card...`);
 
+    // Store the card ID before clearing state to prevent double emissions
+    const cardToDiscard = drawnCard;
+    
     setCardAnimation("discard");
-    setAnimatingCardId(drawnCard.id);
+    setAnimatingCardId(cardToDiscard.id);
+    
+    // Clear drawn card immediately to prevent double calls
+    setDrawnCard(null);
 
     socket.emit("discard-drawn-card", {
       roomId,
       playerId: myPlayer.id,
-      cardId: drawnCard.id,
+      cardId: cardToDiscard.id,
     });
 
     // Reset selections - but don't clear power instructions yet
     // They will be updated by the game state when power activates
     setSelectedCard(null);
-    setDrawnCard(null);
   };
 
   const handleEliminateCard = (cardId: string) => {
@@ -900,13 +974,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Check if current player has an active power
+    // Check if current player has an active power and is using it
     const currentPlayer = gameState?.players.find((p) => p.id === myPlayer.id);
     const activePower = currentPlayer?.activePower;
+    const usingPower = currentPlayer?.usingPower;
 
-    console.log(`[${currentPlayerId}] Active power:`, activePower);
+    console.log(`[${currentPlayerId}] Active power:`, activePower, 'Using power:', usingPower);
 
-    if (activePower) {
+    if (activePower && usingPower) {
       // Handle power usage
       if (["7", "8"].includes(activePower) && playerId === myPlayer.id) {
         // Use power on own card
@@ -1071,6 +1146,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         refreshPlayerData,
         eliminationCardSelection,
         handleEliminationCardSelected,
+        handleActivatePower,
+        handleSkipPower,
       }}
     >
       {children}

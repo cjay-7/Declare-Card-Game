@@ -27,6 +27,7 @@ export type Player = {
   skippedTurn: boolean;
   hasEliminatedThisRound: boolean; // Track if player has eliminated a card this round
   activePower?: string; // Current active power (7,8,9,10,Q,K)
+  usingPower?: boolean; // Whether player is actively using their power
 };
 
 export type GameAction = {

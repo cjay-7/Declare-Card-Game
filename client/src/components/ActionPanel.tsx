@@ -15,16 +15,55 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   onDeclare,
   drawnCard,
 }) => {
-  const { gameState, myPlayer, swapSelections } = useGameContext();
+  const { gameState, myPlayer, swapSelections, handleActivatePower, handleSkipPower } = useGameContext();
 
   // Check if current player has an active power
   const currentPlayer = gameState?.players.find((p) => p.id === myPlayer?.id);
   const activePower = currentPlayer?.activePower;
+  const usingPower = currentPlayer?.usingPower;
 
   // Check elimination eligibility
   const canEliminate =
     gameState?.discardPile && gameState.discardPile.length > 0;
   const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
+
+  const getPowerChoiceInstructions = (power: string) => {
+    switch (power) {
+      case "7":
+      case "8":
+        return {
+          title: `${power} Power Available`,
+          description: "Peek at one of your own cards to secretly view it.",
+          icon: "👁️",
+          color: "bg-blue-600",
+        };
+      case "9":
+      case "10":
+        return {
+          title: `${power} Power Available`,
+          description: "Peek at one of your opponent's cards to secretly view it.",
+          icon: "🔍",
+          color: "bg-green-600",
+        };
+      case "Q":
+        return {
+          title: "Queen Power Available",
+          description: "Swap any two cards without seeing them first (unseen swap).",
+          icon: "♠️",
+          color: "bg-purple-600",
+        };
+      case "K":
+        return {
+          title: "King Power Available",
+          description: "Swap any two cards (both cards will be revealed to all players first).",
+          icon: "👑",
+          color: "bg-yellow-600",
+          warning: true,
+        };
+      default:
+        return null;
+    }
+  };
 
   const getPowerInstructions = (power: string) => {
     switch (power) {
@@ -65,8 +104,56 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
     }
   };
 
-  // If player has an active power, show power UI
-  if (activePower) {
+  // Helper function to render power choice section
+  const renderPowerChoiceSection = () => {
+    if (!activePower || usingPower) return null;
+    
+    const powerInfo = getPowerChoiceInstructions(activePower);
+    if (!powerInfo) return null;
+
+    return (
+      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-purple-500">
+        <div className="flex items-center mb-2">
+          <span className="text-purple-400 mr-2">{powerInfo.icon}</span>
+          <h3 className="font-semibold text-white">Power Available</h3>
+          <span className="ml-2 text-purple-400 text-sm">Optional Choice</span>
+        </div>
+
+        <div className="text-center">
+          <div className="text-sm text-white mb-3">{powerInfo.description}</div>
+
+          {powerInfo.warning && (
+            <div className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-2 mb-3">
+              <div className="flex items-center justify-center text-red-200 text-xs">
+                <span className="mr-1">⚠️</span>
+                <strong>Warning:</strong> Both cards will be visible to ALL
+                players!
+                <span className="ml-1">⚠️</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex space-x-3 justify-center mt-4">
+            <button
+              onClick={() => handleActivatePower(activePower)}
+              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors text-sm"
+            >
+              ⚡ Use {activePower} Power
+            </button>
+            <button
+              onClick={() => handleSkipPower(activePower)}
+              className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors text-sm"
+            >
+              ❌ Skip Power
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Show power usage UI when player is actively using their power
+  if (activePower && usingPower) {
     const powerInfo = getPowerInstructions(activePower);
     if (!powerInfo) return null;
 
@@ -120,6 +207,20 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   // Main action panel
   return (
     <div className="space-y-4">
+      {/* Show mutually exclusive choice warning when both power and elimination are available */}
+      {activePower && !usingPower && canEliminate && !hasAlreadyEliminated && (
+        <div className="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded-lg">
+          <div className="flex items-center justify-center text-yellow-200 text-sm">
+            <span className="mr-2">⚠️</span>
+            <strong>Choose one:</strong> Use your {activePower} power OR perform elimination (mutually exclusive)
+            <span className="ml-2">⚠️</span>
+          </div>
+        </div>
+      )}
+
+      {/* Power Choice Section - when power available but not using */}
+      {renderPowerChoiceSection()}
+
       {/* Turn-Based Actions Section */}
       <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-blue-500">
         <div className="flex items-center mb-2">
@@ -181,13 +282,18 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         )}
       </div>
 
-      {/* Elimination Actions Section - Always Available */}
-      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-red-500">
-        <div className="flex items-center mb-2">
-          <span className="text-red-400 mr-2">⚡</span>
-          <h3 className="font-semibold text-white">Elimination Actions</h3>
-          <span className="ml-2 text-yellow-400 text-sm">Always Available</span>
-        </div>
+      {/* Elimination Actions Section - Available when not using power */}
+      {!(activePower && usingPower) && (
+        <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-red-500">
+          <div className="flex items-center mb-2">
+            <span className="text-red-400 mr-2">⚡</span>
+            <h3 className="font-semibold text-white">Elimination Actions</h3>
+            {activePower && !usingPower ? (
+              <span className="ml-2 text-orange-400 text-sm">Alternative Choice</span>
+            ) : (
+              <span className="ml-2 text-yellow-400 text-sm">Always Available</span>
+            )}
+          </div>
 
         <div className="space-y-2">
           {canEliminate ? (
@@ -235,6 +341,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Game Status Section */}
       <div className="p-3 bg-gray-700 rounded-lg">

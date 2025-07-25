@@ -1,16 +1,37 @@
 // client/src/components/KingPowerNotification.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useGameContext } from "../contexts/GameContext";
 import Card from "./Card";
 
 const KingPowerNotification: React.FC = () => {
-  const { kingPowerReveal } = useGameContext();
+  const { kingPowerReveal, handleConfirmKingPowerSwap, handleCancelKingPowerSwap } = useGameContext();
+  const [timeLeft, setTimeLeft] = useState(30);
+
+  // Auto-close timer effect
+  useEffect(() => {
+    if (!kingPowerReveal?.showConfirmation) return;
+
+    setTimeLeft(30); // Reset timer when dialog opens
+    
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // Auto-cancel when time runs out
+          handleCancelKingPowerSwap();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [kingPowerReveal?.showConfirmation, handleCancelKingPowerSwap]);
 
   if (!kingPowerReveal) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-lg p-6 max-w-2xl w-full border-4 border-yellow-400 shadow-2xl">
+    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4">
+      <div className="bg-yellow-700 rounded-lg p-6 max-w-2xl w-full border-4 border-yellow-400 shadow-2xl border-solid">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center mb-2">
@@ -22,7 +43,10 @@ const KingPowerNotification: React.FC = () => {
           </div>
           <p className="text-yellow-100 text-lg">
             <span className="font-bold">{kingPowerReveal.powerUserName}</span>{" "}
-            is revealing cards before the swap
+            {kingPowerReveal.showConfirmation 
+              ? "can see both cards and must decide whether to swap"
+              : "is revealing cards before the swap"
+            }
           </p>
         </div>
 
@@ -92,14 +116,41 @@ const KingPowerNotification: React.FC = () => {
 
         {/* Message */}
         <div className="text-center">
-          <div className="bg-yellow-500 bg-opacity-20 rounded-lg p-4 border border-yellow-300">
-            <p className="text-white text-lg font-semibold mb-2">
-              🔄 Swapping in progress...
-            </p>
-            <p className="text-yellow-100 text-sm">
-              Both cards are revealed as required by the King power. The swap
-              will complete automatically.
-            </p>
+          <div className="bg-yellow-600 rounded-lg p-4 border-2 border-yellow-200">
+            {kingPowerReveal.showConfirmation ? (
+              <>
+                <p className="text-white text-lg font-semibold mb-2">
+                  {kingPowerReveal.message}
+                </p>
+                <div className="text-yellow-200 text-sm mb-4">
+                  Auto-cancels in {timeLeft} seconds
+                </div>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={handleConfirmKingPowerSwap}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+                  >
+                    ✅ Confirm Swap
+                  </button>
+                  <button
+                    onClick={handleCancelKingPowerSwap}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+                  >
+                    ❌ Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-white text-lg font-semibold mb-2">
+                  🔄 Swapping in progress...
+                </p>
+                <p className="text-yellow-100 text-sm">
+                  Both cards are revealed as required by the King power. The swap
+                  will complete automatically.
+                </p>
+              </>
+            )}
           </div>
         </div>
 

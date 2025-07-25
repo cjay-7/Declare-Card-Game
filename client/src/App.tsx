@@ -5,6 +5,7 @@ import { GameBoard } from "./components/GameBoard";
 import { GameProvider } from "./contexts/GameContext";
 import TestControlPanel from "./TestControlPanel";
 import GameInstructionsModal from "./components/GameInstructionsModal";
+import KingPowerNotification from "./components/KingPowerNotification";
 import NotificationSystem, {
   useNotifications,
 } from "./components/NotificationSystem";
@@ -113,6 +114,9 @@ function App() {
         isOpen={showInstructions}
         onClose={() => setShowInstructions(false)}
       />
+
+      {/* King Power Notification */}
+      <KingPowerNotification />
 
       {/* Main Content */}
       {!joinedRoom ? (

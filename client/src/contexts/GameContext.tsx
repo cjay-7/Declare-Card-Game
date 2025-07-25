@@ -28,6 +28,13 @@ interface KingPowerReveal {
     cardIndex: number;
   };
   message: string;
+  swapData?: {
+    card1PlayerId: string;
+    card1Index: number;
+    card2PlayerId: string;
+    card2Index: number;
+  };
+  showConfirmation?: boolean;
 }
 
 interface GameContextType {
@@ -45,6 +52,8 @@ interface GameContextType {
   setRoomId: (id: string) => void;
   handleActivatePower: (powerType: string) => void;
   handleSkipPower: (powerType: string) => void;
+  handleConfirmKingPowerSwap: () => void;
+  handleCancelKingPowerSwap: () => void;
 
   eliminationCardSelection: {
     isActive: boolean;
@@ -528,6 +537,45 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // NEW: Handle King power preview event (for confirmation)
+    const handleKingPowerPreview = (data: {
+      powerUserId: string;
+      powerUserName: string;
+      card1: {
+        card: Card;
+        playerId: string;
+        playerName: string;
+        cardIndex: number;
+      };
+      card2: {
+        card: Card;
+        playerId: string;
+        playerName: string;
+        cardIndex: number;
+      };
+      message: string;
+      swapData: {
+        card1PlayerId: string;
+        card1Index: number;
+        card2PlayerId: string;
+        card2Index: number;
+      };
+    }) => {
+      console.log(`[${currentPlayerId}] King power preview:`, data);
+      
+      // Store the king power preview data for the confirmation UI
+      // Cards will be shown in the dialog, not revealed on the game board
+      setKingPowerReveal({
+        powerUserId: data.powerUserId,
+        powerUserName: data.powerUserName,
+        card1: data.card1,
+        card2: data.card2,
+        message: data.message,
+        swapData: data.swapData,
+        showConfirmation: true, // Flag to show confirmation dialog
+      });
+    };
+
     // NEW: Handle King power swap completed event
     const handlePowerSwapCompleted = (data: {
       powerUserId: string;
@@ -556,6 +604,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     socket.on("power-peek-result", handlePowerPeekResult);
     socket.on("power-swap-preview", handlePowerSwapPreview);
     socket.on("king-power-reveal", handleKingPowerReveal);
+    socket.on("king-power-preview", handleKingPowerPreview);
     socket.on("power-swap-completed", handlePowerSwapCompleted);
     // Add this handler in the socket event listeners section of GameContext.tsx
 
@@ -626,6 +675,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       socket.off("power-peek-result", handlePowerPeekResult);
       socket.off("power-swap-preview", handlePowerSwapPreview);
       socket.off("king-power-reveal", handleKingPowerReveal);
+      socket.off("king-power-preview", handleKingPowerPreview);
       socket.off("power-swap-completed", handlePowerSwapCompleted);
       socket.off(
         "elimination-card-selection-required",
@@ -704,6 +754,31 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       playerId: socket.getId(),
       powerType: powerType,
     });
+  };
+
+  const handleConfirmKingPowerSwap = () => {
+    if (!kingPowerReveal?.swapData) return;
+    
+    console.log(`[${currentPlayerId}] Confirming King power swap`);
+    socket.emit("confirm-king-power-swap", {
+      roomId: "QUICK", // You might want to make this dynamic
+      playerId: socket.getId(),
+      swapData: kingPowerReveal.swapData,
+    });
+    
+    // Clear the king power reveal state
+    setKingPowerReveal(null);
+  };
+
+  const handleCancelKingPowerSwap = () => {
+    console.log(`[${currentPlayerId}] Cancelling King power swap`);
+    socket.emit("cancel-king-power-swap", {
+      roomId: "QUICK", // You might want to make this dynamic
+      playerId: socket.getId(),
+    });
+    
+    // Clear the king power reveal state
+    setKingPowerReveal(null);
   };
 
   // Game action handlers (keeping all existing handlers the same)
@@ -1165,6 +1240,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         handleEliminationCardSelected,
         handleActivatePower,
         handleSkipPower,
+        handleConfirmKingPowerSwap,
+        handleCancelKingPowerSwap,
       }}
     >
       {children}

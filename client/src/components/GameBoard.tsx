@@ -410,16 +410,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <Deck
                   cardsRemaining={deckSize}
                   onDeckClick={
-                    isPlayerTurn && !drawnCard ? handleDrawCard : undefined
+                    isPlayerTurn && !drawnCard && !myPlayer?.activePower ? handleDrawCard : undefined
                   }
                 />
               </div>
-              {isPlayerTurn && !drawnCard && (
+              {isPlayerTurn && !drawnCard && !myPlayer?.activePower && (
                 <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               )}
               <div className="text-center mt-2 text-xs text-gray-400">
-                {isPlayerTurn && !drawnCard
+                {isPlayerTurn && !drawnCard && !myPlayer?.activePower
                   ? "Click to draw"
+                  : myPlayer?.activePower
+                  ? `Resolve ${myPlayer.activePower} power first`
                   : `${deckSize} cards`}
               </div>
             </div>

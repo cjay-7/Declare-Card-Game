@@ -715,6 +715,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Check if player has an active power that needs to be resolved first
+    const currentPlayer = gameState?.players.find((p) => p.id === myPlayer.id);
+    if (currentPlayer?.activePower) {
+      console.log(
+        `[${currentPlayerId}] Cannot draw card - must resolve ${currentPlayer.activePower} power first`
+      );
+      return;
+    }
+
     console.log(`[${currentPlayerId}] Drawing card...`);
     socket.emit("draw-card", { roomId, playerId: myPlayer.id });
   };

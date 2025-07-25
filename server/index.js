@@ -573,6 +573,21 @@ io.on("connection", (socket) => {
         cardIndex: cardIndex,
         eliminatedCard: eliminatedCard
       });
+
+      // Keep elimination lock active - only release on next discard
+      console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+
+      // Record this action
+      room.lastAction = {
+        type: "elimination",
+        playerId: playerId,
+        cardId: cardId,
+        timestamp: Date.now(),
+        message: "Valid elimination completed"
+      };
+
+      // Update game state for all players
+      io.to(roomId).emit("game-state-update", room);
     } else {
       // Invalid elimination - apply penalty
       console.log("❌ Invalid elimination - applying penalty");
@@ -591,22 +606,20 @@ io.on("connection", (socket) => {
         });
       }
       
-      room.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+      // Don't set hasEliminatedThisRound for invalid eliminations - let them try again!
+      
+      // Record this action
+      room.lastAction = {
+        type: "elimination",
+        playerId: playerId,
+        cardId: cardId,
+        timestamp: Date.now(),
+        message: "Invalid elimination attempt"
+      };
+
+      // Update game state for all players
+      io.to(roomId).emit("game-state-update", room);
     }
-
-    // Keep elimination lock active - only release on next discard
-    console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
-
-    // Record this action
-    room.lastAction = {
-      type: "elimination",
-      playerId: playerId,
-      cardId: cardId,
-      timestamp: Date.now(),
-    };
-
-    // Update game state for all players
-    io.to(roomId).emit("game-state-update", room);
   });
 
   // Handle disconnections

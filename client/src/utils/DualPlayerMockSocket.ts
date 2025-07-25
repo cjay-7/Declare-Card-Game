@@ -645,12 +645,16 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         }
       );
 
+      // Keep elimination lock active - only release on next discard
+      console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+
       // Update game state
       gameState.lastAction = {
         type: "elimination",
         playerId,
         cardId,
         timestamp: Date.now(),
+        message: "Valid elimination completed"
       };
 
       DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
@@ -699,20 +703,18 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         });
       }
 
-      gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
+      // Don't set hasEliminatedThisRound for invalid eliminations - let them try again!
+      
+      gameState.lastAction = {
+        type: "elimination",
+        playerId,
+        cardId,
+        timestamp: Date.now(),
+        message: "Invalid elimination attempt"
+      };
+
+      DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
     }
-
-    // Keep elimination lock active - only release on next discard
-    console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
-
-    gameState.lastAction = {
-      type: "elimination",
-      playerId,
-      cardId,
-      timestamp: Date.now(),
-    };
-
-    DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
   }
 
   private handleCompleteEliminationCardGive({

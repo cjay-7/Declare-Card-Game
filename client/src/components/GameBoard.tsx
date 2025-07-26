@@ -334,10 +334,42 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     );
   }
 
+  // Debug logging for game end state
+  console.log(`[${currentPlayerId}] GameBoard render - gameState:`, gameState);
+  console.log(`[${currentPlayerId}] GameBoard render - gameStatus:`, gameState?.gameStatus);
+  console.log(`[${currentPlayerId}] GameBoard render - gameEnded:`, gameEnded);
+  
+  // Force render the GameEndScreen if game status is ended, regardless of gameEnded calculation
+  const forceShowEndScreen = gameState?.gameStatus === "ended";
+
   return (
-    <div className="min-h-screen p-6 bg-gray-900 text-white">
-      {/* Game End Screen */}
-      {gameEnded && <GameEndScreen onPlayAgain={handlePlayAgain} />}
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: "24px",
+        backgroundColor: "#fafafa",
+        color: "#2a2a2a",
+      }}
+    >
+      {/* Game End Screen - Debug */}
+      {forceShowEndScreen && (
+        <>
+          <div
+            style={{
+              position: "fixed",
+              top: "10px",
+              left: "10px",
+              background: "red",
+              color: "white",
+              padding: "5px",
+              zIndex: 999999,
+            }}
+          >
+            GAME ENDED - SHOWING END SCREEN (Status: {gameState?.gameStatus})
+          </div>
+          <GameEndScreen onPlayAgain={handlePlayAgain} />
+        </>
+      )}
 
       {/* Declare Modal */}
       <DeclareModal
@@ -410,7 +442,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <Deck
                   cardsRemaining={deckSize}
                   onDeckClick={
-                    isPlayerTurn && !drawnCard && !myPlayer?.activePower ? handleDrawCard : undefined
+                    isPlayerTurn && !drawnCard && !myPlayer?.activePower
+                      ? handleDrawCard
+                      : undefined
                   }
                 />
               </div>

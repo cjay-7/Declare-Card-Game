@@ -291,9 +291,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [temporaryRevealedCards]);
 
-  // Handle hiding King power reveals after some time
+  // Handle hiding King power reveals after some time (but not confirmation dialogs)
   useEffect(() => {
-    if (kingPowerReveal) {
+    if (kingPowerReveal && !kingPowerReveal.showConfirmation) {
       const timer = setTimeout(() => {
         setKingPowerReveal(null);
       }, 3000); // Hide after 3 seconds

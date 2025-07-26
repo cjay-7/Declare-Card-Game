@@ -309,7 +309,7 @@ class MockSocket extends BrowserEventEmitter {
       const hand = playerHands[index];
       hand.forEach((card, cardIndex) => {
         card.position = cardIndex;
-        card.isRevealed = false;
+        card.isRevealed = false; // All cards start hidden in shared state
       });
 
       player.hand = hand;

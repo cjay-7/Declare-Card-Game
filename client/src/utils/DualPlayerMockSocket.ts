@@ -347,7 +347,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       const hand = playerHands[index];
       hand.forEach((card, cardIndex) => {
         card.position = cardIndex;
-        card.isRevealed = false;
+        card.isRevealed = false; // All cards start hidden in shared state
       });
 
       player.hand = hand;
@@ -389,7 +389,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     gameState.players.forEach(player => {
       player.hand = [];
       player.score = 0;
-      player.activePower = null;
+      player.activePower = undefined;
       player.knownCards = [];
       player.skippedTurn = false;
       player.hasEliminatedThisRound = false;

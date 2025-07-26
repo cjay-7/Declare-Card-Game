@@ -24,13 +24,11 @@ const HandGrid: React.FC<HandGridProps> = ({
     selectedCard,
     handleCardClick,
     temporaryRevealedCards,
-    hasDrawnFirstCard,
     handleEliminateCard,
     drawnCard,
     gameState,
     opponentRevealedCard,
     swapSelections,
-    kingPowerReveal,
     eliminationCardSelection,
     handleEliminationCardSelected,
   } = useGameContext();
@@ -190,7 +188,7 @@ const HandGrid: React.FC<HandGridProps> = ({
         // Determine if this card should be revealed
         const shouldReveal =
           card.isRevealed ||
-          (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) ||
+          (isCurrentPlayer && index >= 2) || // Current player's cards 3 and 4 are always visible
           (isCurrentPlayer && temporaryRevealedCards.includes(index)) ||
           (!isCurrentPlayer &&
             opponentRevealedCard?.playerId === playerId &&

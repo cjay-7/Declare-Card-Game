@@ -85,7 +85,7 @@ class MockSocket extends BrowserEventEmitter {
       event === "draw-card" ||
       event === "eliminate-card" ||
       event === "discard-drawn-card" ||
-      event === "swap-drawn-card" ||
+      event === "replace-with-drawn" ||
       event === "declare" ||
       event === "view-opponent-card" ||
       event === "view-own-card" ||
@@ -146,7 +146,7 @@ class MockSocket extends BrowserEventEmitter {
       case "discard-drawn-card":
         this.handleDiscardDrawnCard(data);
         break;
-      case "swap-drawn-card":
+      case "replace-with-drawn":
         this.handleSwapDrawnCard(data);
         break;
       case "declare":
@@ -710,11 +710,11 @@ class MockSocket extends BrowserEventEmitter {
       delete this.drawnCards[playerId];
 
       console.log(
-        `Swapped: drawn card ${drawnCard.rank} → hand position ${cardIndex} (face down), hand card ${handCard.rank} → discard pile`
+        `Replaced: hand card ${handCard.rank} with drawn card ${drawnCard.rank} → hand position ${cardIndex} (face down), old hand card → discard pile`
       );
 
       gameState.lastAction = {
-        type: "swap",
+        type: "replace",
         playerId,
         cardId: handCardId,
         timestamp: Date.now(),

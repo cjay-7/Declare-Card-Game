@@ -116,7 +116,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       event === "draw-card" ||
       event === "eliminate-card" ||
       event === "discard-drawn-card" ||
-      event === "swap-drawn-card" ||
+      event === "replace-with-drawn" ||
       event === "declare" ||
       event === "use-power-on-own-card" ||
       event === "use-power-on-opponent-card" ||
@@ -176,7 +176,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       case "discard-drawn-card":
         this.handleDiscardDrawnCard(data);
         break;
-      case "swap-drawn-card":
+      case "replace-with-drawn":
         this.handleSwapDrawnCard(data);
         break;
       case "declare":
@@ -566,13 +566,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       delete DualPlayerMockSocket.drawnCards[playerId];
 
       console.log(
-        `🔄 ${currentPlayer.name} swapped: ${drawnCard.rank} → hand, ${
+        `🔄 ${currentPlayer.name} replaced: hand card ${
           handCard!.rank
-        } → discard`
+        } with drawn card ${drawnCard.rank} → discard`
       );
 
       gameState.lastAction = {
-        type: "swap",
+        type: "replace",
         playerId,
         cardId: handCardId,
         timestamp: Date.now(),

@@ -87,10 +87,10 @@ const HandGrid: React.FC<HandGridProps> = ({
       return;
     }
 
-    // Handle card swapping with drawn card (second priority)
+    // Handle card replacement with drawn card (second priority)
     if (drawnCard && isCurrentPlayer && !(activePower && usingPower)) {
       console.log(
-        `[SWAP] Attempting to swap drawn card ${drawnCard.rank} with hand card ${card.rank}`
+        `[REPLACE] Attempting to replace hand card ${card.rank} with drawn card ${drawnCard.rank}`
       );
       handleSelectCard(card);
       return;
@@ -122,7 +122,7 @@ const HandGrid: React.FC<HandGridProps> = ({
         drawnCard &&
         isCurrentPlayer && (
           <div className="absolute -top-8 left-0 right-0 bg-green-600 text-white text-xs px-2 py-1 rounded text-center z-30">
-            Drawn: {drawnCard.rank} - Click any card to swap!
+            Drawn: {drawnCard.rank} - Click any card to replace!
           </div>
         )}
 
@@ -157,7 +157,7 @@ const HandGrid: React.FC<HandGridProps> = ({
       {drawnCard && isCurrentPlayer && !activePower && (
         <div className="absolute inset-0 bg-green-500 bg-opacity-20 rounded-lg border-2 border-green-400 border-dashed flex items-center justify-center z-15 pointer-events-none">
           <div className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
-            Click any card to swap with {drawnCard.rank}
+            Click any card to replace with {drawnCard.rank}
           </div>
         </div>
       )}
@@ -211,8 +211,8 @@ const HandGrid: React.FC<HandGridProps> = ({
         // Show power glow effect when card can be used with active power
         const showPowerGlow = canUsePowerOnThisHand && card !== null;
 
-        // Show swap glow effect when there's a drawn card to swap
-        const showSwapGlow = drawnCard && isCurrentPlayer && !(activePower && usingPower);
+        // Show replace glow effect when there's a drawn card to replace with
+        const showReplaceGlow = drawnCard && isCurrentPlayer && !(activePower && usingPower);
 
         // Check if this is a temporarily revealed opponent card by power
         const isTemporarilyRevealedOpponentCard =
@@ -235,7 +235,7 @@ const HandGrid: React.FC<HandGridProps> = ({
               className={`
                 cursor-pointer transition-all duration-200
                 ${showPowerGlow ? "animate-pulse" : ""}
-                ${showSwapGlow ? "ring-2 ring-green-400 animate-pulse" : ""}
+                ${showReplaceGlow ? "ring-2 ring-green-400 animate-pulse" : ""}
                 ${
                   selectedCard?.cardId === card.id ? "ring-2 ring-blue-400" : ""
                 }
@@ -252,7 +252,7 @@ const HandGrid: React.FC<HandGridProps> = ({
                 isHighlighted={
                   showPowerGlow ||
                   isTemporarilyRevealedOpponentCard ||
-                  showSwapGlow
+                  showReplaceGlow
                 }
                 animate={
                   (isCurrentPlayer && temporaryRevealedCards.includes(index)) ||
@@ -272,15 +272,15 @@ const HandGrid: React.FC<HandGridProps> = ({
               </div>
             )}
 
-            {/* Swap indicator for drawn card mode */}
-            {showSwapGlow && !isSelectedForSwap && (
+            {/* Replace indicator for drawn card mode */}
+            {showReplaceGlow && !isSelectedForSwap && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 ↔
               </div>
             )}
 
             {/* Power indicator for active powers */}
-            {showPowerGlow && !isSelectedForSwap && !showSwapGlow && (
+            {showPowerGlow && !isSelectedForSwap && !showReplaceGlow && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {activePower}
               </div>

@@ -247,7 +247,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                   You drew a card! Choose what to do:
                 </div>
                 <div className="text-xs text-blue-300">
-                  • Click hand card to swap with drawn card
+                  • Click hand card to replace with drawn card
                   <br />• Click discard pile to discard drawn card
                 </div>
               </div>

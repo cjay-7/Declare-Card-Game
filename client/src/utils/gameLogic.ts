@@ -32,7 +32,7 @@ export type Player = {
 };
 
 export type GameAction = {
-  type: "draw" | "swap" | "discard" | "declare" | "match" | "view" | "elimination" | "elimination-transfer";
+  type: "draw" | "replace" | "discard" | "declare" | "match" | "view" | "elimination" | "elimination-transfer";
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;

@@ -813,7 +813,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     if (!isPlayerTurn || !roomId || !myPlayer || !drawnCard) {
       console.log(
-        `[${currentPlayerId}] ❌ Cannot swap with drawn card - missing requirements:`,
+        `[${currentPlayerId}] ❌ Cannot replace with drawn card - missing requirements:`,
         {
           isPlayerTurn,
           hasRoomId: !!roomId,
@@ -825,13 +825,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
 
     console.log(
-      `[${currentPlayerId}] ✅ Swapping drawn card ${drawnCard.rank} (${drawnCard.id}) with hand card (${handCardId})`
+      `[${currentPlayerId}] ✅ Replacing hand card (${handCardId}) with drawn card ${drawnCard.rank} (${drawnCard.id})`
     );
 
-    setCardAnimation("swap");
+    setCardAnimation("replace");
     setAnimatingCardId(handCardId);
 
-    socket.emit("swap-drawn-card", {
+    socket.emit("replace-with-drawn", {
       roomId,
       playerId: myPlayer.id,
       drawnCardId: drawnCard.id,
@@ -1015,10 +1015,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // PRIORITY 1: If there's a drawn card, clicking a hand card should swap them
+    // PRIORITY 1: If there's a drawn card, clicking a hand card should replace it
     if (drawnCard) {
       console.log(
-        `[${currentPlayerId}] SWAPPING: drawn card ${drawnCard.rank} with hand card ${card.rank} (ID: ${card.id})`
+        `[${currentPlayerId}] REPLACING: hand card ${card.rank} with drawn card ${drawnCard.rank} (ID: ${card.id})`
       );
       handleSwapWithDrawnCard(card.id);
       return;
@@ -1057,10 +1057,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     console.log(`[${currentPlayerId}] Clicked card:`, clickedCard);
     console.log(`[${currentPlayerId}] Current drawn card:`, drawnCard);
 
-    // PRIORITY 1: If this is the current player's card and there's a drawn card, handle swap
+    // PRIORITY 1: If this is the current player's card and there's a drawn card, handle replacement
     if (playerId === myPlayer.id && drawnCard && clickedCard) {
       console.log(
-        `[${currentPlayerId}] DIRECT SWAP: Swapping drawn ${drawnCard.rank} with clicked ${clickedCard.rank}`
+        `[${currentPlayerId}] DIRECT REPLACE: Replacing clicked ${clickedCard.rank} with drawn ${drawnCard.rank}`
       );
       handleSwapWithDrawnCard(clickedCard.id);
       return;

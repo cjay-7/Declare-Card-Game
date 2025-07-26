@@ -62,9 +62,9 @@ const DebugStateDisplay: React.FC = () => {
 
         {drawnCard && (
           <div className="mt-2 p-2 bg-green-900 rounded">
-            <div className="text-green-300 font-bold">✅ READY TO SWAP!</div>
+            <div className="text-green-300 font-bold">✅ READY TO REPLACE!</div>
             <div className="text-xs">
-              Click any hand card to swap with {drawnCard.rank}
+              Click any hand card to replace with {drawnCard.rank}
             </div>
           </div>
         )}

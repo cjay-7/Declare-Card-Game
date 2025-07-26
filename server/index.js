@@ -154,6 +154,31 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("game-state-update", room);
   });
 
+  // Handle returning to lobby
+  socket.on("return-to-lobby", ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    // Reset game state to waiting/lobby
+    room.gameStatus = "waiting";
+    room.deck = [];
+    room.discardPile = [];
+    room.currentPlayerIndex = 0;
+    
+    // Reset all players' hands
+    room.players.forEach(player => {
+      player.hand = [];
+      player.score = 0;
+      player.activePower = null;
+      player.isReady = false;
+    });
+
+    console.log(`Game reset to lobby in room: ${roomId}`);
+
+    // Send updated game state to all players
+    io.to(roomId).emit("game-state-update", room);
+  });
+
   // Handle drawing a card
   socket.on("draw-card", ({ roomId, playerId }) => {
     const room = rooms[roomId];

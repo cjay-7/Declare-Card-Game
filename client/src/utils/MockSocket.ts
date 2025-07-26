@@ -81,6 +81,7 @@ class MockSocket extends BrowserEventEmitter {
       event === "join-room" ||
       event === "leave-room" ||
       event === "start-game" ||
+      event === "return-to-lobby" ||
       event === "draw-card" ||
       event === "eliminate-card" ||
       event === "discard-drawn-card" ||
@@ -129,6 +130,9 @@ class MockSocket extends BrowserEventEmitter {
         break;
       case "start-game":
         this.handleStartGame(data);
+        break;
+      case "return-to-lobby":
+        this.handleReturnToLobby(data);
         break;
       case "draw-card":
         this.handleDrawCard(data);
@@ -324,6 +328,43 @@ class MockSocket extends BrowserEventEmitter {
     console.log(
       `Game successfully started in room ${roomId} with ${gameState.players.length} players`
     );
+  }
+
+  private handleReturnToLobby({ roomId }: { roomId: string }): void {
+    console.log(`[${this.id}] Return to lobby requested for room ${roomId}`);
+
+    if (!this.rooms[roomId]) {
+      console.error(`No room found with ID ${roomId}`);
+      return;
+    }
+
+    const gameState = this.rooms[roomId];
+
+    // Reset game state to waiting/lobby
+    gameState.gameStatus = "waiting";
+    gameState.deck = [];
+    gameState.discardPile = [];
+    gameState.currentPlayerIndex = 0;
+    gameState.declarer = null;
+    gameState.roundNumber = 1;
+
+    // Reset all players' hands and game-specific properties
+    gameState.players.forEach(player => {
+      player.hand = [];
+      player.score = 0;
+      player.activePower = undefined;
+      player.knownCards = [];
+      player.skippedTurn = false;
+      player.hasEliminatedThisRound = false;
+    });
+
+    // Clear drawn cards
+    this.drawnCards = {};
+
+    console.log(`Game reset to lobby in room ${roomId}`);
+
+    // Send updated game state to all players
+    this.emitToAll("game-state-update", gameState);
   }
 
   private handleDrawCard({

@@ -118,6 +118,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     socket.emit("start-game", { roomId: initialRoomId });
   };
 
+  const handleReturnToLobby = () => {
+    // Reset the game state to waiting (lobby) without starting a new game
+    console.log(
+      `[${currentPlayerId}] Returning to lobby in room ${initialRoomId}`
+    );
+    socket.emit("return-to-lobby", { roomId: initialRoomId });
+  };
+
   // Get current player's hand from game state
   const myHand = myPlayer?.hand || [];
 
@@ -143,8 +151,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     }))
   );
 
-  // Check if game has started
-  const gameStarted = gameState?.gameStatus === "playing";
+  // Check if game has started (playing or ended)
+  const gameStarted = gameState?.gameStatus === "playing" || gameState?.gameStatus === "ended";
 
   // Check if game has ended
   const gameEnded = gameState?.gameStatus === "ended";
@@ -367,7 +375,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           >
             GAME ENDED - SHOWING END SCREEN (Status: {gameState?.gameStatus})
           </div>
-          <GameEndScreen onPlayAgain={handlePlayAgain} />
+          <GameEndScreen onPlayAgain={handlePlayAgain} onReturnToLobby={handleReturnToLobby} />
         </>
       )}
 

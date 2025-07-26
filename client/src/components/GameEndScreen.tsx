@@ -5,6 +5,7 @@ import type { Card as CardType } from "../utils/cardUtils";
 
 interface GameEndScreenProps {
   onPlayAgain: () => void;
+  onReturnToLobby: () => void;
 }
 
 interface PlayerScoreDetails {
@@ -21,7 +22,7 @@ interface PlayerScoreDetails {
   isDeclarer: boolean;
 }
 
-const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain }) => {
+const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLobby }) => {
   const { gameState, myPlayer } = useGameContext();
   const [scoreDetails, setScoreDetails] = useState<PlayerScoreDetails[]>([]);
   const [declareInfo, setDeclareInfo] = useState<{
@@ -649,6 +650,30 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain }) => {
               }}
             >
               🔄 Play Again
+            </button>
+            <button
+              onClick={onReturnToLobby}
+              style={{
+                backgroundColor: "#6b7280",
+                color: "white",
+                padding: "12px 32px",
+                borderRadius: "8px",
+                border: "none",
+                fontSize: "1.125rem",
+                fontWeight: "bold",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "#4b5563";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = "#6b7280";
+              }}
+            >
+              🏠 Return to Lobby
             </button>
           </div>
 

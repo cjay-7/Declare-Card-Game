@@ -870,11 +870,29 @@ class MockSocket extends BrowserEventEmitter {
       gameState.players[playerIndex].score += 20; // Penalty for wrong declaration
     }
 
-    // Find winner(s) - lowest score wins
+    // Find winner(s) - declarer must have strictly lowest score to win
     const minScore = Math.min(...gameState.players.map((p) => p.score));
-    const winners = gameState.players
-      .filter((p) => p.score === minScore)
-      .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+    const playersWithMinScore = gameState.players.filter((p) => p.score === minScore);
+    
+    let winners;
+    if (playersWithMinScore.length > 1) {
+      // If there's a tie for lowest score
+      if (playersWithMinScore.some((p) => p.id === playerId)) {
+        // If declarer tied for lowest, they lose - other tied players win
+        winners = playersWithMinScore
+          .filter((p) => p.id !== playerId)
+          .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+        console.log(`⚠️ Declarer tied for lowest score but loses`);
+      } else {
+        // If declarer didn't tie for lowest, all tied players win
+        winners = playersWithMinScore
+          .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+      }
+    } else {
+      // No tie - single player with lowest score wins
+      winners = playersWithMinScore
+        .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+    }
 
     this.rooms[roomId] = gameState;
     this.emitToAll("game-state-update", this.rooms[roomId]);

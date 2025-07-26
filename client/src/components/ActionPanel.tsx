@@ -3,6 +3,7 @@
 
 import React from "react";
 import { useGameContext } from "../contexts/GameContext";
+import { getActiveCardCount } from "../utils/gameLogic";
 
 interface ActionPanelProps {
   isPlayerTurn: boolean;
@@ -28,6 +29,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
     gameState.discardPile.length > 0 && 
     !gameState.eliminationBlocked;
   const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
+
+  // Check if player can declare (must have at least 1 non-eliminated card)
+  const canDeclare = currentPlayer ? getActiveCardCount(currentPlayer) > 0 : false;
 
   const getPowerChoiceInstructions = (power: string) => {
     switch (power) {
@@ -260,15 +264,26 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <button
-                    onClick={onDeclare}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
-                    title="Declare your hand (must name all remaining card ranks)"
-                  >
-                    🎯 Declare Hand
-                  </button>
-                </div>
+                {canDeclare ? (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={onDeclare}
+                      className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
+                      title="Declare your hand (must name all remaining card ranks)"
+                    >
+                      🎯 Declare Hand
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center">
+                    <div className="px-4 py-2 bg-gray-600 rounded text-white text-sm font-medium opacity-50 cursor-not-allowed">
+                      🎯 Declare Hand
+                      <div className="text-xs mt-1">
+                        (Need at least 1 card to declare)
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -107,7 +107,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">Declare Your Hand</h2>
           <button
@@ -188,26 +188,14 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
 
           <div className="text-xs text-gray-400">
             <p>
-              <strong>Scoring:</strong>
+              <strong>Win Conditions:</strong>
             </p>
             <p>
+              • <strong>Low score:</strong> Have the lowest total among all players
+            </p>
+            <p className="mt-2 text-sm text-gray-400">
               • Your total = sum of remaining cards + 0 for eliminated cards
             </p>
-            <p>• Win condition: Have the lowest total among all players</p>
-            {actualCardCount === 4 && (
-              <>
-                <p className="mt-2">
-                  <strong>Bonus win conditions (4 cards only):</strong>
-                </p>
-                <p>
-                  • <strong>Set:</strong> All 4 cards same rank (e.g., 4 Aces)
-                </p>
-                <p>
-                  • <strong>Sequence:</strong> 4 consecutive ranks of same suit
-                  (e.g., 5-6-7-8 of Hearts)
-                </p>
-              </>
-            )}
           </div>
 
           <div className="flex gap-3 mt-6">

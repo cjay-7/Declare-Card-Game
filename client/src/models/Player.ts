@@ -45,18 +45,21 @@ export function calculatePlayerScore(player: Player): number {
 export function hasValidDeclare(player: Player): boolean {
   const { hand } = player;
 
-  // Need exactly 4 cards to declare
-  if (hand.length !== 4) return false;
+  // Filter out eliminated cards (null values) to get actual cards
+  const actualCards = hand.filter((card): card is Card => card !== null);
+
+  // Need exactly 4 non-eliminated cards to declare
+  if (actualCards.length !== 4) return false;
 
   // Check for a set (all same rank)
-  const isSet = hand.every((card) => card.rank === hand[0].rank);
+  const isSet = actualCards.every((card) => card.rank === actualCards[0].rank);
   if (isSet) return true;
 
   // Check for a sequence (same suit, consecutive values)
-  const isSameSuit = hand.every((card) => card.suit === hand[0].suit);
+  const isSameSuit = actualCards.every((card) => card.suit === actualCards[0].suit);
   if (isSameSuit) {
     // Sort by value
-    const sortedHand = [...hand].sort((a, b) => a.value - b.value);
+    const sortedHand = [...actualCards].sort((a, b) => a.value - b.value);
 
     // Check if values are consecutive
     for (let i = 1; i < sortedHand.length; i++) {

@@ -5,6 +5,15 @@
 .text-6em {
   font-size: 6em;
 }
+
+/* Ensure card suit colors are applied correctly */
+.text-red-600 {
+  color: #dc2626 !important;
+}
+
+.text-black {
+  color: #000000 !important;
+}
 .bg-white {
   background-color: white;
 }

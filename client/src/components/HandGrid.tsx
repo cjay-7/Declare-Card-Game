@@ -31,6 +31,7 @@ const HandGrid: React.FC<HandGridProps> = ({
     swapSelections,
     eliminationCardSelection,
     handleEliminationCardSelected,
+    hasDrawnFirstCard,
   } = useGameContext();
 
   // Check if current player has an active power
@@ -186,13 +187,14 @@ const HandGrid: React.FC<HandGridProps> = ({
         }
 
         // Determine if this card should be revealed
+        // Logic: Start with cards 3&4 visible, hide ALL cards after first draw, only show via powers/temporary reveals
         const shouldReveal =
-          card.isRevealed ||
-          (isCurrentPlayer && index >= 2) || // Current player's cards 3 and 4 are always visible
-          (isCurrentPlayer && temporaryRevealedCards.includes(index)) ||
+          (card.isRevealed && !(isCurrentPlayer && index >= 2 && hasDrawnFirstCard)) || // Show revealed cards, but hide initial cards 3&4 after first draw
+          (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Cards 3 & 4 visible only before first draw
+          (isCurrentPlayer && temporaryRevealedCards.includes(index)) || // Temporary power reveals
           (!isCurrentPlayer &&
             opponentRevealedCard?.playerId === playerId &&
-            opponentRevealedCard?.cardIndex === index);
+            opponentRevealedCard?.cardIndex === index); // Opponent card revealed by power
 
         const currentPlayerData = gameState?.players.find(
           (p) => p.id === socket.getId()

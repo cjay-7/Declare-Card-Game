@@ -108,11 +108,11 @@ export interface Card {
     return card1.rank === card2.rank || card1.suit === card2.suit;
   };
   
-  // Reveal initial 2 cards for a player
+  // Reveal initial 2 cards for a player (cards 3 and 4)
   export const revealInitialCards = (hand: Card[]): Card[] => {
     const updatedHand = [...hand];
-    // Reveal first two cards
-    if (updatedHand[0]) updatedHand[0].isRevealed = true;
-    if (updatedHand[1]) updatedHand[1].isRevealed = true;
+    // Reveal cards 3 and 4 (index 2 and 3)
+    if (updatedHand[2]) updatedHand[2].isRevealed = true;
+    if (updatedHand[3]) updatedHand[3].isRevealed = true;
     return updatedHand;
   };

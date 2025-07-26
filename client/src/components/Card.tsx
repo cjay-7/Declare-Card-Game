@@ -78,10 +78,10 @@ const Card: React.FC<CardProps> = ({
 
   // Define card colors based on suit
   const suitColors = {
-    hearts: "text-red-500",
-    diamonds: "text-red-500",
-    clubs: "text-gray-800",
-    spades: "text-gray-800",
+    hearts: "text-red-600",     // Red hearts
+    diamonds: "text-red-600",   // Red diamonds
+    clubs: "text-black",        // Black clubs
+    spades: "text-black",       // Black spades
   };
 
   // Define suit symbols

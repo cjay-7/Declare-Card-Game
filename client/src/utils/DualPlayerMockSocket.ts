@@ -682,20 +682,34 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         gameState.players[cardOwnerIndex].name
       );
 
-      // Emit event to trigger card selection UI for the eliminating player
-      DualPlayerMockSocket.broadcastToAll(
-        "elimination-card-selection-required",
-        {
-          eliminatingPlayerId: playerId,
-          cardOwnerId: gameState.players[cardOwnerIndex].id,
-          cardOwnerName: gameState.players[cardOwnerIndex].name,
-          cardIndex: cardIndex,
-          eliminatedCard: eliminatedCard,
-        }
-      );
-
-      // Keep elimination lock active - only release on next discard
-      console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+      // Only trigger card selection if eliminating opponent's card (not self-elimination)
+      if (eliminatingPlayerIndex !== cardOwnerIndex) {
+        console.log(`🎯 Opponent elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated ${gameState.players[cardOwnerIndex].name}'s card - triggering card selection`);
+        // Emit event to trigger card selection UI for the eliminating player
+        DualPlayerMockSocket.broadcastToAll(
+          "elimination-card-selection-required",
+          {
+            eliminatingPlayerId: playerId,
+            cardOwnerId: gameState.players[cardOwnerIndex].id,
+            cardOwnerName: gameState.players[cardOwnerIndex].name,
+            cardIndex: cardIndex,
+            eliminatedCard: eliminatedCard,
+          }
+        );
+        
+        // Keep elimination lock active - only release after card is given
+        console.log(`🔒 Elimination lock remains active for room ${roomId} - awaiting card selection`);
+      } else {
+        console.log(`🎯 Self-elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated their own card - skipping card selection`);
+        // For self-elimination, proceed directly to next turn without card selection
+        DualPlayerMockSocket.moveToNextPlayer(gameState);
+        
+        // Reset elimination tracking for the next round
+        gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = false;
+        DualPlayerMockSocket.eliminationLocks[roomId] = false;
+        gameState.eliminationBlocked = false;
+        console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
+      }
 
       // Update game state
       gameState.lastAction = {
@@ -1048,6 +1062,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         const player2Index = gameState.players.findIndex(
           (p) => p.id === card2PlayerId
         );
+
+        // Prevent same-player swaps (cards must be from different players)
+        if (card1PlayerId === card2PlayerId) {
+          console.log(`❌ ${power} Power: Cannot swap cards within the same player's hand`);
+          return;
+        }
 
         if (
           player1Index !== -1 &&

@@ -81,9 +81,9 @@ export function playerKnowsAllCards(player: Player): boolean {
 }
 
 /**
- * Reveals initial cards for a player (typically first 2 cards)
+ * Reveals initial cards for a player (cards 3 and 4)
  */
 export function revealInitialCards(player: Player): void {
-  if (player.hand.length >= 1) player.hand[0].isRevealed = true;
-  if (player.hand.length >= 2) player.hand[1].isRevealed = true;
+  if (player.hand.length >= 3) player.hand[2].isRevealed = true;
+  if (player.hand.length >= 4) player.hand[3].isRevealed = true;
 }

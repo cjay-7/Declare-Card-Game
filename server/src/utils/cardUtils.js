@@ -97,15 +97,15 @@ export const dealCards = (deck, playerCount) => {
 };
 
 /**
- * Reveal initial 2 cards for each player's hand
+ * Reveal initial 2 cards for each player's hand (cards 3 and 4)
  * @param {Array} hand - A player's hand
  * @returns {Array} Updated hand with revealed cards
  */
 export const revealInitialCards = (hand) => {
   const updatedHand = [...hand];
-  // Reveal first two cards
-  if (updatedHand[0]) updatedHand[0].isRevealed = true;
-  if (updatedHand[1]) updatedHand[1].isRevealed = true;
+  // Reveal cards 3 and 4 (index 2 and 3)
+  if (updatedHand[2]) updatedHand[2].isRevealed = true;
+  if (updatedHand[3]) updatedHand[3].isRevealed = true;
   return updatedHand;
 };
 

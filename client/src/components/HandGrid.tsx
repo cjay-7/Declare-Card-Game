@@ -5,12 +5,16 @@ import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
 import socket from "../socket";
 import type { Card as CardType } from "../utils/cardUtils";
+import { DeclarationMode } from "./HandGrid/DeclarationMode";
 
 interface HandGridProps {
   cards: (CardType | null)[];
   playerId: string;
   isCurrentPlayer: boolean;
   isPlayerTurn?: boolean;
+  isDeclarationMode?: boolean;
+  onConfirmDeclaration?: (declaredRanks: string[]) => void;
+  onCancelDeclaration?: () => void;
 }
 
 const HandGrid: React.FC<HandGridProps> = ({
@@ -18,6 +22,9 @@ const HandGrid: React.FC<HandGridProps> = ({
   playerId,
   isCurrentPlayer,
   isPlayerTurn = false,
+  isDeclarationMode = false,
+  onConfirmDeclaration,
+  onCancelDeclaration,
 }) => {
   const {
     handleSelectCard,
@@ -74,7 +81,7 @@ const HandGrid: React.FC<HandGridProps> = ({
     // Check if trying to interact with eliminated card
     if (card === null) {
       console.log(
-        `Cannot interact with eliminated card at position ${cardIndex + 1}`
+        `Cannot interact with eliminated card`
       );
       return;
     }
@@ -115,6 +122,17 @@ const HandGrid: React.FC<HandGridProps> = ({
     console.log(`[OPPONENT] Clicking opponent card at index ${cardIndex}`);
     handleCardClick(playerId, cardIndex);
   };
+
+  // Show declaration mode if enabled and it's the current player
+  if (isDeclarationMode && isCurrentPlayer && onConfirmDeclaration && onCancelDeclaration) {
+    return (
+      <DeclarationMode
+        cards={paddedCards}
+        onConfirm={onConfirmDeclaration}
+        onCancel={onCancelDeclaration}
+      />
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
@@ -177,9 +195,6 @@ const HandGrid: React.FC<HandGridProps> = ({
               >
                 <div className="w-16 h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded flex items-center justify-center relative">
                   <span className="text-gray-500 text-xs">Eliminated</span>
-                  <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-red-800 text-white text-xs rounded-full flex items-center justify-center">
-                    {index + 1}
-                  </div>
                 </div>
               </div>
             </div>
@@ -311,19 +326,7 @@ const HandGrid: React.FC<HandGridProps> = ({
               </button>
             )}
 
-            {/* Card value indicator for revealed cards */}
-            {shouldReveal && displayCard && (
-              <div className="absolute -bottom-1 -left-1 w-5 h-5 bg-gray-800 text-white text-xs rounded-full flex items-center justify-center border border-gray-600">
-                {displayCard.value}
-              </div>
-            )}
 
-            {/* Position indicator for debugging */}
-            {process.env.NODE_ENV === "development" && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-800 text-white text-xs rounded-full flex items-center justify-center">
-                {index + 1}
-              </div>
-            )}
           </div>
         );
       })}

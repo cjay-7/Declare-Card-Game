@@ -9,7 +9,6 @@ import ActionPanel from "./ActionPanel";
 import GameEndScreen from "./GameEndScreen";
 import HandGrid from "./HandGrid";
 import PlayerInfo from "./PlayerInfo";
-import DeclareModal from "./DeclareModal";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface GameBoardProps {
@@ -191,6 +190,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         playerId={myPlayer?.id || ""}
         isCurrentPlayer={true}
         isPlayerTurn={isPlayerTurn}
+        isDeclarationMode={showDeclareModal}
+        onConfirmDeclaration={handleConfirmDeclare}
+        onCancelDeclaration={() => setShowDeclareModal(false)}
       />
     );
   };
@@ -379,13 +381,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </>
       )}
 
-      {/* Declare Modal */}
-      <DeclareModal
-        isOpen={showDeclareModal}
-        onClose={() => setShowDeclareModal(false)}
-        onConfirm={handleConfirmDeclare}
-        playerHand={myHand}
-      />
 
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">

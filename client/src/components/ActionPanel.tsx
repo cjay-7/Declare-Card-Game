@@ -195,8 +195,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                   key={idx}
                   className="inline-block mx-1 px-2 py-1 bg-white bg-opacity-20 rounded"
                 >
-                  {sel.playerId === myPlayer?.id ? "Your" : "Opponent's"} card{" "}
-                  {sel.cardIndex + 1}
+                  {sel.playerId === myPlayer?.id ? "Your" : "Opponent's"} card
                 </span>
               ))}
             </div>

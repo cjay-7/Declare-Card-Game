@@ -152,15 +152,9 @@ const KingPowerNotification: React.FC = () => {
                   />
                 </div>
               </div>
-              <div style={{ color: "#13130f", fontSize: "0.875rem" }}>
-                Position {kingPowerReveal.card1.cardIndex + 1}
-              </div>
               <div style={{ color: "white", fontWeight: "600" }}>
                 {kingPowerReveal.card1.card.rank} of{" "}
                 {kingPowerReveal.card1.card.suit}
-              </div>
-              <div style={{ color: "#13130f", fontSize: "0.875rem" }}>
-                Value: {kingPowerReveal.card1.card.value} points
               </div>
             </div>
 
@@ -216,15 +210,9 @@ const KingPowerNotification: React.FC = () => {
                   />
                 </div>
               </div>
-              <div style={{ color: "#13130f", fontSize: "0.875rem" }}>
-                Position {kingPowerReveal.card2.cardIndex + 1}
-              </div>
               <div style={{ color: "white", fontWeight: "600" }}>
                 {kingPowerReveal.card2.card.rank} of{" "}
                 {kingPowerReveal.card2.card.suit}
-              </div>
-              <div style={{ color: "#13130f", fontSize: "0.875rem" }}>
-                Value: {kingPowerReveal.card2.card.value} points
               </div>
             </div>
           </div>

@@ -100,10 +100,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
   ];
 
   // Calculate eliminated cards info
-  const eliminatedCount = playerHand.length - actualCardCount;
-  const eliminatedPositions = playerHand
-    .map((card, index) => (card === null ? index + 1 : null))
-    .filter((pos): pos is number => pos !== null);
+  const eliminatedCount = playerHand.filter(card => card === null).length;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
@@ -138,9 +135,6 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
               <div className="text-sm font-medium mb-1">
                 🗑️ Eliminated Cards: {eliminatedCount}
               </div>
-              <div className="text-xs">
-                Positions eliminated: {eliminatedPositions.join(", ")}
-              </div>
               <div className="text-xs mt-1">(These count as 0 points each)</div>
             </div>
           )}
@@ -159,7 +153,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
                   className="space-y-1"
                 >
                   <label className="block text-sm font-medium text-gray-300">
-                    Remaining Card {index + 1}:
+                    Card:
                   </label>
                   <select
                     value={declaredRanks[index]}

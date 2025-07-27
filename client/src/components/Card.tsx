@@ -145,18 +145,81 @@ const Card: React.FC<CardProps> = ({
         <>
           <div className={`text-xs font-bold ${suitColors[suit]}`}>
             {rank}
-            <span className="ml-0.5">{suitSymbols[suit]}</span>
           </div>
 
-          <div className={`text-center text-6em ${suitColors[suit]}`}>
-            {suitSymbols[suit]}
+          <div className={`flex-1 flex items-center justify-center ${suitColors[suit]}`}>
+            {/* Display multiple suit symbols based on rank */}
+            {(() => {
+              const symbol = suitSymbols[suit];
+              
+              // For face cards, show just one large symbol
+              if (['J', 'Q', 'K', 'A'].includes(rank)) {
+                return <span className="text-lg">{symbol}</span>;
+              }
+              
+              // For number cards 2-10, show that many symbols
+              const count = parseInt(rank);
+              if (count >= 2 && count <= 10) {
+                const symbols = Array(count).fill(symbol);
+                
+                // Arrange symbols in a nice pattern based on count
+                if (count <= 3) {
+                  // 2-3: vertical column
+                  return (
+                    <div className="flex flex-col items-center gap-0.5">
+                      {symbols.map((sym, i) => (
+                        <span key={i} className="text-xs leading-none">{sym}</span>
+                      ))}
+                    </div>
+                  );
+                } else if (count <= 6) {
+                  // 4-6: two columns
+                  const leftCol = symbols.slice(0, Math.ceil(count / 2));
+                  const rightCol = symbols.slice(Math.ceil(count / 2));
+                  return (
+                    <div className="flex gap-1 items-center">
+                      <div className="flex flex-col gap-0.5">
+                        {leftCol.map((sym, i) => (
+                          <span key={i} className="text-xs leading-none">{sym}</span>
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {rightCol.map((sym, i) => (
+                          <span key={i} className="text-xs leading-none">{sym}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // 7-10: three columns
+                  const cols = [
+                    symbols.slice(0, Math.ceil(count / 3)),
+                    symbols.slice(Math.ceil(count / 3), Math.ceil(count * 2 / 3)),
+                    symbols.slice(Math.ceil(count * 2 / 3))
+                  ];
+                  return (
+                    <div className="flex gap-0.5 items-center">
+                      {cols.map((col, colIndex) => (
+                        <div key={colIndex} className="flex flex-col gap-0.5">
+                          {col.map((sym, i) => (
+                            <span key={i} className="text-xs leading-none">{sym}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+              }
+              
+              // Fallback for any edge cases
+              return <span className="text-lg">{symbol}</span>;
+            })()}
           </div>
 
           <div
             className={`text-xs font-bold self-end rotate-180 ${suitColors[suit]}`}
           >
             {rank}
-            <span className="ml-0.5">{suitSymbols[suit]}</span>
           </div>
         </>
       ) : (

@@ -386,7 +386,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     gameState.roundNumber = 1;
 
     // Reset all players' hands and game-specific properties
-    gameState.players.forEach(player => {
+    gameState.players.forEach((player) => {
       player.hand = [];
       player.score = 0;
       player.activePower = undefined;
@@ -476,7 +476,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     });
     DualPlayerMockSocket.eliminationLocks[roomId] = false;
     gameState.eliminationBlocked = false;
-    console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
+    console.log(
+      `🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`
+    );
 
     // Apply card powers
     if (drawnCard.rank === "J") {
@@ -487,7 +489,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       console.log(
         `⚡ Jack power: Skipping ${gameState.players[nextPlayerIndex].name}`
       );
-      
+
       // Jack power doesn't block turn progression - continue to move turn to next player
     } else if (["7", "8", "9", "10", "Q", "K"].includes(drawnCard.rank)) {
       // Other power cards: Make power available for choice, DON'T move to next player yet
@@ -561,7 +563,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       });
       DualPlayerMockSocket.eliminationLocks[roomId] = false;
       gameState.eliminationBlocked = false;
-      console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
+      console.log(
+        `🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`
+      );
 
       delete DualPlayerMockSocket.drawnCards[playerId];
 
@@ -597,7 +601,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     // Check if elimination is already in progress for this room
     if (DualPlayerMockSocket.eliminationLocks[roomId]) {
-      console.log(`🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`);
+      console.log(
+        `🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`
+      );
       return;
     }
 
@@ -652,7 +658,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       // Valid elimination - NOW set the lock to prevent others
       DualPlayerMockSocket.eliminationLocks[roomId] = true;
       gameState.eliminationBlocked = true;
-      console.log(`🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`);
+      console.log(
+        `🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`
+      );
 
       const eliminatedCard = { ...cardToEliminate };
 
@@ -670,8 +678,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
 
       // Clear any unused power when player performs elimination (mutually exclusive)
-      if (gameState.players[eliminatingPlayerIndex].activePower && !gameState.players[eliminatingPlayerIndex].usingPower) {
-        console.log(`🚫 Clearing unused ${gameState.players[eliminatingPlayerIndex].activePower} power due to elimination choice`);
+      if (
+        gameState.players[eliminatingPlayerIndex].activePower &&
+        !gameState.players[eliminatingPlayerIndex].usingPower
+      ) {
+        console.log(
+          `🚫 Clearing unused ${gameState.players[eliminatingPlayerIndex].activePower} power due to elimination choice`
+        );
         delete gameState.players[eliminatingPlayerIndex].activePower;
         delete gameState.players[eliminatingPlayerIndex].usingPower;
       }
@@ -684,7 +697,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
       // Only trigger card selection if eliminating opponent's card (not self-elimination)
       if (eliminatingPlayerIndex !== cardOwnerIndex) {
-        console.log(`🎯 Opponent elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated ${gameState.players[cardOwnerIndex].name}'s card - triggering card selection`);
+        console.log(
+          `🎯 Opponent elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated ${gameState.players[cardOwnerIndex].name}'s card - triggering card selection`
+        );
         // Emit event to trigger card selection UI for the eliminating player
         DualPlayerMockSocket.broadcastToAll(
           "elimination-card-selection-required",
@@ -696,19 +711,25 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
             eliminatedCard: eliminatedCard,
           }
         );
-        
+
         // Keep elimination lock active - only release after card is given
-        console.log(`🔒 Elimination lock remains active for room ${roomId} - awaiting card selection`);
+        console.log(
+          `🔒 Elimination lock remains active for room ${roomId} - awaiting card selection`
+        );
       } else {
-        console.log(`🎯 Self-elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated their own card - skipping card selection`);
-        // For self-elimination, proceed directly to next turn without card selection
-        DualPlayerMockSocket.moveToNextPlayer(gameState);
-        
+        console.log(
+          `🎯 Self-elimination: ${gameState.players[eliminatingPlayerIndex].name} eliminated their own card - skipping card selection`
+        );
+        // For self-elimination, skip card selection but stay on same turn
+
         // Reset elimination tracking for the next round
-        gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound = false;
+        gameState.players[eliminatingPlayerIndex].hasEliminatedThisRound =
+          false;
         DualPlayerMockSocket.eliminationLocks[roomId] = false;
         gameState.eliminationBlocked = false;
-        console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
+        console.log(
+          `🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`
+        );
       }
 
       // Update game state
@@ -717,7 +738,7 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         playerId,
         cardId,
         timestamp: Date.now(),
-        message: "Valid elimination completed"
+        message: "Valid elimination completed",
       };
 
       DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
@@ -726,8 +747,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       console.log("❌ Invalid elimination - applying penalty");
 
       // Clear any unused power when player attempts elimination (mutually exclusive)
-      if (gameState.players[eliminatingPlayerIndex].activePower && !gameState.players[eliminatingPlayerIndex].usingPower) {
-        console.log(`🚫 Clearing unused ${gameState.players[eliminatingPlayerIndex].activePower} power due to elimination attempt`);
+      if (
+        gameState.players[eliminatingPlayerIndex].activePower &&
+        !gameState.players[eliminatingPlayerIndex].usingPower
+      ) {
+        console.log(
+          `🚫 Clearing unused ${gameState.players[eliminatingPlayerIndex].activePower} power due to elimination attempt`
+        );
         delete gameState.players[eliminatingPlayerIndex].activePower;
         delete gameState.players[eliminatingPlayerIndex].usingPower;
       }
@@ -767,13 +793,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
       }
 
       // Don't set hasEliminatedThisRound for invalid eliminations - let them try again!
-      
+
       gameState.lastAction = {
         type: "elimination",
         playerId,
         cardId,
         timestamp: Date.now(),
-        message: "Invalid elimination attempt"
+        message: "Invalid elimination attempt",
       };
 
       DualPlayerMockSocket.broadcastToAll("game-state-update", gameState);
@@ -1065,7 +1091,9 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
         // Prevent same-player swaps (cards must be from different players)
         if (card1PlayerId === card2PlayerId) {
-          console.log(`❌ ${power} Power: Cannot swap cards within the same player's hand`);
+          console.log(
+            `❌ ${power} Power: Cannot swap cards within the same player's hand`
+          );
           return;
         }
 
@@ -1084,32 +1112,38 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
           // For K (seen swap), reveal both cards to POWER WIELDER ONLY and ask for confirmation
           if (power === "K") {
-            console.log(`👁️ K Power: Revealing both cards to ${playerName} for confirmation`);
+            console.log(
+              `👁️ K Power: Revealing both cards to ${playerName} for confirmation`
+            );
 
             // Send the card revelations only to the power wielder
-            DualPlayerMockSocket.broadcastToPlayer(playerId, "king-power-preview", {
-              powerUserId: playerId,
-              powerUserName: playerName,
-              card1: {
-                card: card1,
-                playerId: card1PlayerId,
-                playerName: player1Name,
-                cardIndex: card1Index,
-              },
-              card2: {
-                card: card2,
-                playerId: card2PlayerId,
-                playerName: player2Name,
-                cardIndex: card2Index,
-              },
-              message: `Do you want to swap ${card1.rank} (${player1Name}) with ${card2.rank} (${player2Name})?`,
-              swapData: {
-                card1PlayerId,
-                card1Index,
-                card2PlayerId,
-                card2Index
+            DualPlayerMockSocket.broadcastToPlayer(
+              playerId,
+              "king-power-preview",
+              {
+                powerUserId: playerId,
+                powerUserName: playerName,
+                card1: {
+                  card: card1,
+                  playerId: card1PlayerId,
+                  playerName: player1Name,
+                  cardIndex: card1Index,
+                },
+                card2: {
+                  card: card2,
+                  playerId: card2PlayerId,
+                  playerName: player2Name,
+                  cardIndex: card2Index,
+                },
+                message: `Do you want to swap ${card1.rank} (${player1Name}) with ${card2.rank} (${player2Name})?`,
+                swapData: {
+                  card1PlayerId,
+                  card1Index,
+                  card2PlayerId,
+                  card2Index,
+                },
               }
-            });
+            );
           } else {
             // For Q (unseen swap), swap immediately without revealing
             console.log(`🔄 Q Power: Unseen swap`);
@@ -1200,10 +1234,13 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
-    if (playerIndex !== -1 && gameState.players[playerIndex].activePower === powerType) {
+    if (
+      playerIndex !== -1 &&
+      gameState.players[playerIndex].activePower === powerType
+    ) {
       // Set usingPower to true to indicate player chose to use their power
       gameState.players[playerIndex].usingPower = true;
-      
+
       console.log(
         `⚡ ${gameState.players[playerIndex].name} chose to activate ${powerType} power`
       );
@@ -1234,11 +1271,14 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
-    if (playerIndex !== -1 && gameState.players[playerIndex].activePower === powerType) {
+    if (
+      playerIndex !== -1 &&
+      gameState.players[playerIndex].activePower === powerType
+    ) {
       // Clear the power and move to next player
       delete gameState.players[playerIndex].activePower;
       delete gameState.players[playerIndex].usingPower;
-      
+
       console.log(
         `❌ ${gameState.players[playerIndex].name} chose to skip ${powerType} power`
       );
@@ -1333,8 +1373,10 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
 
     // Find winner(s) - declarer must have strictly lowest score to win
     const minScore = Math.min(...gameState.players.map((p) => p.score));
-    const playersWithMinScore = gameState.players.filter((p) => p.score === minScore);
-    
+    const playersWithMinScore = gameState.players.filter(
+      (p) => p.score === minScore
+    );
+
     let winners;
     if (playersWithMinScore.length > 1) {
       // If there's a tie for lowest score
@@ -1343,16 +1385,24 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         winners = playersWithMinScore
           .filter((p) => p.id !== playerId)
           .map((p) => ({ id: p.id, name: p.name, score: p.score }));
-        console.log(`⚠️ ${playerName} tied for lowest score but loses as declarer`);
+        console.log(
+          `⚠️ ${playerName} tied for lowest score but loses as declarer`
+        );
       } else {
         // If declarer didn't tie for lowest, all tied players win
-        winners = playersWithMinScore
-          .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+        winners = playersWithMinScore.map((p) => ({
+          id: p.id,
+          name: p.name,
+          score: p.score,
+        }));
       }
     } else {
       // No tie - single player with lowest score wins
-      winners = playersWithMinScore
-        .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+      winners = playersWithMinScore.map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: p.score,
+      }));
     }
 
     console.log(`🏆 Game ended!`);
@@ -1412,9 +1462,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
-    if (playerIndex !== -1 && gameState.players[playerIndex].activePower === "K") {
+    if (
+      playerIndex !== -1 &&
+      gameState.players[playerIndex].activePower === "K"
+    ) {
       const playerName = gameState.players[playerIndex].name;
-      
+
       console.log(`✅ ${playerName} confirmed King power swap`);
 
       // Find the players and cards
@@ -1433,8 +1486,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
         gameState.players[player1Index].hand[swapData.card1Index] !== null &&
         gameState.players[player2Index].hand[swapData.card2Index] !== null
       ) {
-        const card1 = gameState.players[player1Index].hand[swapData.card1Index] as Card;
-        const card2 = gameState.players[player2Index].hand[swapData.card2Index] as Card;
+        const card1 = gameState.players[player1Index].hand[
+          swapData.card1Index
+        ] as Card;
+        const card2 = gameState.players[player2Index].hand[
+          swapData.card2Index
+        ] as Card;
         const player1Name = gameState.players[player1Index].name;
         const player2Name = gameState.players[player2Index].name;
 
@@ -1469,9 +1526,12 @@ class DualPlayerMockSocket extends BrowserEventEmitter {
     const gameState = DualPlayerMockSocket.sharedRooms[roomId];
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
-    if (playerIndex !== -1 && gameState.players[playerIndex].activePower === "K") {
+    if (
+      playerIndex !== -1 &&
+      gameState.players[playerIndex].activePower === "K"
+    ) {
       const playerName = gameState.players[playerIndex].name;
-      
+
       console.log(`❌ ${playerName} cancelled King power swap`);
 
       // Clear the active power and move to next player

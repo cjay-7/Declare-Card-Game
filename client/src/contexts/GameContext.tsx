@@ -562,7 +562,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       };
     }) => {
       console.log(`[${currentPlayerId}] King power preview:`, data);
-      
+
       // Store the king power preview data for the confirmation UI
       // Cards will be shown in the dialog, not revealed on the game board
       setKingPowerReveal({
@@ -758,14 +758,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const handleConfirmKingPowerSwap = () => {
     if (!kingPowerReveal?.swapData) return;
-    
+
     console.log(`[${currentPlayerId}] Confirming King power swap`);
     socket.emit("confirm-king-power-swap", {
       roomId: "QUICK", // You might want to make this dynamic
       playerId: socket.getId(),
       swapData: kingPowerReveal.swapData,
     });
-    
+
     // Clear the king power reveal state
     setKingPowerReveal(null);
   };
@@ -776,7 +776,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       roomId: "QUICK", // You might want to make this dynamic
       playerId: socket.getId(),
     });
-    
+
     // Clear the king power reveal state
     setKingPowerReveal(null);
   };
@@ -859,10 +859,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     // Store the card ID before clearing state to prevent double emissions
     const cardToDiscard = drawnCard;
-    
+
     setCardAnimation("discard");
     setAnimatingCardId(cardToDiscard.id);
-    
+
     // Clear drawn card immediately to prevent double calls
     setDrawnCard(null);
 
@@ -1071,7 +1071,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const activePower = currentPlayer?.activePower;
     const usingPower = currentPlayer?.usingPower;
 
-    console.log(`[${currentPlayerId}] Active power:`, activePower, 'Using power:', usingPower);
+    console.log(
+      `[${currentPlayerId}] Active power:`,
+      activePower,
+      "Using power:",
+      usingPower
+    );
 
     if (activePower && usingPower) {
       // Handle power usage

@@ -1,7 +1,8 @@
 // client/src/components/Hand.tsx
-import React from "react";
+import React, { memo } from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
+import { useUIStateContext } from "../contexts/UIStateContext";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface HandProps {
@@ -10,13 +11,12 @@ interface HandProps {
   isCurrentPlayer: boolean;
 }
 
-const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
-  const {
-    handleSelectCard,
-    selectedCard,
-    handleCardClick,
-    temporaryRevealedCards,
-  } = useGameContext();
+const Hand: React.FC<HandProps> = memo(({ cards, playerId, isCurrentPlayer }) => {
+  // Use new UI context for UI-related state
+  const { selectedCard, temporaryRevealedCards } = useUIStateContext();
+  
+  // Keep using GameContext for now to avoid breaking functionality
+  const { handleSelectCard, handleCardClick } = useGameContext();
 
   if (cards.length === 0) {
     return (
@@ -73,6 +73,9 @@ const Hand: React.FC<HandProps> = ({ cards, playerId, isCurrentPlayer }) => {
       })}
     </div>
   );
-};
+});
+
+// Set display name for debugging
+Hand.displayName = "Hand";
 
 export default Hand;

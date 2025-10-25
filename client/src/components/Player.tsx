@@ -1,57 +1,64 @@
-import React from "react";
+// client/src/components/Player.tsx - Performance optimized version
+import React, { memo } from "react";
+import Hand from "./Hand";
+import PlayerInfo from "./PlayerInfo";
+import type { Card as CardType } from "../utils/cardUtils";
 
+/**
+ * Props for the Player component
+ */
 interface PlayerProps {
   id: string;
   name: string;
-  isHost: boolean;
-  isCurrentTurn: boolean;
-  score: number;
+  cards: CardType[];
   isCurrentPlayer: boolean;
+  isPlayerTurn: boolean;
   cardCount: number;
+  score?: number;
+  isHost?: boolean;
 }
 
-const Player: React.FC<PlayerProps> = ({
-  name,
-  isHost,
-  isCurrentTurn,
-  score,
-  isCurrentPlayer,
-  cardCount,
-}) => {
-  return (
-    <div
-      className={`p-2 rounded flex items-center justify-between
-                ${isCurrentTurn ? "bg-blue-700" : "bg-gray-800"}
-                ${isCurrentPlayer ? "border-2 border-yellow-400" : ""}`}
-    >
-      <div className="flex items-center">
-        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center mr-2">
-          {name.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <div className="flex items-center">
-            <span className="font-medium">{name}</span>
-            {isHost && <span className="ml-2 text-yellow-400 text-xs">👑</span>}
-            {isCurrentPlayer && (
-              <span className="ml-2 text-green-400 text-xs">(You)</span>
-            )}
-          </div>
-          <div className="text-xs text-gray-400">Score: {score}</div>
-        </div>
+/**
+ * Player component for displaying individual player information and hand
+ *
+ * This component is memoized to prevent unnecessary re-renders when props haven't changed.
+ * It displays player information and their hand of cards.
+ *
+ * @param {PlayerProps} props - The component props
+ * @returns {JSX.Element} The rendered player component
+ */
+const Player: React.FC<PlayerProps> = memo(
+  ({
+    id,
+    name,
+    cards,
+    isCurrentPlayer,
+    isPlayerTurn,
+    cardCount,
+    score = 0,
+    isHost = false,
+  }) => {
+    return (
+      <div className="flex flex-col items-center space-y-2">
+        <PlayerInfo
+          name={name}
+          isCurrentPlayer={isCurrentPlayer}
+          isPlayerTurn={isPlayerTurn}
+          cardCount={cardCount}
+          score={score}
+          isHost={isHost}
+        />
+        <Hand
+          cards={cards}
+          playerId={id}
+          isCurrentPlayer={isCurrentPlayer}
+        />
       </div>
+    );
+  }
+);
 
-      <div className="flex items-center">
-        {isCurrentTurn && (
-          <div className="mr-2 animate-pulse">
-            <span className="text-green-400">●</span>
-          </div>
-        )}
-        <div className="bg-gray-700 px-2 py-1 rounded text-xs">
-          {cardCount} cards
-        </div>
-      </div>
-    </div>
-  );
-};
+// Set display name for debugging
+Player.displayName = "Player";
 
 export default Player;

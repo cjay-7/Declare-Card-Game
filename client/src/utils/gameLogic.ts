@@ -119,11 +119,6 @@ export const processTurn = (
       // Implemented on server side
       break;
 
-    case "swap":
-      // Handle swapping cards
-      // Implemented on server side
-      break;
-
     case "discard":
       // Handle discarding a card
       if (action.cardId) {

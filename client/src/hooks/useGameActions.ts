@@ -13,7 +13,7 @@ import type { Card } from "../utils/cardUtils";
  * @returns {Object} Game action functions
  */
 export const useGameActions = () => {
-  const { gameState, myPlayer, roomId, setSelectedCard, setDrawnCard, setSwapSelections } = useGameContext();
+  const { gameState, myPlayer, roomId, setSelectedCard, drawnCard, setDrawnCard, setSwapSelections } = useGameContext();
 
   /**
    * Handles drawing a card from the deck
@@ -123,19 +123,19 @@ export const useGameActions = () => {
     console.log(`[${myPlayer?.id || 'unknown'}] Selecting card:`, card);
 
     // If there's a drawn card, clicking a hand card should replace it
-    if (gameState?.drawnCard) {
+    if (drawnCard) {
       swapWithDrawnCard(card.id);
       return;
     }
 
     // Otherwise, select/deselect for elimination
-    setSelectedCard(prev => {
+    setSelectedCard((prev: { cardId: string; isSelected: boolean } | null) => {
       if (prev?.cardId === card.id) {
         return null; // Deselect if already selected
       }
       return { cardId: card.id, isSelected: true };
     });
-  }, [gameState?.drawnCard, swapWithDrawnCard, setSelectedCard, myPlayer?.id]);
+  }, [drawnCard, swapWithDrawnCard, setSelectedCard, myPlayer?.id]);
 
   /**
    * Handles card click events
@@ -229,14 +229,14 @@ export const useGameActions = () => {
       case "K":
         // Handle swap selection
         const newSelection = { playerId, cardIndex };
-        setSwapSelections(prev => {
+        setSwapSelections((prev: Array<{ playerId: string; cardIndex: number }>) => {
           const existingIndex = prev.findIndex(
-            sel => sel.playerId === playerId && sel.cardIndex === cardIndex
+            (sel: { playerId: string; cardIndex: number }) => sel.playerId === playerId && sel.cardIndex === cardIndex
           );
 
           if (existingIndex !== -1) {
             // Deselect if already selected
-            return prev.filter((_, index) => index !== existingIndex);
+            return prev.filter((_: { playerId: string; cardIndex: number }, index: number) => index !== existingIndex);
           } else if (prev.length < 2) {
             // Add new selection
             const newSelections = [...prev, newSelection];

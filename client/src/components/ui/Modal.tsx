@@ -1,6 +1,5 @@
 // client/src/components/ui/Modal.tsx
 import React, { memo, useEffect, useCallback } from "react";
-import { colors, spacing } from "../../design-system";
 
 /**
  * Props for the Modal component

@@ -45,7 +45,7 @@ interface GameContextType {
   isPlayerTurn: boolean;
   myPlayer: Player | null;
   selectedCard: CardSelection | null;
-  setSelectedCard: (selection: CardSelection | null) => void;
+  setSelectedCard: (selection: CardSelection | null | ((prev: CardSelection | null) => CardSelection | null)) => void;
   drawnCard: Card | null;
   setDrawnCard: (card: Card | null) => void;
   roomId: string | null;
@@ -78,7 +78,7 @@ interface GameContextType {
   hasDrawnFirstCard: boolean;
   swapSelections: Array<{ playerId: string; cardIndex: number }>;
   setSwapSelections: (
-    selections: Array<{ playerId: string; cardIndex: number }>
+    selections: Array<{ playerId: string; cardIndex: number }> | ((prev: Array<{ playerId: string; cardIndex: number }>) => Array<{ playerId: string; cardIndex: number }>)
   ) => void;
 
   // Temporary reveal state
@@ -141,6 +141,7 @@ const defaultGameState: GameState = {
   declarer: null,
   lastAction: null,
   type: "view",
+  eliminationBlocked: false,
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);

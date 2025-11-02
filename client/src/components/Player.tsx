@@ -43,9 +43,7 @@ const Player: React.FC<PlayerProps> = memo(
         <PlayerInfo
           name={name}
           isCurrentPlayer={isCurrentPlayer}
-          isPlayerTurn={isPlayerTurn}
-          cardCount={cardCount}
-          score={score}
+          isCurrentTurn={isPlayerTurn}
           isHost={isHost}
         />
         <Hand

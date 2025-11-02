@@ -4,7 +4,7 @@ import socket from "./socket";
 
 const TestControlPanel: React.FC = () => {
   let playerCount = 0;
-  const { gameState, roomId, playerName, setDrawnCard, drawnCard, myPlayer } =
+  const { gameState, roomId, playerName, setDrawnCard, myPlayer } =
     useGameContext();
 
   // Generate a test card
@@ -93,7 +93,9 @@ const TestControlPanel: React.FC = () => {
       // Reveal all cards and assign random scores
       updatedGameState.players.forEach((player) => {
         player.hand.forEach((card) => {
-          card.isRevealed = true;
+          if (card) {
+            card.isRevealed = true;
+          }
         });
         player.score = Math.floor(Math.random() * 50);
       });
@@ -147,7 +149,9 @@ const TestControlPanel: React.FC = () => {
 
     if (playerIndex !== -1) {
       updatedGameState.players[playerIndex].hand.forEach((card) => {
-        card.isRevealed = true;
+        if (card) {
+          card.isRevealed = true;
+        }
       });
 
       socket.emit("game-state-update", updatedGameState);

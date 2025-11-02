@@ -197,6 +197,7 @@ class MockSocket extends BrowserEventEmitter {
         declarer: null,
         lastAction: null,
         type: "view",
+        eliminationBlocked: false,
       };
       this.playersByRoom[roomId] = [];
     }

@@ -1,6 +1,5 @@
 // client/src/components/ui/Button.tsx
 import React, { memo, forwardRef } from "react";
-import { colors, spacing } from "../../design-system";
 
 /**
  * Button variant types

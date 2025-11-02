@@ -1,5 +1,8 @@
 // client/src/utils/validation.ts
-import type { Card, CardSuit, CardRank } from "../components/Card";
+import type { Card } from "./cardUtils";
+
+export type CardSuit = "hearts" | "diamonds" | "clubs" | "spades";
+export type CardRank = "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
 
 /**
  * Validation error class for custom validation errors

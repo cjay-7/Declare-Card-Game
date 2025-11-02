@@ -2,7 +2,6 @@
 import React, { memo } from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
-import { useUIStateContext } from "../contexts/UIStateContext";
 import type { Card as CardType } from "../utils/cardUtils";
 
 interface HandProps {
@@ -12,11 +11,8 @@ interface HandProps {
 }
 
 const Hand: React.FC<HandProps> = memo(({ cards, playerId, isCurrentPlayer }) => {
-  // Use new UI context for UI-related state
-  const { selectedCard, temporaryRevealedCards } = useUIStateContext();
-  
-  // Keep using GameContext for now to avoid breaking functionality
-  const { handleSelectCard, handleCardClick } = useGameContext();
+  // Use GameContext for all state to ensure proper synchronization
+  const { selectedCard, temporaryRevealedCards, handleSelectCard, handleCardClick } = useGameContext();
 
   if (cards.length === 0) {
     return (

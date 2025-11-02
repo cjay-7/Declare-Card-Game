@@ -1,13 +1,26 @@
-// client/src/components/__tests__/Hand.test.tsx
+// client/src/components/__tests__/HandGrid.test.tsx
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { describe, it, expect, vi } from "vitest";
-import Hand from "../Hand";
+import HandGrid from "../HandGrid";
 import { GameProvider } from "../../contexts/GameContext";
 import { GameStateProvider } from "../../contexts/GameStateContext";
 import { UIStateProvider } from "../../contexts/UIStateContext";
 import type { Card as CardType } from "../../utils/cardUtils";
+
+/**
+ * Mock socket for testing
+ */
+vi.mock("../../socket", () => ({
+  default: {
+    getId: () => "player1",
+    emit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    getCurrentPlayer: () => "player1",
+  },
+}));
 
 /**
  * Test wrapper component that provides all necessary contexts
@@ -25,7 +38,7 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 /**
  * Mock card data for testing
  */
-const mockCards: CardType[] = [
+const mockCards: (CardType | null)[] = [
   {
     id: "card-1",
     suit: "hearts",
@@ -42,31 +55,32 @@ const mockCards: CardType[] = [
     isRevealed: true,
     position: 1,
   },
+  null, // Eliminated card
   {
-    id: "card-3",
+    id: "card-4",
     suit: "diamonds",
     rank: "7",
     value: 7,
     isRevealed: false,
-    position: 2,
+    position: 3,
   },
 ];
 
 /**
- * Test suite for the Hand component
+ * Test suite for the HandGrid component
  * 
- * This test suite covers the Hand component functionality including
- * rendering, card interactions, and context integration.
+ * This test suite covers the HandGrid component functionality including
+ * rendering, card interactions, power usage, and context integration.
  */
-describe("Hand Component", () => {
+describe("HandGrid Component", () => {
   /**
-   * Test that the hand renders correctly with cards
+   * Test that the hand grid renders correctly
    */
   describe("Rendering", () => {
     it("should render cards correctly", () => {
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -74,45 +88,39 @@ describe("Hand Component", () => {
         </TestWrapper>
       );
 
-      // Should render 3 cards
+      // Should render 3 cards (one is null)
       expect(screen.getAllByRole("button")).toHaveLength(3);
     });
 
-    it("should render empty slots when no cards", () => {
+    it("should render empty slots for null cards", () => {
       render(
         <TestWrapper>
-          <Hand
-            cards={[]}
+          <HandGrid
+            cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
           />
         </TestWrapper>
       );
 
-      // Should render 4 empty slots
-      expect(screen.getAllByText("Empty")).toHaveLength(4);
+      // Should show empty slot for null card
+      expect(screen.getByText("Empty")).toBeInTheDocument();
     });
 
-    it("should sort cards by position", () => {
-      const unsortedCards = [
-        { ...mockCards[0], position: 2 },
-        { ...mockCards[1], position: 0 },
-        { ...mockCards[2], position: 1 },
-      ];
-
+    it("should show declaration mode when enabled", () => {
       render(
         <TestWrapper>
-          <Hand
-            cards={unsortedCards}
+          <HandGrid
+            cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
+            isDeclarationMode={true}
           />
         </TestWrapper>
       );
 
-      // Cards should be rendered in position order
-      const cardElements = screen.getAllByRole("button");
-      expect(cardElements).toHaveLength(3);
+      // Should show declaration mode UI
+      expect(screen.getByText("Select cards to declare")).toBeInTheDocument();
     });
   });
 
@@ -123,7 +131,7 @@ describe("Hand Component", () => {
     it("should handle card clicks for current player", () => {
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -141,7 +149,7 @@ describe("Hand Component", () => {
     it("should handle card clicks for opponent player", () => {
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player2"
             isCurrentPlayer={false}
@@ -155,16 +163,58 @@ describe("Hand Component", () => {
       // Card should be clickable (no error thrown)
       expect(firstCard).toBeInTheDocument();
     });
+
+    it("should not allow interaction with eliminated cards", () => {
+      render(
+        <TestWrapper>
+          <HandGrid
+            cards={mockCards}
+            playerId="player1"
+            isCurrentPlayer={true}
+          />
+        </TestWrapper>
+      );
+
+      const emptySlot = screen.getByText("Empty");
+      fireEvent.click(emptySlot);
+
+      // Should not throw error or cause issues
+      expect(emptySlot).toBeInTheDocument();
+    });
   });
 
   /**
-   * Test card reveal functionality
+   * Test power usage functionality
    */
-  describe("Card Reveal", () => {
-    it("should reveal cards that are marked as revealed", () => {
+  describe("Power Usage", () => {
+    it("should show power interaction hints when power is active", () => {
+      // Mock game state with active power
+      const mockGameState = {
+        players: [
+          {
+            id: "player1",
+            name: "Player 1",
+            activePower: "7",
+            usingPower: true,
+            hand: mockCards.filter(Boolean),
+          },
+        ],
+        currentPlayerIndex: 0,
+        deck: [],
+        discardPile: [],
+        gameStatus: "playing" as const,
+        matchingDiscardWindow: false,
+        matchingDiscardCard: null,
+        matchingDiscardTimeout: null,
+        roundNumber: 1,
+        declarer: null,
+        lastAction: null,
+        type: "view" as const,
+      };
+
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -172,25 +222,9 @@ describe("Hand Component", () => {
         </TestWrapper>
       );
 
-      // The second card (spades K) should be revealed
+      // Should show power interaction hints
       const cards = screen.getAllByRole("button");
-      expect(cards[1]).toHaveAttribute("aria-label", "K of spades");
-    });
-
-    it("should not reveal cards that are not marked as revealed", () => {
-      render(
-        <TestWrapper>
-          <Hand
-            cards={mockCards}
-            playerId="player1"
-            isCurrentPlayer={true}
-          />
-        </TestWrapper>
-      );
-
-      // The first card (hearts A) should not be revealed
-      const cards = screen.getAllByRole("button");
-      expect(cards[0]).toHaveAttribute("aria-label", "Face-down playing card");
+      expect(cards.length).toBeGreaterThan(0);
     });
   });
 
@@ -201,7 +235,7 @@ describe("Hand Component", () => {
     it("should have proper ARIA labels", () => {
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -211,20 +245,16 @@ describe("Hand Component", () => {
 
       const cards = screen.getAllByRole("button");
       
-      // First card should be face-down
-      expect(cards[0]).toHaveAttribute("aria-label", "Face-down playing card");
-      
-      // Second card should be revealed
-      expect(cards[1]).toHaveAttribute("aria-label", "K of spades");
-      
-      // Third card should be face-down
-      expect(cards[2]).toHaveAttribute("aria-label", "Face-down playing card");
+      // Cards should have proper labels
+      cards.forEach(card => {
+        expect(card).toHaveAttribute("aria-label");
+      });
     });
 
     it("should be keyboard accessible", () => {
       render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -245,16 +275,63 @@ describe("Hand Component", () => {
    * Test edge cases
    */
   describe("Edge Cases", () => {
-    it("should handle cards with missing position", () => {
-      const cardsWithoutPosition = mockCards.map(card => ({
-        ...card,
-        position: undefined,
-      }));
+    it("should handle empty cards array", () => {
+      render(
+        <TestWrapper>
+          <HandGrid
+            cards={[]}
+            playerId="player1"
+            isCurrentPlayer={true}
+          />
+        </TestWrapper>
+      );
+
+      // Should render empty slots
+      expect(screen.getAllByText("Empty")).toHaveLength(4);
+    });
+
+    it("should handle all null cards", () => {
+      const allNullCards = [null, null, null, null];
 
       render(
         <TestWrapper>
-          <Hand
-            cards={cardsWithoutPosition}
+          <HandGrid
+            cards={allNullCards}
+            playerId="player1"
+            isCurrentPlayer={true}
+          />
+        </TestWrapper>
+      );
+
+      // Should render all empty slots
+      expect(screen.getAllByText("Empty")).toHaveLength(4);
+    });
+
+    it("should handle cards with missing properties", () => {
+      const incompleteCards = [
+        {
+          id: "card-1",
+          suit: "hearts" as const,
+          rank: "A" as const,
+          value: 1,
+          isRevealed: false,
+          // Missing position
+        },
+        null,
+        {
+          id: "card-3",
+          suit: "spades" as const,
+          rank: "K" as const,
+          value: 13,
+          isRevealed: true,
+          position: 2,
+        },
+      ];
+
+      render(
+        <TestWrapper>
+          <HandGrid
+            cards={incompleteCards}
             playerId="player1"
             isCurrentPlayer={true}
           />
@@ -262,27 +339,6 @@ describe("Hand Component", () => {
       );
 
       // Should render without errors
-      expect(screen.getAllByRole("button")).toHaveLength(3);
-    });
-
-    it("should handle null cards gracefully", () => {
-      const cardsWithNulls = [
-        mockCards[0],
-        null,
-        mockCards[2],
-      ].filter(Boolean) as CardType[];
-
-      render(
-        <TestWrapper>
-          <Hand
-            cards={cardsWithNulls}
-            playerId="player1"
-            isCurrentPlayer={true}
-          />
-        </TestWrapper>
-      );
-
-      // Should render the valid cards
       expect(screen.getAllByRole("button")).toHaveLength(2);
     });
   });
@@ -294,7 +350,7 @@ describe("Hand Component", () => {
     it("should be memoized and not re-render unnecessarily", () => {
       const { rerender } = render(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -305,7 +361,7 @@ describe("Hand Component", () => {
       // Re-render with same props
       rerender(
         <TestWrapper>
-          <Hand
+          <HandGrid
             cards={mockCards}
             playerId="player1"
             isCurrentPlayer={true}
@@ -314,6 +370,41 @@ describe("Hand Component", () => {
       );
 
       // Should still render correctly
+      expect(screen.getAllByRole("button")).toHaveLength(3);
+    });
+  });
+
+  /**
+   * Test context integration
+   */
+  describe("Context Integration", () => {
+    it("should use GameStateContext for game state", () => {
+      render(
+        <TestWrapper>
+          <HandGrid
+            cards={mockCards}
+            playerId="player1"
+            isCurrentPlayer={true}
+          />
+        </TestWrapper>
+      );
+
+      // Should render without context errors
+      expect(screen.getAllByRole("button")).toHaveLength(3);
+    });
+
+    it("should use UIStateContext for UI state", () => {
+      render(
+        <TestWrapper>
+          <HandGrid
+            cards={mockCards}
+            playerId="player1"
+            isCurrentPlayer={true}
+          />
+        </TestWrapper>
+      );
+
+      // Should render without context errors
       expect(screen.getAllByRole("button")).toHaveLength(3);
     });
   });

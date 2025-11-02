@@ -2,6 +2,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { describe, it, expect, vi } from "vitest";
 import Card, {
   type CardSuit,
   type CardRank,
@@ -170,7 +171,7 @@ describe("Card Component", () => {
     });
 
     it("should call onClick when clicked", () => {
-      const handleClick = jest.fn();
+      const handleClick = vi.fn();
 
       render(
         <Card
@@ -313,7 +314,7 @@ describe("Card Component", () => {
     });
 
     it("should be keyboard accessible when onClick is provided", () => {
-      const handleClick = jest.fn();
+      const handleClick = vi.fn();
 
       render(
         <Card

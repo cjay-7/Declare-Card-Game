@@ -1,5 +1,6 @@
-// client/src/setupTests.ts - Enhanced testing setup
+// client/src/setupTests.ts - Enhanced testing setup for Vitest
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
@@ -20,15 +21,15 @@ global.ResizeObserver = class ResizeObserver {
 // Mock matchMedia
 Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: jest.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
+    addListener: vi.fn(), // deprecated
+    removeListener: vi.fn(), // deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
   })),
 });
 
@@ -63,15 +64,3 @@ afterAll(() => {
   console.error = originalError;
   console.warn = originalWarn;
 });
-
-// Global test utilities
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeInTheDocument(): R;
-      toHaveClass(className: string): R;
-      toHaveAttribute(attr: string, value?: string): R;
-      toHaveTextContent(text: string): R;
-    }
-  }
-}

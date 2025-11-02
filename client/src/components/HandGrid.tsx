@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// client/src/components/HandGrid.tsx - FIXED VERSION
-import React from "react";
+// client/src/components/HandGrid.tsx - Migrated to use split contexts
+import React, { memo } from "react";
 import Card from "./Card";
 import { useGameContext } from "../contexts/GameContext";
 import socket from "../socket";
@@ -17,7 +17,7 @@ interface HandGridProps {
   onCancelDeclaration?: () => void;
 }
 
-const HandGrid: React.FC<HandGridProps> = ({
+const HandGrid: React.FC<HandGridProps> = memo(({
   cards,
   playerId,
   isCurrentPlayer,
@@ -26,18 +26,22 @@ const HandGrid: React.FC<HandGridProps> = ({
   onConfirmDeclaration,
   onCancelDeclaration,
 }) => {
+  // Use GameContext for all state to ensure proper synchronization
   const {
-    handleSelectCard,
-    selectedCard,
-    handleCardClick,
-    temporaryRevealedCards,
-    handleEliminateCard,
-    drawnCard,
     gameState,
+    myPlayer,
+    selectedCard,
+    temporaryRevealedCards,
     opponentRevealedCard,
     swapSelections,
+    drawnCard,
     eliminationCardSelection,
+    handleSelectCard,
+    handleCardClick,
+    handleEliminateCard,
     handleEliminationCardSelected,
+    handleActivatePower,
+    handleSkipPower,
     hasDrawnFirstCard,
   } = useGameContext();
 
@@ -62,6 +66,13 @@ const HandGrid: React.FC<HandGridProps> = ({
   // Check if there's a card in the discard pile for elimination
   const hasDiscardCard =
     gameState?.discardPile && gameState.discardPile.length > 0;
+
+  // Get current player data for elimination logic
+  const currentPlayerData = gameState?.players.find(
+    (p) => p.id === socket.getId()
+  );
+  const hasAlreadyEliminated = currentPlayerData?.hasEliminatedThisRound || false;
+
 
   const isEliminationSelectionActive =
     eliminationCardSelection?.isActive &&
@@ -211,14 +222,46 @@ const HandGrid: React.FC<HandGridProps> = ({
             opponentRevealedCard?.playerId === playerId &&
             opponentRevealedCard?.cardIndex === index); // Opponent card revealed by power
 
-        const currentPlayerData = gameState?.players.find(
-          (p) => p.id === socket.getId()
-        );
-        const hasAlreadyEliminated =
-          currentPlayerData?.hasEliminatedThisRound || false;
+        // Debug power reveal logic
+        if (isCurrentPlayer && temporaryRevealedCards.includes(index)) {
+          console.log(`[HANDGRID DEBUG] Card ${index} should be revealed by power:`, {
+            card: card?.rank,
+            temporaryRevealedCards,
+            shouldReveal
+          });
+        }
+
+        // Check if this card matches the top discard card rank for elimination
+        const topDiscardCard = gameState?.discardPile && gameState.discardPile.length > 0 
+          ? gameState.discardPile[gameState.discardPile.length - 1] 
+          : null;
+        const cardMatchesDiscard = topDiscardCard && card && card.rank === topDiscardCard.rank;
+
+        // Debug card matching for Cabo elimination
+        if (topDiscardCard && card) {
+          console.log(`[CABO ELIMINATION] Card ${card.rank} vs Discard ${topDiscardCard.rank} - Risk: ${!cardMatchesDiscard ? 'PENALTY if eliminated' : 'SAFE elimination'}`);
+        }
 
         const showEliminateButton =
-          !drawnCard && hasDiscardCard && !hasAlreadyEliminated && !(activePower && usingPower) && !gameState?.eliminationBlocked;
+          !drawnCard && 
+          hasDiscardCard && 
+          !hasAlreadyEliminated && 
+          !(activePower && usingPower) && 
+          !gameState?.eliminationBlocked &&
+          card !== null; // Show on ALL cards - Cabo elimination is about memory risk
+
+        // Debug elimination button logic for Cabo
+        if (topDiscardCard && card) {
+          console.log(`[CABO ELIMINATION DEBUG] Card ${card.rank} (${playerId}):`, {
+            hasDiscardCard,
+            hasAlreadyEliminated,
+            activePower: !!activePower,
+            usingPower: !!usingPower,
+            eliminationBlocked: gameState?.eliminationBlocked,
+            cardMatchesDiscard,
+            showEliminateButton
+          });
+        }
 
         // Check if this card is selected for swapping
         const isSelectedForSwap = swapSelections.some(
@@ -320,7 +363,7 @@ const HandGrid: React.FC<HandGridProps> = ({
                 className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 
                           rounded-full flex items-center justify-center text-white text-xs
                           border-2 border-white shadow-lg transition-colors"
-                title={`Eliminate this ${card.rank} (if it matches top discard)`}
+                title={`Eliminate this card (Cabo elimination - risk penalty if wrong!)`}
               >
                 ❌
               </button>
@@ -332,6 +375,9 @@ const HandGrid: React.FC<HandGridProps> = ({
       })}
     </div>
   );
-};
+});
+
+// Set display name for debugging
+HandGrid.displayName = "HandGrid";
 
 export default HandGrid;

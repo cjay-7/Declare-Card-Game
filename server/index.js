@@ -164,9 +164,9 @@ io.on("connection", (socket) => {
     room.deck = [];
     room.discardPile = [];
     room.currentPlayerIndex = 0;
-    
+
     // Reset all players' hands
-    room.players.forEach(player => {
+    room.players.forEach((player) => {
       player.hand = [];
       player.score = 0;
       player.activePower = null;
@@ -264,7 +264,9 @@ io.on("connection", (socket) => {
       player.hasEliminatedThisRound = false;
     });
     eliminationLocks[roomId] = false;
-    console.log(`🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`);
+    console.log(
+      `🔓 Elimination lock reset for room ${roomId} - new eliminations allowed`
+    );
 
     // Apply special card powers if needed
     if (discardedCard.rank === "J") {
@@ -472,6 +474,125 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("game-state-update", room);
   });
 
+  // Handle using power on own card (7, 8 powers)
+  socket.on("use-power-on-own-card", ({ roomId, playerId, cardIndex }) => {
+    const room = rooms[roomId];
+    if (!room || room.gameStatus !== "playing") return;
+
+    // Check if player is in the game
+    const playerIndex = room.players.findIndex((p) => p.id === playerId);
+
+    if (playerIndex === -1) {
+      socket.emit("error", { message: "Player not found" });
+      return;
+    }
+
+    // Check if player has an active power
+    const player = room.players[playerIndex];
+    if (!player.activePower || !["7", "8"].includes(player.activePower)) {
+      socket.emit("error", { message: "No valid power available" });
+      return;
+    }
+
+    // Check if card exists
+    if (!player.hand[cardIndex]) {
+      socket.emit("error", { message: "Card not found" });
+      return;
+    }
+
+    // Reveal the card for the player
+    const card = player.hand[cardIndex];
+    card.isRevealed = true;
+
+    // Add card to known cards
+    if (!player.knownCards.includes(card.id)) {
+      player.knownCards.push(card.id);
+    }
+
+    // Log the power usage before clearing
+    console.log(
+      `[${player.name}] Used ${player.activePower} power on own card ${card.rank} of ${card.suit}`
+    );
+
+    // Clear the active power
+    player.activePower = null;
+    player.usingPower = false;
+
+    // Send power peek result for own card
+    socket.emit("power-peek-result", {
+      card,
+      targetPlayer: `${player.name} (You)`,
+      cardIndex,
+    });
+
+    // Move to next player
+    moveToNextPlayer(room);
+
+    // Update game state
+    io.to(roomId).emit("game-state-update", room);
+  });
+
+  // Handle using power on opponent card (9, 10 powers)
+  socket.on(
+    "use-power-on-opponent-card",
+    ({ roomId, playerId, targetPlayerId, cardIndex }) => {
+      const room = rooms[roomId];
+      if (!room || room.gameStatus !== "playing") return;
+
+      // Check if player is in the game
+      const playerIndex = room.players.findIndex((p) => p.id === playerId);
+      const targetPlayerIndex = room.players.findIndex(
+        (p) => p.id === targetPlayerId
+      );
+
+      if (playerIndex === -1 || targetPlayerIndex === -1) {
+        socket.emit("error", { message: "Player not found" });
+        return;
+      }
+
+      // Check if player has an active power
+      const player = room.players[playerIndex];
+      if (!player.activePower || !["9", "10"].includes(player.activePower)) {
+        socket.emit("error", { message: "No valid power available" });
+        return;
+      }
+
+      // Check if target card exists
+      const targetPlayer = room.players[targetPlayerIndex];
+      if (!targetPlayer.hand[cardIndex]) {
+        socket.emit("error", { message: "Target card not found" });
+        return;
+      }
+
+      // Reveal the card for the player using the power
+      const card = targetPlayer.hand[cardIndex];
+      const revealedCard = { ...card, isRevealed: true };
+
+      // Log the power usage before clearing
+      console.log(
+        `[${player.name}] Used ${player.activePower} power to peek at ${targetPlayer.name}'s ${card.rank} of ${card.suit}`
+      );
+
+      // Clear the active power
+      player.activePower = null;
+      player.usingPower = false;
+
+      // Send card reveal to the player who used the power
+      socket.emit("power-peek-result", {
+        card: revealedCard,
+        targetPlayer: targetPlayer.name,
+        targetPlayerId,
+        cardIndex,
+      });
+
+      // Move to next player
+      moveToNextPlayer(room);
+
+      // Update game state
+      io.to(roomId).emit("game-state-update", room);
+    }
+  );
+
   // Handle player leaving a room
   socket.on("leave-room", ({ roomId, playerId }) => {
     if (!rooms[roomId]) return;
@@ -521,7 +642,9 @@ io.on("connection", (socket) => {
 
     // Check if elimination is already in progress for this room
     if (eliminationLocks[roomId]) {
-      console.log(`🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`);
+      console.log(
+        `🔒 Elimination already in progress for room ${roomId} - blocking ${playerId}`
+      );
       socket.emit("error", { message: "Another elimination is in progress" });
       return;
     }
@@ -538,7 +661,9 @@ io.on("connection", (socket) => {
     // Check if this player has already eliminated a card this round
     if (room.players[eliminatingPlayerIndex].hasEliminatedThisRound) {
       console.log("Player has already eliminated a card this round");
-      socket.emit("error", { message: "You have already eliminated a card this round" });
+      socket.emit("error", {
+        message: "You have already eliminated a card this round",
+      });
       return;
     }
 
@@ -567,40 +692,49 @@ io.on("connection", (socket) => {
     }
 
     // Check if elimination is valid (matches top discard card rank)
-    const topDiscardCard = room.discardPile.length > 0 
-      ? room.discardPile[room.discardPile.length - 1] 
-      : null;
+    const topDiscardCard =
+      room.discardPile.length > 0
+        ? room.discardPile[room.discardPile.length - 1]
+        : null;
 
-    const canEliminate = topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
+    const canEliminate =
+      topDiscardCard && topDiscardCard.rank === cardToEliminate.rank;
 
     if (canEliminate) {
       // Valid elimination - NOW set the lock to prevent others
       eliminationLocks[roomId] = true;
-      console.log(`🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`);
+      console.log(
+        `🔒 Elimination lock set for room ${roomId} by ${playerId} after VALID elimination`
+      );
 
       const eliminatedCard = { ...cardToEliminate };
-      
-      console.log(`✅ ${room.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${room.players[cardOwnerIndex].name}`);
-      
+
+      console.log(
+        `✅ ${room.players[eliminatingPlayerIndex].name} eliminated ${eliminatedCard.rank} from ${room.players[cardOwnerIndex].name}`
+      );
+
       // Add the eliminated card to discard pile
       room.discardPile.push(eliminatedCard);
-      
+
       // Set the eliminated position to null
       room.players[cardOwnerIndex].hand[cardIndex] = null;
-      
+
       // Mark the eliminating player as having eliminated this round
       room.players[eliminatingPlayerIndex].hasEliminatedThisRound = true;
-      
-      // Emit successful elimination event
-      io.to(roomId).emit("card-eliminated", {
+
+      // Emit elimination card selection required event
+      io.to(roomId).emit("elimination-card-selection-required", {
         eliminatingPlayerId: playerId,
         cardOwnerId: room.players[cardOwnerIndex].id,
+        cardOwnerName: room.players[cardOwnerIndex].name,
         cardIndex: cardIndex,
-        eliminatedCard: eliminatedCard
+        eliminatedCard: eliminatedCard,
       });
 
       // Keep elimination lock active - only release on next discard
-      console.log(`🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`);
+      console.log(
+        `🔒 Elimination lock remains active for room ${roomId} - no more eliminations allowed`
+      );
 
       // Record this action
       room.lastAction = {
@@ -608,7 +742,7 @@ io.on("connection", (socket) => {
         playerId: playerId,
         cardId: cardId,
         timestamp: Date.now(),
-        message: "Valid elimination completed"
+        message: "Valid elimination completed",
       };
 
       // Update game state for all players
@@ -616,36 +750,113 @@ io.on("connection", (socket) => {
     } else {
       // Invalid elimination - apply penalty
       console.log("❌ Invalid elimination - applying penalty");
-      
+
       if (room.deck.length > 0) {
         const penaltyCard = room.deck.pop();
         penaltyCard.isRevealed = false;
-        
+
         // Add penalty card to eliminating player's hand
         room.players[eliminatingPlayerIndex].hand.push(penaltyCard);
-        
+
         io.to(roomId).emit("penalty-card", {
           playerId,
           penaltyCard,
-          reason: "Invalid elimination attempt"
+          reason: "Invalid elimination attempt",
         });
       }
-      
+
       // Don't set hasEliminatedThisRound for invalid eliminations - let them try again!
-      
+
       // Record this action
       room.lastAction = {
         type: "elimination",
         playerId: playerId,
         cardId: cardId,
         timestamp: Date.now(),
-        message: "Invalid elimination attempt"
+        message: "Invalid elimination attempt",
       };
 
       // Update game state for all players
       io.to(roomId).emit("game-state-update", room);
     }
   });
+
+  // Handle completion of elimination card give
+  socket.on(
+    "complete-elimination-card-give",
+    ({
+      roomId,
+      eliminatingPlayerId,
+      cardOwnerId,
+      cardOwnerName,
+      selectedCardIndex,
+      targetCardIndex,
+      eliminatedCard,
+    }) => {
+      const room = rooms[roomId];
+      if (!room || room.gameStatus !== "playing") return;
+
+      // Find the players
+      const eliminatingPlayerIndex = room.players.findIndex(
+        (p) => p.id === eliminatingPlayerId
+      );
+      const cardOwnerIndex = room.players.findIndex(
+        (p) => p.id === cardOwnerId
+      );
+
+      if (eliminatingPlayerIndex === -1 || cardOwnerIndex === -1) {
+        socket.emit("error", { message: "Player not found" });
+        return;
+      }
+
+      const eliminatingPlayer = room.players[eliminatingPlayerIndex];
+      const cardOwner = room.players[cardOwnerIndex];
+
+      // Get the card to give from eliminating player
+      const cardToGive = eliminatingPlayer.hand[selectedCardIndex];
+
+      if (!cardToGive) {
+        socket.emit("error", { message: "Selected card not found" });
+        return;
+      }
+
+      console.log(
+        `🎁 ${eliminatingPlayer.name} giving ${cardToGive.rank} to ${cardOwner.name} at position ${targetCardIndex}`
+      );
+
+      // Perform the card transfer
+      // 1. Place the given card in the eliminated card's position
+      cardOwner.hand[targetCardIndex] = { ...cardToGive };
+
+      // 2. Replace the given card with null in eliminating player's hand
+      eliminatingPlayer.hand[selectedCardIndex] = null;
+
+      // Reset elimination tracking for the next round
+      room.players.forEach((player, idx) => {
+        if (idx !== eliminatingPlayerIndex) {
+          player.hasEliminatedThisRound = false;
+        }
+      });
+
+      // Clear any active powers
+      room.players.forEach((player) => {
+        if (player.activePower) {
+          player.activePower = null;
+          player.usingPower = false;
+        }
+      });
+
+      // Update game state
+      room.lastAction = {
+        type: "elimination-completed",
+        playerId: eliminatingPlayerId,
+        timestamp: Date.now(),
+        message: "Elimination card transfer completed",
+      };
+
+      io.to(roomId).emit("game-state-update", room);
+    }
+  );
 
   // Handle disconnections
   socket.on("disconnect", () => {

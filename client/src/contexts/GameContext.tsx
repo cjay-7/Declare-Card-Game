@@ -454,9 +454,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       console.log(
         `[${currentPlayerId}] Power peek result: ${data.card.rank} of ${data.card.suit} from ${data.targetPlayer}`
       );
+      console.log(`[${currentPlayerId}] Power peek data:`, data);
 
       // For own cards (7/8), reveal the card in our own hand
       if (data.targetPlayer.includes("(You)") || !data.targetPlayerId) {
+        console.log(`[${currentPlayerId}] Setting temporaryRevealedCards to [${data.cardIndex}]`);
         setTemporaryRevealedCards([data.cardIndex]);
       } else {
         // For opponent cards (9/10), we need to track which opponent's card to reveal
@@ -474,6 +476,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
       // Hide after 5 seconds
       setTimeout(() => {
+        console.log(`[${currentPlayerId}] Hiding power reveal after 5 seconds`);
         setTemporaryRevealedCards([]);
         setOpponentRevealedCard(null);
       }, 5000);

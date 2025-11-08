@@ -11,7 +11,11 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:online": "vitest run src/__tests__/online-mode/",
+    "test:online:watch": "vitest watch src/__tests__/online-mode/",
+    "test:components": "vitest run src/components/__tests__/",
+    "test:components:watch": "vitest watch src/components/__tests__/"
   },
   "dependencies": {
     "react": "^19.1.0",

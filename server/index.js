@@ -738,6 +738,41 @@ io.on("connection", (socket) => {
     }
   );
 
+  // Handle skipping an active power
+  socket.on("skip-power", ({ roomId, playerId, powerType }) => {
+    const room = rooms[roomId];
+    if (!room || room.gameStatus !== "playing") return;
+
+    // Find player
+    const playerIndex = room.players.findIndex((p) => p.id === playerId);
+    if (playerIndex === -1) {
+      socket.emit("error", { message: "Player not found" });
+      return;
+    }
+
+    const player = room.players[playerIndex];
+
+    // Verify player has the power
+    if (!player.activePower || player.activePower !== powerType) {
+      socket.emit("error", { message: "No matching power to skip" });
+      return;
+    }
+
+    console.log(
+      `[${player.name}] Skipped ${powerType} power`
+    );
+
+    // Clear the active power
+    player.activePower = null;
+    player.usingPower = false;
+
+    // Move to next player
+    moveToNextPlayer(room);
+
+    // Update game state
+    io.to(roomId).emit("game-state-update", room);
+  });
+
   // Handle player leaving a room
   socket.on("leave-room", ({ roomId, playerId }) => {
     if (!rooms[roomId]) return;

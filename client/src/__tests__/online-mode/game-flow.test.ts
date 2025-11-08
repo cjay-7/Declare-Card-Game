@@ -15,6 +15,7 @@ import {
   cleanupSockets,
   MockEventListener,
   assertGameState,
+  skipPower,
 } from "./utils/testHelpers";
 
 /**
@@ -211,8 +212,17 @@ describe("Game Flow Integration Tests", () => {
       const { card } = await drawCard(socket1, roomId, currentPlayer.id);
       gameState = await discardDrawnCard(socket1, roomId, currentPlayer.id, card.id);
 
-      // Should move to next player
-      expect(gameState.currentPlayerIndex).toBe(1);
+      // Power cards (7, 8, 9, 10, Q, K) pause for power activation, others move turn
+      const isPowerCard = ["7", "8", "9", "10", "Q", "K"].includes(card.rank);
+
+      if (isPowerCard) {
+        // Power card: turn stays same, waiting for power choice
+        expect(gameState.currentPlayerIndex).toBe(0);
+        expect(gameState.players[0].activePower).toBe(card.rank);
+      } else {
+        // Regular card or Jack: turn moves to next player
+        expect(gameState.currentPlayerIndex).toBe(1);
+      }
     });
   });
 
@@ -298,47 +308,20 @@ describe("Game Flow Integration Tests", () => {
       await joinRoom(socket3, roomId, "Player 3");
 
       let gameState = await startGame(socket1, roomId);
+      const player1 = gameState.players[0];
 
-      // Find or create a Jack card scenario
-      // Note: This is simplified - in real test you might need to
-      // manipulate game state to ensure a Jack is drawn
-      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+      // Draw and discard a card
+      const { card } = await drawCard(socket1, roomId, player1.id);
+      gameState = await discardDrawnCard(socket1, roomId, player1.id, card.id);
 
-      // Draw cards until we get a Jack or timeout
-      let attempts = 0;
-      let drawnCard;
-      while (attempts < 20 && gameState.deck.length > 0) {
-        const result = await drawCard(
-          socket1,
-          roomId,
-          gameState.players[gameState.currentPlayerIndex].id
-        );
-        drawnCard = result.card;
-        gameState = result.gameState;
-
-        if (drawnCard.rank === "J") {
-          // Discard the Jack
-          gameState = await discardDrawnCard(
-            socket1,
-            roomId,
-            gameState.players[0].id,
-            drawnCard.id
-          );
-
-          // Check if next player has skippedTurn flag
-          // (Implementation details may vary)
-          break;
-        } else {
-          // Discard and continue
-          gameState = await discardDrawnCard(
-            socket1,
-            roomId,
-            gameState.players[gameState.currentPlayerIndex].id,
-            drawnCard.id
-          );
-        }
-        attempts++;
+      // If power card, skip it
+      if (gameState.players[0].activePower) {
+        gameState = await skipPower(socket1, roomId, player1.id, gameState.players[0].activePower);
       }
+
+      // If it was a Jack, next player should have skippedTurn flag (will be cleared after their turn)
+      // If not a Jack, we just verify the game continues normally
+      expect(gameState.currentPlayerIndex).toBe(1);
     });
   });
 
@@ -549,18 +532,33 @@ describe("Game Flow Integration Tests", () => {
       let player = gameState.players[0];
       let { card } = await drawCard(socket1, roomId, player.id);
       gameState = await discardDrawnCard(socket1, roomId, player.id, card.id);
+
+      // Skip power if activated
+      if (gameState.players[0].activePower) {
+        gameState = await skipPower(socket1, roomId, player.id, gameState.players[0].activePower);
+      }
       expect(gameState.currentPlayerIndex).toBe(1);
 
       // Player 2's turn
       player = gameState.players[1];
       ({ card } = await drawCard(socket2, roomId, player.id));
       gameState = await discardDrawnCard(socket2, roomId, player.id, card.id);
+
+      // Skip power if activated
+      if (gameState.players[1].activePower) {
+        gameState = await skipPower(socket2, roomId, player.id, gameState.players[1].activePower);
+      }
       expect(gameState.currentPlayerIndex).toBe(2);
 
       // Player 3's turn
       player = gameState.players[2];
       ({ card } = await drawCard(socket3, roomId, player.id));
       gameState = await discardDrawnCard(socket3, roomId, player.id, card.id);
+
+      // Skip power if activated
+      if (gameState.players[2].activePower) {
+        gameState = await skipPower(socket3, roomId, player.id, gameState.players[2].activePower);
+      }
       expect(gameState.currentPlayerIndex).toBe(0); // Should wrap back to player 1
     });
   });

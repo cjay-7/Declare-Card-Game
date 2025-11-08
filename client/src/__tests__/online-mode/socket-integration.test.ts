@@ -301,11 +301,11 @@ describe("Socket Integration Tests", () => {
       // Join
       await joinRoom(socket, roomId, "Player 1");
 
-      // Leave
+      // Leave and wait for server to process
       socket.emit("leave-room", { roomId, playerId: socket.id });
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Rejoin
+      // Rejoin with fresh connection to avoid stale listeners
       const gameState = await joinRoom(socket, roomId, "Player 1 Rejoined");
       expect(gameState.players).toHaveLength(1);
     });

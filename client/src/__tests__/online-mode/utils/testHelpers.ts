@@ -149,9 +149,19 @@ export async function startGame(
   socket: Socket,
   roomId: string
 ): Promise<GameState> {
-  // Set up listeners BEFORE emitting to avoid race condition
+  // Set up listener for start-game event
   const startPromise = waitForEvent(socket, "start-game");
-  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
+  // Set up listener for game state with "playing" status
+  const statePromise = new Promise<GameState>((resolve) => {
+    const handler = (state: GameState) => {
+      if (state.gameStatus === "playing") {
+        socket.off("game-state-update", handler);
+        resolve(state);
+      }
+    };
+    socket.on("game-state-update", handler);
+  });
 
   socket.emit("start-game", { roomId });
 
@@ -208,6 +218,23 @@ export async function eliminateCard(
   const statePromise = waitForEvent<GameState>(socket, "game-state-update");
 
   socket.emit("eliminate-card", { roomId, playerId, cardId });
+
+  return await statePromise;
+}
+
+/**
+ * Skip an active power
+ */
+export async function skipPower(
+  socket: Socket,
+  roomId: string,
+  playerId: string,
+  powerType: string
+): Promise<GameState> {
+  // Set up listener BEFORE emitting to avoid race condition
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
+  socket.emit("skip-power", { roomId, playerId, powerType });
 
   return await statePromise;
 }

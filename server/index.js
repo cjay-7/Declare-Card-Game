@@ -26,6 +26,8 @@ const io = new Server(server, {
 const rooms = {};
 // Track elimination locks to prevent multiple simultaneous eliminations
 const eliminationLocks = {};
+// Track drawn cards for each player (for discard/replace actions)
+const drawnCards = {};
 
 // Helper function to get current player
 const getCurrentPlayer = (room) => {
@@ -207,6 +209,9 @@ io.on("connection", (socket) => {
     // Draw a card from the deck
     const drawnCard = room.deck.pop();
 
+    // Store the drawn card for this player (for discard/replace actions)
+    drawnCards[playerId] = drawnCard;
+
     // Send the drawn card to the player
     socket.emit("card-drawn", drawnCard);
 
@@ -216,6 +221,146 @@ io.on("connection", (socket) => {
       playerId: playerId,
       timestamp: Date.now(),
     };
+
+    // Update game state for all players
+    io.to(roomId).emit("game-state-update", room);
+  });
+
+  // Handle discarding a drawn card
+  socket.on("discard-drawn-card", ({ roomId, playerId, cardId }) => {
+    const room = rooms[roomId];
+    if (!room || room.gameStatus !== "playing") return;
+
+    // Check if it's this player's turn
+    const currentPlayer = getCurrentPlayer(room);
+    if (!currentPlayer || currentPlayer.id !== playerId) {
+      socket.emit("error", { message: "Not your turn" });
+      return;
+    }
+
+    // Get the drawn card
+    const drawnCard = drawnCards[playerId];
+    if (!drawnCard) {
+      socket.emit("error", { message: "No drawn card found" });
+      return;
+    }
+
+    // Add to discard pile
+    room.discardPile.push(drawnCard);
+
+    // Clear the drawn card
+    delete drawnCards[playerId];
+
+    // Reset elimination tracking and lock for new round
+    room.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
+    eliminationLocks[roomId] = false;
+
+    // Apply special card powers if needed
+    if (drawnCard.rank === "J") {
+      // Jack: Skip the next player's turn
+      const nextPlayerIndex =
+        (room.currentPlayerIndex + 1) % room.players.length;
+      room.players[nextPlayerIndex].skippedTurn = true;
+    } else if (["7", "8", "9", "10", "Q", "K"].includes(drawnCard.rank)) {
+      // Other power cards: Make power available for choice
+      const playerIndex = room.players.findIndex((p) => p.id === playerId);
+      if (playerIndex !== -1) {
+        room.players[playerIndex].activePower = drawnCard.rank;
+        room.players[playerIndex].usingPower = false;
+
+        // Don't move to next player yet - wait for power choice
+        room.lastAction = {
+          type: "discard",
+          playerId,
+          cardId,
+          timestamp: Date.now(),
+        };
+        io.to(roomId).emit("game-state-update", room);
+        return;
+      }
+    }
+
+    // Record this action
+    room.lastAction = {
+      type: "discard",
+      playerId: playerId,
+      cardId: cardId,
+      timestamp: Date.now(),
+    };
+
+    // Move to next player
+    moveToNextPlayer(room);
+
+    // Update game state for all players
+    io.to(roomId).emit("game-state-update", room);
+  });
+
+  // Handle replacing a hand card with drawn card
+  socket.on("replace-with-drawn", ({ roomId, playerId, drawnCardId, handCardId }) => {
+    const room = rooms[roomId];
+    if (!room || room.gameStatus !== "playing") return;
+
+    // Check if it's this player's turn
+    const currentPlayer = getCurrentPlayer(room);
+    if (!currentPlayer || currentPlayer.id !== playerId) {
+      socket.emit("error", { message: "Not your turn" });
+      return;
+    }
+
+    // Get the drawn card
+    const drawnCard = drawnCards[playerId];
+    if (!drawnCard) {
+      socket.emit("error", { message: "No drawn card found" });
+      return;
+    }
+
+    // Find player and card in hand
+    const playerIndex = room.players.findIndex((p) => p.id === playerId);
+    if (playerIndex === -1) {
+      socket.emit("error", { message: "Player not found" });
+      return;
+    }
+
+    const cardIndex = room.players[playerIndex].hand.findIndex(
+      (c) => c && c.id === handCardId
+    );
+
+    if (cardIndex === -1) {
+      socket.emit("error", { message: "Card not found in hand" });
+      return;
+    }
+
+    // Get the hand card before replacing
+    const handCard = room.players[playerIndex].hand[cardIndex];
+
+    // Replace hand card with drawn card
+    drawnCard.isRevealed = false;
+    room.players[playerIndex].hand[cardIndex] = drawnCard;
+
+    // Add old hand card to discard pile
+    room.discardPile.push(handCard);
+
+    // Clear the drawn card
+    delete drawnCards[playerId];
+
+    // Reset elimination tracking
+    room.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
+    eliminationLocks[roomId] = false;
+
+    // Record this action
+    room.lastAction = {
+      type: "replace",
+      playerId,
+      cardId: handCardId,
+      timestamp: Date.now(),
+    };
+
+    // Move to next player
+    moveToNextPlayer(room);
 
     // Update game state for all players
     io.to(roomId).emit("game-state-update", room);

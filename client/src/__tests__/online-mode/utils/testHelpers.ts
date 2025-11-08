@@ -179,7 +179,7 @@ export async function drawCard(
 }
 
 /**
- * Discard a card (server uses 'discard-card' event)
+ * Discard a drawn card (server uses 'discard-drawn-card' event)
  */
 export async function discardDrawnCard(
   socket: Socket,
@@ -190,7 +190,7 @@ export async function discardDrawnCard(
   // Set up listener BEFORE emitting to avoid race condition
   const statePromise = waitForEvent<GameState>(socket, "game-state-update");
 
-  socket.emit("discard-card", { roomId, playerId, cardId });
+  socket.emit("discard-drawn-card", { roomId, playerId, cardId });
 
   return await statePromise;
 }

@@ -542,13 +542,22 @@ describe("Game Flow Integration Tests", () => {
       // Player 2's turn
       player = gameState.players[1];
       ({ card } = await drawCard(socket2, roomId, player.id));
+      const player2Card = card; // Save for later check
       gameState = await discardDrawnCard(socket2, roomId, player.id, card.id);
 
-      // Skip power if activated
-      if (gameState.players[1].activePower) {
-        gameState = await skipPower(socket2, roomId, player.id, gameState.players[1].activePower);
+      // Skip power if activated (check by player ID since index might change)
+      const player2AfterDiscard = gameState.players.find(p => p.id === player.id);
+      if (player2AfterDiscard?.activePower) {
+        gameState = await skipPower(socket2, roomId, player.id, player2AfterDiscard.activePower);
       }
-      expect(gameState.currentPlayerIndex).toBe(2);
+
+      // Jack cards skip the next player, so check if a Jack was drawn
+      if (player2Card.rank === "J") {
+        // Jack skips player 3 (index 2), so it wraps back to player 1 (index 0)
+        expect(gameState.currentPlayerIndex).toBe(0);
+      } else {
+        expect(gameState.currentPlayerIndex).toBe(2);
+      }
 
       // Player 3's turn
       player = gameState.players[2];

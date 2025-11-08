@@ -94,6 +94,8 @@ io.on("connection", (socket) => {
         skippedTurn: false,
         hasEliminatedThisRound: false,
         connected: true,
+        activePower: null,
+        usingPower: false,
       };
 
       rooms[roomId].players.push(player);

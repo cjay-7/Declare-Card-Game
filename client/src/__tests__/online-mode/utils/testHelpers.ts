@@ -134,8 +134,12 @@ export async function joinRoom(
   roomId: string,
   playerName: string
 ): Promise<GameState> {
+  // Set up listener BEFORE emitting to avoid race condition
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
   socket.emit("join-room", { roomId, playerName });
-  return await waitForEvent<GameState>(socket, "game-state-update");
+
+  return await statePromise;
 }
 
 /**
@@ -145,9 +149,14 @@ export async function startGame(
   socket: Socket,
   roomId: string
 ): Promise<GameState> {
+  // Set up listeners BEFORE emitting to avoid race condition
+  const startPromise = waitForEvent(socket, "start-game");
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
   socket.emit("start-game", { roomId });
-  await waitForEvent(socket, "start-game");
-  return await waitForEvent<GameState>(socket, "game-state-update");
+
+  await startPromise;
+  return await statePromise;
 }
 
 /**
@@ -158,12 +167,13 @@ export async function drawCard(
   roomId: string,
   playerId: string
 ): Promise<{ card: Card; gameState: GameState }> {
+  // Set up listeners BEFORE emitting to avoid race condition
+  const cardPromise = waitForEvent<Card>(socket, "card-drawn");
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
   socket.emit("draw-card", { roomId, playerId });
 
-  const [card, gameState] = await Promise.all([
-    waitForEvent<Card>(socket, "card-drawn"),
-    waitForEvent<GameState>(socket, "game-state-update"),
-  ]);
+  const [card, gameState] = await Promise.all([cardPromise, statePromise]);
 
   return { card, gameState };
 }
@@ -177,8 +187,12 @@ export async function discardDrawnCard(
   playerId: string,
   cardId: string
 ): Promise<GameState> {
+  // Set up listener BEFORE emitting to avoid race condition
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
   socket.emit("discard-card", { roomId, playerId, cardId });
-  return await waitForEvent<GameState>(socket, "game-state-update");
+
+  return await statePromise;
 }
 
 /**
@@ -190,8 +204,12 @@ export async function eliminateCard(
   playerId: string,
   cardId: string
 ): Promise<GameState> {
+  // Set up listener BEFORE emitting to avoid race condition
+  const statePromise = waitForEvent<GameState>(socket, "game-state-update");
+
   socket.emit("eliminate-card", { roomId, playerId, cardId });
-  return await waitForEvent<GameState>(socket, "game-state-update");
+
+  return await statePromise;
 }
 
 /**

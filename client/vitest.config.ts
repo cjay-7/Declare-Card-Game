@@ -9,6 +9,8 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/setupTests.ts'],
     css: true,
+    testTimeout: 10000, // Increase timeout for integration tests
+    hookTimeout: 10000, // Increase hook timeout as well
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

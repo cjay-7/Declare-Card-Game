@@ -59,7 +59,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
 
   return (
     <div
-      className="w-96 h-96 bg-white rounded shadow relative flex flex-col justify-between p-1"
+      className="w-24 h-32 bg-white rounded shadow relative flex flex-col justify-between p-2"
       onClick={onDiscardClick}
     >
       <div className="absolute top-1 right-1 text-xs text-gray-500 font-bold">
@@ -71,7 +71,7 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
         <span className="ml-1">{suitSymbols[topCard.suit]}</span>
       </div>
 
-      <div className={`text-center text-6em ${suitColors[topCard.suit]}`}>
+      <div className={`text-center text-4xl ${suitColors[topCard.suit]}`}>
         {suitSymbols[topCard.suit]}
       </div>
 

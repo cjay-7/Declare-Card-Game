@@ -47,8 +47,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
 
-  // Listen for player switches and rejoin if necessary
+  // Listen for player switches and rejoin if necessary (only for mock mode)
   useEffect(() => {
+    // Only handle player switching in mock mode
+    if (socket.getMode() !== "mock") return;
+
     const handlePlayerSwitch = () => {
       console.log(`GameBoard: Player switched to ${socket.getCurrentPlayer()}`);
       refreshPlayerData();

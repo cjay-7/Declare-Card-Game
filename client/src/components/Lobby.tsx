@@ -9,15 +9,25 @@ interface LobbyProps {
 
 const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const [roomId, setRoomId] = useState("");
+  const [customPlayerName, setCustomPlayerName] = useState("");
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { setPlayerName } = useGameContext();
 
-  // Get current player from socket
+  // Check socket mode
+  const isMockMode = socket.getMode() === "mock";
+
+  // Get current player from socket (only for mock mode)
   const currentPlayerId = socket.getCurrentPlayer();
-  const playerName = currentPlayerId === "player1" ? "Player 1" : "Player 2";
+  const mockPlayerName = currentPlayerId === "player1" ? "Player 1" : "Player 2";
+
+  // Use mock player name in mock mode, custom name in real mode
+  const playerName = isMockMode ? mockPlayerName : customPlayerName;
 
   const handleJoin = () => {
     if (!roomId) return alert("Please enter a room ID");
+    if (!isMockMode && !customPlayerName.trim()) {
+      return alert("Please enter your name");
+    }
 
     setPlayerName(playerName);
     onJoinRoom(roomId, playerName);
@@ -29,6 +39,10 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
   };
 
   const handleQuickStart = () => {
+    if (!isMockMode && !customPlayerName.trim()) {
+      return alert("Please enter your name");
+    }
+
     const quickRoomId = "QUICK";
     setRoomId(quickRoomId);
     setPlayerName(playerName);
@@ -45,19 +59,44 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
           </p>
         </div>
 
-        {/* Player Info */}
-        <div className="bg-gray-700 rounded-lg p-4 mb-6">
-          <div className="text-center">
-            <div className="text-lg font-semibold text-white mb-2">
-              You are: <span className="text-blue-400">{playerName}</span>
-            </div>
-            <div className="text-sm text-gray-300">
-              Use the player switcher (top right) to change players
+        {/* Player Info - Mock Mode */}
+        {isMockMode && (
+          <div className="bg-gray-700 rounded-lg p-4 mb-6">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-white mb-2">
+                You are: <span className="text-blue-400">{mockPlayerName}</span>
+              </div>
+              <div className="text-sm text-gray-300">
+                Use the player switcher (top right) to change players
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
+          {/* Player Name Input - Real Mode Only */}
+          {!isMockMode && (
+            <div>
+              <label
+                htmlFor="playerName"
+                className="block text-gray-300 mb-1"
+              >
+                Your Name
+              </label>
+              <input
+                id="playerName"
+                type="text"
+                placeholder="Enter your name"
+                value={customPlayerName}
+                onChange={(e) => setCustomPlayerName(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Choose a unique name to identify yourself
+              </p>
+            </div>
+          )}
+
           <div>
             <label
               htmlFor="roomId"
@@ -90,15 +129,21 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
           <div className="flex flex-col space-y-3">
             <button
               onClick={handleJoin}
-              disabled={!roomId}
+              disabled={!roomId || (!isMockMode && !customPlayerName.trim())}
               className="w-full py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
-              Join Room as {playerName}
+              {isMockMode
+                ? `Join Room as ${mockPlayerName}`
+                : customPlayerName.trim()
+                  ? `Join Room as ${customPlayerName}`
+                  : "Join Room"
+              }
             </button>
 
             <button
               onClick={handleQuickStart}
-              className="w-full py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors"
+              disabled={!isMockMode && !customPlayerName.trim()}
+              className="w-full py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
               Quick Start (Room: QUICK)
             </button>
@@ -114,21 +159,38 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
           </div>
         </div>
 
-        {/* 2-Player Instructions */}
+        {/* Mode-specific Instructions */}
         <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-600">
-          <h3 className="text-sm font-bold text-blue-300 mb-2">
-            2-Player Same Device Mode
-          </h3>
-          <ul className="text-xs text-blue-200 space-y-1">
-            <li>• Both players use the same device</li>
-            <li>
-              • Switch between "Player 1" and "Player 2" using the switcher
-            </li>
-            <li>
-              • Each player joins the same room with their respective name
-            </li>
-            <li>• Take turns and switch perspectives as needed</li>
-          </ul>
+          {isMockMode ? (
+            <>
+              <h3 className="text-sm font-bold text-blue-300 mb-2">
+                2-Player Same Device Mode
+              </h3>
+              <ul className="text-xs text-blue-200 space-y-1">
+                <li>• Both players use the same device</li>
+                <li>
+                  • Switch between "Player 1" and "Player 2" using the switcher
+                </li>
+                <li>
+                  • Each player joins the same room with their respective name
+                </li>
+                <li>• Take turns and switch perspectives as needed</li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-bold text-blue-300 mb-2">
+                Online Multiplayer Mode
+              </h3>
+              <ul className="text-xs text-blue-200 space-y-1">
+                <li>• Enter your unique name</li>
+                <li>• Create a room or join an existing one</li>
+                <li>• Share the room ID with other players</li>
+                <li>• Wait in the lobby for all players to join</li>
+                <li>• Host starts the game when ready</li>
+              </ul>
+            </>
+          )}
         </div>
       </div>
 

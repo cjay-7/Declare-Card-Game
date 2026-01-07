@@ -28,6 +28,7 @@ export interface Game {
   roundNumber: number;
   declarer: string | null;
   lastAction: GameAction | null;
+  firstCardDrawn?: boolean; // Track if ANY player has drawn their first card
   createdAt: Date;
   updatedAt: Date;
 }

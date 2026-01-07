@@ -75,7 +75,6 @@ interface GameContextType {
   selectedPower: string | null;
   powerInstructions: string | null;
   lastAction: GameAction | null;
-  hasDrawnFirstCard: boolean;
   swapSelections: Array<{ playerId: string; cardIndex: number }>;
   setSwapSelections: (
     selections: Array<{ playerId: string; cardIndex: number }> | ((prev: Array<{ playerId: string; cardIndex: number }>) => Array<{ playerId: string; cardIndex: number }>)
@@ -1164,7 +1163,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to view the bottom two cards at the start of the game
   const handleViewBottomCards = () => {
-    if (!myPlayer || hasDrawnFirstCard) {
+    const firstCardDrawn = gameState?.firstCardDrawn || false;
+    if (!myPlayer || firstCardDrawn) {
       console.log(
         `[${currentPlayerId}] Cannot view bottom cards - already drawn first card`
       );
@@ -1220,7 +1220,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         selectedPower,
         powerInstructions,
         lastAction,
-        hasDrawnFirstCard,
         temporaryRevealedCards,
         setTemporaryRevealedCards,
         opponentRevealedCard,

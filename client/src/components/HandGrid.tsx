@@ -42,8 +42,10 @@ const HandGrid: React.FC<HandGridProps> = memo(({
     handleEliminationCardSelected,
     handleActivatePower,
     handleSkipPower,
-    hasDrawnFirstCard,
   } = useGameContext();
+
+  // Use server's firstCardDrawn flag instead of local state
+  const hasDrawnFirstCard = gameState?.firstCardDrawn || false;
 
   // Check if current player has an active power
   const currentPlayer = gameState?.players.find((p) => p.id === socket.getId());
@@ -213,14 +215,16 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         }
 
         // Determine if this card should be revealed
-        // Logic: Start with cards 3&4 visible, hide ALL cards after first draw, only show via powers/temporary reveals
-        const shouldReveal =
-          (card.isRevealed && !(isCurrentPlayer && index >= 2 && hasDrawnFirstCard)) || // Show revealed cards, but hide initial cards 3&4 after first draw
-          (isCurrentPlayer && index >= 2 && !hasDrawnFirstCard) || // Cards 3 & 4 visible only before first draw
-          (isCurrentPlayer && temporaryRevealedCards.includes(index)) || // Temporary power reveals
-          (!isCurrentPlayer &&
-            opponentRevealedCard?.playerId === playerId &&
-            opponentRevealedCard?.cardIndex === index); // Opponent card revealed by power
+        // Logic for CURRENT PLAYER: Start with cards 3&4 visible, hide ALL cards after first draw, only show via powers/temporary reveals
+        // Logic for OPPONENTS: ONLY show cards revealed by powers, NEVER show isRevealed cards
+        const shouldReveal = isCurrentPlayer
+          ? // Current player logic
+            (card.isRevealed && !(index >= 2 && hasDrawnFirstCard)) || // Show revealed cards, but hide initial cards 3&4 after first draw
+            (index >= 2 && !hasDrawnFirstCard) || // Cards 3 & 4 visible only before first draw
+            temporaryRevealedCards.includes(index) // Temporary power reveals
+          : // Opponent logic - ONLY show power-revealed cards
+            (opponentRevealedCard?.playerId === playerId &&
+              opponentRevealedCard?.cardIndex === index); // Opponent card revealed by power
 
         // Debug power reveal logic
         if (isCurrentPlayer && temporaryRevealedCards.includes(index)) {
@@ -232,36 +236,36 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         }
 
         // Check if this card matches the top discard card rank for elimination
-        const topDiscardCard = gameState?.discardPile && gameState.discardPile.length > 0 
-          ? gameState.discardPile[gameState.discardPile.length - 1] 
+        const topDiscardCard = gameState?.discardPile && gameState.discardPile.length > 0
+          ? gameState.discardPile[gameState.discardPile.length - 1]
           : null;
         const cardMatchesDiscard = topDiscardCard && card && card.rank === topDiscardCard.rank;
 
         // Debug card matching for Cabo elimination
-        if (topDiscardCard && card) {
-          console.log(`[CABO ELIMINATION] Card ${card.rank} vs Discard ${topDiscardCard.rank} - Risk: ${!cardMatchesDiscard ? 'PENALTY if eliminated' : 'SAFE elimination'}`);
-        }
+        // if (topDiscardCard && card) {
+        //   console.log(`[CABO ELIMINATION] Card ${card.rank} vs Discard ${topDiscardCard.rank} - Risk: ${!cardMatchesDiscard ? 'PENALTY if eliminated' : 'SAFE elimination'}`);
+        // }
 
         const showEliminateButton =
-          !drawnCard && 
-          hasDiscardCard && 
-          !hasAlreadyEliminated && 
-          !(activePower && usingPower) && 
+          !drawnCard &&
+          hasDiscardCard &&
+          !hasAlreadyEliminated &&
+          !(activePower && usingPower) &&
           !gameState?.eliminationBlocked &&
           card !== null; // Show on ALL cards - Cabo elimination is about memory risk
 
         // Debug elimination button logic for Cabo
-        if (topDiscardCard && card) {
-          console.log(`[CABO ELIMINATION DEBUG] Card ${card.rank} (${playerId}):`, {
-            hasDiscardCard,
-            hasAlreadyEliminated,
-            activePower: !!activePower,
-            usingPower: !!usingPower,
-            eliminationBlocked: gameState?.eliminationBlocked,
-            cardMatchesDiscard,
-            showEliminateButton
-          });
-        }
+        // if (topDiscardCard && card) {
+        //   console.log(`[CABO ELIMINATION DEBUG] Card ${card.rank} (${playerId}):`, {
+        //     hasDiscardCard,
+        //     hasAlreadyEliminated,
+        //     activePower: !!activePower,
+        //     usingPower: !!usingPower,
+        //     eliminationBlocked: gameState?.eliminationBlocked,
+        //     cardMatchesDiscard,
+        //     showEliminateButton
+        //   });
+        // }
 
         // Check if this card is selected for swapping
         const isSelectedForSwap = swapSelections.some(

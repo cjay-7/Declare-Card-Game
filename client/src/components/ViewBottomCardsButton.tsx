@@ -2,10 +2,11 @@ import React from "react";
 import { useGameContext } from "../contexts/GameContext";
 
 const ViewBottomCardsButton: React.FC = () => {
-  const { handleViewBottomCards, hasDrawnFirstCard, gameState } =
+  const { handleViewBottomCards, gameState } =
     useGameContext();
 
   const isGameStarted = gameState?.gameStatus === "playing";
+  const hasDrawnFirstCard = gameState?.firstCardDrawn || false;
   const isDisabled = hasDrawnFirstCard || !isGameStarted;
 
   return (

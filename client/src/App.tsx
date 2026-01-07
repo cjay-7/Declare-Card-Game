@@ -24,9 +24,11 @@ function App() {
   const { notifications, addNotification, removeNotification } =
     useNotifications();
 
-  // Listen for player switches
+  // Listen for player switches (only in mock mode)
   useEffect(() => {
     const handlePlayerSwitch = (event: CustomEvent) => {
+      if (socket.getMode() !== "mock") return;
+
       const { playerId } = event.detail;
       setCurrentPlayer(playerId);
 
@@ -79,11 +81,14 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleJoinRoom = (roomId: string, _playerName: string) => {
-    // For 2-player same device, we modify the player name to include player number
-    const currentPlayerId = socket.getCurrentPlayer();
-    const finalPlayerName =
-      currentPlayerId === "player1" ? "Player 1" : "Player 2";
+  const handleJoinRoom = (roomId: string, playerName: string) => {
+    // In mock mode, modify player name to include player number
+    // In real mode, use the player name provided
+    let finalPlayerName = playerName;
+    if (socket.getMode() === "mock") {
+      const currentPlayerId = socket.getCurrentPlayer();
+      finalPlayerName = currentPlayerId === "player1" ? "Player 1" : "Player 2";
+    }
 
     setRoomInfo({ roomId, playerName: finalPlayerName });
     setJoinedRoom(true);
@@ -101,13 +106,15 @@ function App() {
       <GameStateProvider initialCurrentPlayerId={currentPlayer}>
         <UIStateProvider>
           <GameProvider>
-            {/* Player Switch Indicator */}
-            <div className="fixed top-20 right-4 z-40 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm">
-              Playing as:{" "}
-              <span className="font-bold text-blue-400">
-                {currentPlayer === "player1" ? "Player 1" : "Player 2"}
-              </span>
-            </div>
+            {/* Player Switch Indicator - only show in mock mode */}
+            {socket.getMode() === "mock" && (
+              <div className="fixed top-20 right-4 z-40 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm">
+                Playing as:{" "}
+                <span className="font-bold text-blue-400">
+                  {currentPlayer === "player1" ? "Player 1" : "Player 2"}
+                </span>
+              </div>
+            )}
 
             {/* Notification System */}
             <NotificationSystem
@@ -168,15 +175,28 @@ function App() {
               {showTestPanel ? "Hide Test Panel" : "Show Test Panel (Alt+T)"}
             </button>
 
-            {/* Instructions for 2-player mode */}
+            {/* Instructions based on mode */}
             <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-3 rounded-lg text-xs max-w-sm opacity-80">
-              <div className="font-bold mb-1">2-Player Same Device Mode</div>
-              <div>
-                • Use the player switcher (top right) to alternate between
-                players
-              </div>
-              <div>• Each player joins as "Player 1" or "Player 2"</div>
-              <div>• Switch perspectives during gameplay</div>
+              {socket.getMode() === "mock" ? (
+                <>
+                  <div className="font-bold mb-1">2-Player Same Device Mode</div>
+                  <div>
+                    • Use the player switcher (top right) to alternate between
+                    players
+                  </div>
+                  <div>• Each player joins as "Player 1" or "Player 2"</div>
+                  <div>• Switch perspectives during gameplay</div>
+                </>
+              ) : (
+                <>
+                  <div className="font-bold mb-1">Online Multiplayer Mode</div>
+                  <div>
+                    • Share the room ID with another player
+                  </div>
+                  <div>• Each player connects from their own device</div>
+                  <div>• Server runs on localhost:4000</div>
+                </>
+              )}
             </div>
           </GameProvider>
         </UIStateProvider>

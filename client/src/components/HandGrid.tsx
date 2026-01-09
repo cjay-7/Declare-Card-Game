@@ -73,7 +73,13 @@ const HandGrid: React.FC<HandGridProps> = memo(({
   const currentPlayerData = gameState?.players.find(
     (p) => p.id === socket.getId()
   );
-  const hasAlreadyEliminated = currentPlayerData?.hasEliminatedThisRound || false;
+  // Check if ANY player has eliminated this round (only one elimination per round total)
+  const hasAlreadyEliminated = gameState?.eliminationUsedThisRound || false;
+  
+  // Debug: Log elimination state
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[HandGrid] eliminationUsedThisRound:`, gameState?.eliminationUsedThisRound, `hasAlreadyEliminated:`, hasAlreadyEliminated);
+  }
 
 
   const isEliminationSelectionActive =
@@ -246,13 +252,32 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         //   console.log(`[CABO ELIMINATION] Card ${card.rank} vs Discard ${topDiscardCard.rank} - Risk: ${!cardMatchesDiscard ? 'PENALTY if eliminated' : 'SAFE elimination'}`);
         // }
 
+        // Hide elimination button if:
+        // 1. There's a drawn card (player is in draw/replace phase)
+        // 2. No discard card available
+        // 3. An elimination has already been used this round (room-level check)
+        // 4. Player is using a power
+        // 5. Elimination card selection is active (elimination in progress)
+        const eliminationAlreadyUsed = gameState?.eliminationUsedThisRound === true;
         const showEliminateButton =
           !drawnCard &&
           hasDiscardCard &&
-          !hasAlreadyEliminated &&
+          !eliminationAlreadyUsed && // PRIMARY CHECK: Hide if ANY player eliminated this round
+          !hasAlreadyEliminated && // Redundant but kept for safety
           !(activePower && usingPower) &&
-          !gameState?.eliminationBlocked &&
+          !eliminationCardSelection?.isActive && // Hide during elimination card selection
           card !== null; // Show on ALL cards - Cabo elimination is about memory risk
+        
+        // Debug: Log button visibility decision
+        if (process.env.NODE_ENV === "development" && hasDiscardCard && !drawnCard) {
+          console.log(`[HandGrid] Card ${card?.rank} - showEliminateButton:`, showEliminateButton, {
+            eliminationAlreadyUsed,
+            hasAlreadyEliminated,
+            activePower,
+            usingPower,
+            eliminationCardSelectionActive: eliminationCardSelection?.isActive
+          });
+        }
 
         // Debug elimination button logic for Cabo
         // if (topDiscardCard && card) {

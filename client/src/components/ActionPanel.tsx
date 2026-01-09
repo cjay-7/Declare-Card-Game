@@ -23,12 +23,12 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   const activePower = currentPlayer?.activePower;
   const usingPower = currentPlayer?.usingPower;
 
-  // Check elimination eligibility
+  // Check elimination eligibility - only one elimination per round total
   const canEliminate =
     gameState?.discardPile && 
     gameState.discardPile.length > 0 && 
-    !gameState.eliminationBlocked;
-  const hasAlreadyEliminated = currentPlayer?.hasEliminatedThisRound || false;
+    !gameState?.eliminationUsedThisRound; // Check if ANY player has eliminated this round
+  const hasAlreadyEliminated = gameState?.eliminationUsedThisRound || false;
 
   // Check if player can declare (must have at least 1 non-eliminated card)
   const canDeclare = currentPlayer ? getActiveCardCount(currentPlayer) > 0 : false;
@@ -316,9 +316,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             <div className="text-center">
               {hasAlreadyEliminated ? (
                 <div className="text-yellow-400 text-sm">
-                  ⏳ You already eliminated a card this round.
+                  ⏳ An elimination has already been used this round.
                   <br />
-                  Wait for someone else to discard to eliminate again.
+                  Wait for someone to discard/replace to start a new round.
                 </div>
               ) : (
                 <div>

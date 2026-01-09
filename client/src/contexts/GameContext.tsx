@@ -141,6 +141,7 @@ const defaultGameState: GameState = {
   lastAction: null,
   type: "view",
   eliminationBlocked: false,
+  eliminationUsedThisRound: false, // Initialize elimination used flag
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -305,12 +306,55 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   // Set up socket event listeners
   useEffect(() => {
     // Handle game state updates from server/mock
-    const handleGameStateUpdate = (updatedState: GameState) => {
+    const handleGameStateUpdate = (updatedState: any) => {
       console.log(
         `[${currentPlayerId}] Received game state update:`,
         updatedState
       );
-      setGameState(updatedState);
+      console.log(
+        `[${currentPlayerId}] Players in update: ${updatedState.players?.length || 0}`,
+        updatedState.players?.map((p: any) => ({ id: p.id, name: p.name }))
+      );
+      console.log(
+        `[${currentPlayerId}] Game status: ${updatedState.gameStatus}`,
+        `Declarer: ${updatedState.declarer || 'none'}`
+      );
+      if (updatedState.gameStatus === "ended") {
+        console.log(`[${currentPlayerId}] 🎯 GAME ENDED - Scores:`, 
+          updatedState.players?.map((p: any) => `${p.name}: ${p.score}`).join(", ")
+        );
+      }
+      console.log(
+        `[${currentPlayerId}] eliminationUsedThisRound (raw):`,
+        updatedState.eliminationUsedThisRound,
+        `type:`,
+        typeof updatedState.eliminationUsedThisRound
+      );
+      
+      // Ensure eliminationUsedThisRound is set (default to false if undefined)
+      // The server should always send this, but normalize it just in case
+      const rawValue = updatedState.eliminationUsedThisRound;
+      const normalizedState: GameState = {
+        ...updatedState,
+        eliminationUsedThisRound: rawValue === true, // Force boolean conversion
+      };
+      
+      // Debug: Log if we're receiving undefined (shouldn't happen with prepareGameStateForEmit)
+      if (rawValue === undefined) {
+        console.warn(
+          `[${currentPlayerId}] ⚠️ WARNING: eliminationUsedThisRound is undefined in received state!`,
+          `Keys:`,
+          Object.keys(updatedState)
+        );
+      }
+      
+      console.log(
+        `[${currentPlayerId}] eliminationUsedThisRound:`,
+        `raw=${rawValue},`,
+        `normalized=${normalizedState.eliminationUsedThisRound}`
+      );
+      
+      setGameState(normalizedState);
 
       // Update last action
       if (updatedState.lastAction) {
@@ -428,6 +472,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     // Handle game ended event
     const handleGameEnded = (result: any) => {
       console.log(`[${currentPlayerId}] Game ended:`, result);
+      console.log(`[${currentPlayerId}] Winners from server:`, result.winners?.map((w: any) => w.name || w.id));
+      // Store winners for GameEndScreen to use
+      if (result.winners && Array.isArray(result.winners)) {
+        const winnerIds = result.winners.map((w: any) => w.id || w);
+        // Dispatch custom event with winners so GameEndScreen can access it
+        window.dispatchEvent(new CustomEvent("game-ended-winners", { 
+          detail: { winners: winnerIds, scores: result.scores } 
+        }));
+      }
+      // The game state will be updated via game-state-update event
+      // This event provides additional info like winners
     };
 
     // Handle penalty card event
@@ -599,6 +654,27 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setOpponentRevealedCard(null);
     };
 
+    // Handle update-players event (separate from game-state-update)
+    const handleUpdatePlayers = (players: Player[]) => {
+      console.log(`[${currentPlayerId}] Received update-players event:`, players.length, "players");
+      console.log(`[${currentPlayerId}] Players:`, players.map(p => ({ id: p.id, name: p.name })));
+      
+      // Update game state with new players list
+      if (gameState) {
+        setGameState({
+          ...gameState,
+          players: players,
+        });
+      } else {
+        // If no game state yet, create a minimal one with players
+        setGameState({
+          ...defaultGameState,
+          players: players,
+        });
+      }
+    };
+
+    socket.on("update-players", handleUpdatePlayers);
     socket.on("game-state-update", handleGameStateUpdate);
     socket.on("card-drawn", handleCardDrawn);
     socket.on("card-revealed", handleCardRevealed);
@@ -670,6 +746,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     );
 
     return () => {
+      socket.off("update-players", handleUpdatePlayers);
       socket.off("game-state-update", handleGameStateUpdate);
       socket.off("card-drawn", handleCardDrawn);
       socket.off("card-revealed", handleCardRevealed);
@@ -742,19 +819,27 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Power activation handlers
   const handleActivatePower = (powerType: string) => {
+    if (!roomId || !myPlayer) {
+      console.log(`[${currentPlayerId}] Cannot activate power - missing roomId or player`);
+      return;
+    }
     console.log(`[${currentPlayerId}] Activating ${powerType} power`);
     socket.emit("activate-power", {
-      roomId: "QUICK", // You might want to make this dynamic
-      playerId: socket.getId(),
+      roomId,
+      playerId: myPlayer.id,
       powerType: powerType,
     });
   };
 
   const handleSkipPower = (powerType: string) => {
+    if (!roomId || !myPlayer) {
+      console.log(`[${currentPlayerId}] Cannot skip power - missing roomId or player`);
+      return;
+    }
     console.log(`[${currentPlayerId}] Skipping ${powerType} power`);
     socket.emit("skip-power", {
-      roomId: "QUICK", // You might want to make this dynamic
-      playerId: socket.getId(),
+      roomId,
+      playerId: myPlayer.id,
       powerType: powerType,
     });
   };
@@ -892,18 +977,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Check if eliminations are currently blocked
-    if (gameState?.eliminationBlocked) {
+    // Check if ANY player has already eliminated this round (only one elimination per round total)
+    if (gameState?.eliminationUsedThisRound) {
       console.log(
-        `[${currentPlayerId}] Cannot eliminate - eliminations are blocked after first elimination`
-      );
-      return;
-    }
-
-    // Check if player has already eliminated this round
-    if (myPlayer.hasEliminatedThisRound) {
-      console.log(
-        `[${currentPlayerId}] Cannot eliminate - already eliminated this round`
+        `[${currentPlayerId}] Cannot eliminate - someone has already eliminated a card this round`
       );
       return;
     }

@@ -12,11 +12,12 @@ interface PlayerScoreDetails {
   id: string;
   name: string;
   hand: (CardType | null)[];
-  score: number;
+  roundScore: number; // Score for this round (hand value)
+  roundPoints: number; // Points gained/lost this round (negative for losers, positive for winner)
+  cumulativeScore: number; // Total score across all rounds
   cardValues: number[];
   totalFromCards: number;
   penalty: number;
-  finalScore: number;
   rank: number;
   isWinner: boolean;
   isDeclarer: boolean;
@@ -31,14 +32,30 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
     declaredRanks?: string[];
     actualRanks?: string[];
   }>({ declarer: null, isValid: false });
+  const [winnersFromServer, setWinnersFromServer] = useState<string[]>([]);
+
+  // Listen for winners from game-ended event
+  useEffect(() => {
+    const handleGameEndedWinners = (event: CustomEvent) => {
+      console.log("GameEndScreen: Received winners from server:", event.detail.winners);
+      setWinnersFromServer(event.detail.winners || []);
+    };
+    
+    window.addEventListener("game-ended-winners", handleGameEndedWinners as EventListener);
+    
+    return () => {
+      window.removeEventListener("game-ended-winners", handleGameEndedWinners as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     if (gameState?.gameStatus === "ended" && gameState.players.length > 0) {
-      // Calculate detailed scores for each player
+      // Use scoring data from server (gameState.players should have roundScore, roundPoints, cumulativeScore, isWinner)
+      // If not available, calculate from hand
       const detailedScores: PlayerScoreDetails[] = gameState.players.map(
-        (player) => {
-          // Calculate card values (excluding eliminated cards)
-          const cardValues = player.hand.map((card) => {
+        (player: any) => {
+          // Calculate card values for display (excluding eliminated cards)
+          const cardValues = player.hand.map((card: CardType | null) => {
             if (!card) return 0; // Eliminated cards = 0 points
 
             // Special King scoring rules
@@ -51,39 +68,72 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             return card.value || 0;
           });
 
-          const totalFromCards = cardValues.reduce((sum, val) => sum + val, 0);
+          const totalFromCards = cardValues.reduce((sum: number, val: number) => sum + val, 0);
 
           // Check if this player was the declarer and if they got a penalty
           const isDeclarer = gameState.declarer === player.id;
-          const penalty =
-            isDeclarer && player.score > totalFromCards
-              ? player.score - totalFromCards
-              : 0;
+          
+          // Use server-provided scores if available, otherwise calculate
+          const roundScore = player.roundScore !== undefined ? player.roundScore : totalFromCards;
+          const roundPoints = player.roundPoints !== undefined ? player.roundPoints : 0;
+          const cumulativeScore = player.cumulativeScore !== undefined ? player.cumulativeScore : 0;
+          // isWinner will be set from server winners, not from player.isWinner (which might not be set correctly)
+          const isWinner = false; // Will be set from winnersFromServer below
+          
+          // Calculate penalty (difference between roundScore and totalFromCards, if declarer)
+          const penalty = isDeclarer && roundScore > totalFromCards
+            ? roundScore - totalFromCards
+            : 0;
 
           return {
             id: player.id,
             name: player.name,
             hand: player.hand,
-            score: player.score,
+            roundScore,
+            roundPoints,
+            cumulativeScore,
             cardValues,
             totalFromCards,
             penalty,
-            finalScore: player.score,
             rank: 0, // Will be set below
-            isWinner: false, // Will be set below
+            isWinner,
             isDeclarer,
           };
         }
       );
 
-      // Sort by final score (lowest wins) and assign ranks
+      // Use winners from server - this is the source of truth
+      // Server determines winners based on round score (lowest wins), not cumulative
+      // Fallback to player.isWinner from gameState if winnersFromServer not available yet
+      const serverWinners = winnersFromServer.length > 0 
+        ? winnersFromServer 
+        : detailedScores.filter(p => {
+            // Fallback: use player.isWinner from gameState if available
+            const playerInState = gameState.players.find((gp: any) => gp.id === p.id);
+            return playerInState?.isWinner === true;
+          }).map(p => p.id);
+      
+      console.log("GameEndScreen: Server winners from event:", winnersFromServer);
+      console.log("GameEndScreen: Server winners (with fallback):", serverWinners);
+      console.log("GameEndScreen: Players:", detailedScores.map(p => ({ 
+        id: p.id, 
+        name: p.name, 
+        roundScore: p.roundScore, 
+        cumulativeScore: p.cumulativeScore,
+        isWinnerFromState: gameState.players.find((gp: any) => gp.id === p.id)?.isWinner
+      })));
+      
+      // Sort by cumulative score (highest wins) for ranking display
       const sortedPlayers = [...detailedScores].sort(
-        (a, b) => a.finalScore - b.finalScore
+        (a, b) => b.cumulativeScore - a.cumulativeScore
       );
+      
+      // Assign ranks and determine winners based on server data
       sortedPlayers.forEach((player, index) => {
         player.rank = index + 1;
-        player.isWinner =
-          index === 0 || player.finalScore === sortedPlayers[0].finalScore;
+        // Use server's winner determination (based on round score, not cumulative)
+        player.isWinner = serverWinners.includes(player.id);
+        console.log(`   ${player.name}: isWinner=${player.isWinner}, roundScore=${player.roundScore}, cumulativeScore=${player.cumulativeScore}`);
       });
 
       // Determine declare validation status
@@ -330,7 +380,12 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                         margin: 0,
                       }}
                     >
-                      Final Score: {winner.finalScore}
+                      Cumulative Score: {winner.cumulativeScore}
+                      {winner.roundPoints !== 0 && (
+                        <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                          {" "}({winner.roundPoints > 0 ? "+" : ""}{winner.roundPoints} this round)
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -423,12 +478,32 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                     <th
                       style={{
                         padding: "12px",
-                        textAlign: "left",
+                        textAlign: "center",
                         color: "white",
                         fontWeight: "bold",
                       }}
                     >
-                      Final Score
+                      Round Score
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px",
+                        textAlign: "center",
+                        color: "white",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Round Points
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px",
+                        textAlign: "center",
+                        color: "white",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Cumulative Score
                     </th>
                   </tr>
                 </thead>
@@ -599,7 +674,25 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                         </span>
                       </td>
 
-                      {/* Final Score */}
+                      {/* Round Score */}
+                      <td style={{ padding: "12px" }}>
+                        <span style={{ color: "white", fontSize: "0.875rem" }}>
+                          {player.roundScore}
+                        </span>
+                      </td>
+                      {/* Round Points */}
+                      <td style={{ padding: "12px" }}>
+                        <span
+                          style={{
+                            color: player.roundPoints >= 0 ? "#10b981" : "#ef4444",
+                            fontSize: "0.875rem",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {player.roundPoints > 0 ? "+" : ""}{player.roundPoints}
+                        </span>
+                      </td>
+                      {/* Cumulative Score */}
                       <td style={{ padding: "12px" }}>
                         <span
                           style={{
@@ -608,7 +701,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                             fontWeight: "bold",
                           }}
                         >
-                          {player.finalScore}
+                          {player.cumulativeScore}
                         </span>
                       </td>
                     </tr>
@@ -707,7 +800,9 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
               <li>Eliminated cards = 0 points</li>
               <li>K♥/K♦ = 0 points, K♠/K♣ = 13 points</li>
               <li>Invalid declaration = +20 penalty points</li>
-              <li>Lowest total score wins</li>
+              <li>Round: Lowest hand score wins the round</li>
+              <li>Points: Losers get negative points (their round score), Winner gets sum of all losers' scores</li>
+              <li>Cumulative: Highest cumulative score wins overall</li>
             </ul>
           </div>
         </div>

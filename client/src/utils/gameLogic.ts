@@ -15,7 +15,8 @@ export type GameState = {
   declarer: string | null;
   lastAction: GameAction | null;
   type: "view";
-  eliminationBlocked: boolean; // Indicates if eliminations are currently blocked
+  eliminationBlocked: boolean; // Indicates if eliminations are currently blocked (deprecated, use eliminationUsedThisRound)
+  eliminationUsedThisRound?: boolean; // Track if ANY player has eliminated this round (only one elimination per round total)
 };
 
 export type Player = {
@@ -65,7 +66,8 @@ export const initGameState = (
     declarer: null,
     lastAction: null,
     type: "view",
-    eliminationBlocked: false, // Initialize elimination block status
+    eliminationBlocked: false, // Initialize elimination block status (deprecated)
+    eliminationUsedThisRound: false, // Initialize elimination used flag - only one elimination per round total (REQUIRED)
   };
 };
 

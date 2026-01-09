@@ -16,25 +16,76 @@ let currentPlayerId = "player1";
 let switcherAdded = false;
 
 // For real mode - connect to server
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
+// Auto-detect server URL based on current hostname (works for network access)
+const getServerUrl = () => {
+  if (import.meta.env.VITE_SERVER_URL) {
+    return import.meta.env.VITE_SERVER_URL;
+  }
+  // If accessing via network IP, use same IP for server
+  const hostname = window.location.hostname;
+  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+    return `http://${hostname}:4000`;
+  }
+  return "http://localhost:4000";
+};
+const SERVER_URL = getServerUrl();
 let realSocket: Socket | null = null;
 
 // Initialize real socket connection
 const initRealSocket = () => {
   if (!realSocket) {
+    console.log(`🔌 Connecting to server at: ${SERVER_URL}`);
     realSocket = io(SERVER_URL, {
-      transports: ["websocket", "polling"],
+      // Try polling first (more reliable for network connections), then websocket
+      transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10, // More attempts
+      reconnectionDelayMax: 5000,
+      timeout: 20000, // 20 second timeout (default is 20s but make it explicit)
+      forceNew: false,
+      // Enable debug logging in development
+      ...(import.meta.env.DEV && { debug: true }),
     });
 
     realSocket.on("connect", () => {
-      console.log("✅ Connected to server:", realSocket?.id);
+      console.log("✅ Connected to server:", realSocket?.id, "at", SERVER_URL);
+      console.log("   Transport:", realSocket.io.engine.transport.name);
     });
 
-    realSocket.on("disconnect", () => {
-      console.log("❌ Disconnected from server");
+    realSocket.on("connect_error", (error) => {
+      console.error("❌ Connection error:", error.message);
+      console.error("   Attempted to connect to:", SERVER_URL);
+      console.error("   Error type:", error.type);
+      console.error("   Make sure:");
+      console.error("   1. Server is running on port 4000");
+      console.error("   2. Server is listening on 0.0.0.0 (all interfaces)");
+      console.error("   3. Firewall allows connections on port 4000");
+      console.error("   4. You're using the correct IP address");
+    });
+
+    realSocket.on("disconnect", (reason) => {
+      console.log("❌ Disconnected from server:", reason);
+      if (reason === "io server disconnect") {
+        // Server disconnected the socket, reconnect manually
+        realSocket?.connect();
+      }
+    });
+
+    realSocket.on("reconnect_attempt", (attemptNumber) => {
+      console.log(`🔄 Reconnection attempt ${attemptNumber}...`);
+    });
+
+    realSocket.on("reconnect", (attemptNumber) => {
+      console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+    });
+
+    realSocket.on("reconnect_error", (error) => {
+      console.error("❌ Reconnection error:", error.message);
+    });
+
+    realSocket.on("reconnect_failed", () => {
+      console.error("❌ Reconnection failed after all attempts");
     });
 
     realSocket.on("error", (error) => {
@@ -57,7 +108,13 @@ const socket = {
     if (socketMode === "mock") {
       return DualPlayerMockSocket.getInstance(currentPlayerId).emit(event, data);
     }
-    if (!realSocket) initRealSocket();
+    if (!realSocket) {
+      initRealSocket();
+    }
+    // Socket.io automatically queues events if not connected, but log for debugging
+    if (realSocket && !realSocket.connected) {
+      console.warn(`⚠️ Socket not connected yet for emit("${event}"), Socket.io will queue it`);
+    }
     return realSocket?.emit(event, data);
   },
 
@@ -120,8 +177,8 @@ const socket = {
       initRealSocket();
     }
 
-    // Update UI
-    updateModeSwitcherUI();
+    // Update UI - COMMENTED OUT
+    // updateModeSwitcherUI();
 
     console.log(`🔄 Socket mode changed to: ${mode}`);
 
@@ -216,7 +273,8 @@ const addSwitcherUI = () => {
   console.log("🎮 Player switcher UI added");
 };
 
-// Mode switcher UI
+// Mode switcher UI - COMMENTED OUT (not required)
+/*
 const updateModeSwitcherUI = () => {
   const div = document.getElementById("mode-switcher");
   if (!div) {
@@ -299,10 +357,17 @@ const addModeSwitcherUI = () => {
 
   console.log("🌐 Mode switcher UI added");
 };
+*/
 
-// Initialize UI when DOM is ready
+// Initialize UI when DOM is ready - MODE SWITCHER COMMENTED OUT
 const initializeUI = () => {
-  addModeSwitcherUI();
+  // Remove mode switcher if it exists
+  const modeSwitcher = document.getElementById("mode-switcher");
+  if (modeSwitcher) {
+    modeSwitcher.remove();
+  }
+  
+  // addModeSwitcherUI(); // COMMENTED OUT - not required
   if (socketMode === "mock") {
     addSwitcherUI();
   }
@@ -316,7 +381,13 @@ if (document.readyState === "loading") {
 
 // Manual initialization - try to add UI every 2 seconds until it exists
 const ensureUI = () => {
-  addModeSwitcherUI();
+  // Remove mode switcher if it exists
+  const modeSwitcher = document.getElementById("mode-switcher");
+  if (modeSwitcher) {
+    modeSwitcher.remove();
+  }
+  
+  // addModeSwitcherUI(); // COMMENTED OUT - not required
   if (socketMode === "mock" && !document.getElementById("player-switcher")) {
     addSwitcherUI();
   }

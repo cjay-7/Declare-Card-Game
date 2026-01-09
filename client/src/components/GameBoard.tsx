@@ -87,10 +87,60 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     console.log(
       `[${currentPlayerId}] Joining room ${initialRoomId} as ${initialPlayerName}`
     );
-    socket.emit("join-room", {
-      roomId: initialRoomId,
-      playerName: initialPlayerName,
-    });
+    
+    // Ensure socket is connected before joining
+    if (socket.getMode() === "real") {
+      const joinRoom = () => {
+        console.log(`[${currentPlayerId}] Emitting join-room:`, {
+          roomId: initialRoomId,
+          playerName: initialPlayerName,
+        });
+        socket.emit("join-room", {
+          roomId: initialRoomId,
+          playerName: initialPlayerName,
+        });
+      };
+
+      // Set up connection listener (only once)
+      let connectionListenerAdded = false;
+      const setupConnectionListener = () => {
+        if (connectionListenerAdded) return;
+        connectionListenerAdded = true;
+        
+        socket.on("connect", () => {
+          console.log(`[${currentPlayerId}] Socket connected, joining room now`);
+          joinRoom();
+        });
+      };
+
+      const socketId = socket.getId();
+      if (!socketId) {
+        console.warn(`[${currentPlayerId}] Socket not connected yet, waiting for connection...`);
+        setupConnectionListener();
+        
+        // Also try after delays as fallback (Socket.io should auto-queue, but just in case)
+        const retryDelays = [2000, 5000, 10000];
+        retryDelays.forEach((delay) => {
+          setTimeout(() => {
+            const currentSocketId = socket.getId();
+            if (currentSocketId) {
+              console.log(`[${currentPlayerId}] Socket connected (delayed check at ${delay}ms), joining room`);
+              joinRoom();
+            } else {
+              console.warn(`[${currentPlayerId}] Socket still not connected after ${delay}ms`);
+            }
+          }, delay);
+        });
+      } else {
+        // Already connected, join immediately
+        joinRoom();
+      }
+    } else {
+      socket.emit("join-room", {
+        roomId: initialRoomId,
+        playerName: initialPlayerName,
+      });
+    }
 
     setHasJoined(true);
 
@@ -448,7 +498,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <Deck
                   cardsRemaining={deckSize}
                   onDeckClick={
-                    isPlayerTurn && !drawnCard && !myPlayer?.activePower
+                    isPlayerTurn && 
+                    !drawnCard && 
+                    !myPlayer?.activePower
                       ? handleDrawCard
                       : undefined
                   }
@@ -458,11 +510,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               )}
               <div className="text-center mt-2 text-xs text-gray-400">
-                {isPlayerTurn && !drawnCard && !myPlayer?.activePower
-                  ? "Click to draw"
-                  : myPlayer?.activePower
-                  ? `Resolve ${myPlayer.activePower} power first`
-                  : `${deckSize} cards`}
+                {isPlayerTurn && !drawnCard && !myPlayer?.activePower ? (
+                  "Click to draw"
+                ) : myPlayer?.activePower ? (
+                  `Resolve ${myPlayer.activePower} power first`
+                ) : (
+                  `${deckSize} cards`
+                )}
               </div>
             </div>
 

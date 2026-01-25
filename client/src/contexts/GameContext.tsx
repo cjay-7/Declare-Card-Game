@@ -845,12 +845,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleConfirmKingPowerSwap = () => {
-    if (!kingPowerReveal?.swapData) return;
+    if (!kingPowerReveal?.swapData || !roomId || !myPlayer) {
+      console.log(`[${currentPlayerId}] Cannot confirm King power - missing data`);
+      return;
+    }
 
     console.log(`[${currentPlayerId}] Confirming King power swap`);
     socket.emit("confirm-king-power-swap", {
-      roomId: "QUICK", // You might want to make this dynamic
-      playerId: socket.getId(),
+      roomId,
+      playerId: myPlayer.id,
       swapData: kingPowerReveal.swapData,
     });
 
@@ -859,10 +862,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleCancelKingPowerSwap = () => {
+    if (!roomId || !myPlayer) {
+      console.log(`[${currentPlayerId}] Cannot cancel King power - missing roomId or player`);
+      return;
+    }
+    
     console.log(`[${currentPlayerId}] Cancelling King power swap`);
     socket.emit("cancel-king-power-swap", {
-      roomId: "QUICK", // You might want to make this dynamic
-      playerId: socket.getId(),
+      roomId,
+      playerId: myPlayer.id,
     });
 
     // Clear the king power reveal state

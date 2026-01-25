@@ -1475,11 +1475,13 @@ io.on("connection", (socket) => {
       delete powerCardTimeouts[roomId][playerId];
     }
 
-    // Move to next player
+    // Move to next player (power cancelled, turn ends)
+    console.log(`🔄 Moving to next player after King power cancellation`);
     moveToNextPlayer(room);
 
     // Update game state
     io.to(roomId).emit("game-state-update", prepareGameStateForEmit(room));
+    console.log(`📤 Emitted game-state-update after King power cancellation`);
   });
 
   // Handle player leaving a room

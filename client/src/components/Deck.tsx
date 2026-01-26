@@ -1,27 +1,107 @@
 import React from "react";
+import Card from "./Card";
+
+interface CardType {
+  suit: "hearts" | "diamonds" | "clubs" | "spades";
+  rank: "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
+}
 
 interface DeckProps {
   cardsRemaining: number;
   onDeckClick?: () => void;
+  drawnCard?: CardType | null;
+  onDrawnCardSwipe?: () => void;
+  canDiscardDrawnCard?: boolean;
+  isPlayerTurn?: boolean;
 }
 
-const Deck: React.FC<DeckProps> = ({ cardsRemaining, onDeckClick }) => {
+const Deck: React.FC<DeckProps> = ({ 
+  cardsRemaining, 
+  onDeckClick, 
+  drawnCard,
+  onDrawnCardSwipe,
+  canDiscardDrawnCard = false,
+  isPlayerTurn = false
+}) => {
+  const isClickable = !!onDeckClick && !drawnCard;
+  const showDrawnCard = !!drawnCard;
+  
   return (
-    <div
-      className="w-16 h-24 bg-blue-500 border border-blue-700 rounded shadow cursor-pointer relative"
-      onClick={onDeckClick}
-    >
-      <div className="absolute top-1 left-1 text-xs text-white font-bold">
-        {cardsRemaining}
+    <div className="relative" style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+      {/* Deck base */}
+      <div
+        className={`
+          w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44
+          bg-gradient-to-br from-blue-600 to-blue-800
+          border-2 border-blue-400
+          rounded-lg shadow-xl
+          relative
+          transition-all duration-200
+          ${isClickable 
+            ? "cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-blue-300 animate-pulse" 
+            : "cursor-default opacity-75"
+          }
+          ${showDrawnCard ? "opacity-50" : ""}
+        `}
+        onClick={onDeckClick}
+        style={{
+          minWidth: "44px",
+          minHeight: "44px",
+        }}
+      >
+        {/* Card count badge */}
+        <div className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white z-10">
+          {cardsRemaining}
+        </div>
+        
+        {/* Deck pattern */}
+        <div className="flex justify-center items-center h-full">
+          <div className="relative">
+            <span
+              className="text-white text-6xl md:text-7xl"
+              style={{ fontSize: "4em" }}
+            >
+              🎴
+            </span>
+            {isClickable && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full animate-ping"></div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Clickable indicator */}
+        {isClickable && (
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+            <div className="text-xs text-white font-semibold bg-blue-700 bg-opacity-75 rounded px-2 py-1">
+              Draw
+            </div>
+          </div>
+        )}
       </div>
-      <div className="flex justify-center items-center h-full">
-        <span
-          className="text-white"
-          style={{ fontSize: "6em" }}
+
+      {/* Drawn Card - positioned on top of deck with flip animation */}
+      {showDrawnCard && drawnCard && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center animate-cardFlip"
+          style={{
+            transformStyle: "preserve-3d",
+            perspective: "1000px",
+          }}
         >
-          🎴
-        </span>
-      </div>
+          <div className="relative z-20">
+            <Card
+              suit={drawnCard.suit}
+              rank={drawnCard.rank}
+              isRevealed={true}
+              isSelected={false}
+              swipeable={isPlayerTurn && canDiscardDrawnCard}
+              onSwipeDown={isPlayerTurn && canDiscardDrawnCard ? onDrawnCardSwipe : undefined}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

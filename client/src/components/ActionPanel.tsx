@@ -142,15 +142,21 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="flex space-x-3 justify-center mt-4">
             <button
               onClick={() => handleActivatePower(activePower)}
-              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors text-sm"
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm shadow-lg"
+              style={{
+                minHeight: "44px",
+              }}
             >
               ⚡ Use {activePower} Power
             </button>
             <button
               onClick={() => handleSkipPower(activePower)}
-              className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors text-sm"
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm shadow-lg"
+              style={{
+                minHeight: "44px",
+              }}
             >
-              ❌ Skip Power
+              ❌ Skip
             </button>
           </div>
         </div>
@@ -211,13 +217,13 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
   // Main action panel
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Show mutually exclusive choice warning when both power and elimination are available */}
       {activePower && !usingPower && canEliminate && !hasAlreadyEliminated && (
-        <div className="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded-lg">
-          <div className="flex items-center justify-center text-yellow-200 text-sm">
+        <div className="p-2 bg-yellow-900 bg-opacity-70 border-2 border-yellow-500 rounded-lg">
+          <div className="flex items-center justify-center text-yellow-200 text-xs font-semibold">
             <span className="mr-2">⚠️</span>
-            <strong>Choose one:</strong> Use your {activePower} power OR perform elimination (mutually exclusive)
+            Choose one: Use {activePower} power OR eliminate
             <span className="ml-2">⚠️</span>
           </div>
         </div>
@@ -226,60 +232,43 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       {/* Power Choice Section - when power available but not using */}
       {renderPowerChoiceSection()}
 
-      {/* Turn-Based Actions Section */}
-      <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-blue-500">
-        <div className="flex items-center mb-2">
-          <span className="text-blue-400 mr-2">🎯</span>
-          <h3 className="font-semibold text-white">Turn Actions</h3>
-          {isPlayerTurn && (
-            <span className="ml-2 text-green-400 text-sm animate-pulse">
-              ● Your Turn
-            </span>
-          )}
-        </div>
-
+      {/* Turn-Based Actions Section - Gaming Style */}
+      <div className="bg-gray-800 rounded-xl border-2 border-gray-600 shadow-xl p-3">
         {isPlayerTurn ? (
           <div className="space-y-3">
             {drawnCard ? (
-              <div className="text-center">
-                <div className="text-sm text-gray-300 mb-2">
-                  You drew a card! Choose what to do:
+              <div className="text-center space-y-2">
+                <div className="text-sm font-semibold text-white">
+                  Card Drawn! Choose action:
                 </div>
-                <div className="text-xs text-blue-300">
-                  • Click hand card to replace with drawn card
-                  <br />• Click discard pile to discard drawn card
+                <div className="text-xs text-gray-300">
+                  Swipe right to discard • Click hand card to swap
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="text-center">
-                  <div className="text-sm text-gray-300 mb-2">
-                    Choose your turn action:
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    • Click deck to draw a card
-                    <br />• Click "Declare" if you think you have the lowest
-                    total
+                  <div className="text-sm font-semibold text-white mb-2">
+                    Your Turn
                   </div>
                 </div>
 
                 {canDeclare ? (
-                  <div className="flex justify-center">
-                    <button
-                      onClick={onDeclare}
-                      className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 text-white text-sm font-medium"
-                      title="Declare your hand (must name all remaining card ranks)"
-                    >
-                      🎯 Declare Hand
-                    </button>
-                  </div>
+                  <button
+                    onClick={onDeclare}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-lg text-white font-bold text-base shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95"
+                    title="Declare your hand (must name all remaining card ranks)"
+                    style={{
+                      minHeight: "44px",
+                    }}
+                  >
+                    🎯 DECLARE HAND
+                  </button>
                 ) : (
-                  <div className="flex justify-center">
-                    <div className="px-4 py-2 bg-gray-600 rounded text-white text-sm font-medium opacity-50 cursor-not-allowed">
-                      🎯 Declare Hand
-                      <div className="text-xs mt-1">
-                        (Need at least 1 card to declare)
-                      </div>
+                  <div className="w-full px-6 py-4 bg-gray-600 rounded-lg text-white text-sm font-medium opacity-50 cursor-not-allowed text-center">
+                    🎯 Declare Hand
+                    <div className="text-xs mt-1 text-gray-400">
+                      (Need at least 1 card)
                     </div>
                   </div>
                 )}
@@ -287,101 +276,60 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             )}
           </div>
         ) : (
-          <div className="text-center text-gray-400">
-            <div className="text-sm">Waiting for your turn...</div>
-            <div className="text-xs mt-1">
-              Current turn:{" "}
-              {gameState?.players[gameState.currentPlayerIndex]?.name ||
-                "Unknown"}
+          <div className="text-center py-2">
+            <div className="text-sm text-gray-400 font-semibold">Waiting for your turn...</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {gameState?.players[gameState.currentPlayerIndex]?.name || "Unknown"}'s turn
             </div>
           </div>
         )}
       </div>
 
-      {/* Elimination Actions Section - Available when not using power */}
+      {/* Elimination Actions Section - Compact */}
       {!(activePower && usingPower) && (
-        <div className="p-4 bg-gray-800 rounded-lg border-l-4 border-red-500">
-          <div className="flex items-center mb-2">
-            <span className="text-red-400 mr-2">⚡</span>
-            <h3 className="font-semibold text-white">Elimination Actions</h3>
-            {activePower && !usingPower ? (
-              <span className="ml-2 text-orange-400 text-sm">Alternative Choice</span>
+        <div className="bg-gray-800 rounded-xl border-2 border-red-500 shadow-xl p-3">
+          <div className="flex items-center justify-center mb-2">
+            <span className="text-red-400 mr-2 text-lg">⚡</span>
+            <h3 className="font-bold text-white text-sm">Elimination</h3>
+          </div>
+
+          <div className="space-y-2">
+            {canEliminate ? (
+              <div className="text-center">
+                {hasAlreadyEliminated ? (
+                  <div className="text-yellow-400 text-xs">
+                    ⏳ Elimination used this round
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-300">
+                    Click ❌ on matching cards
+                  </div>
+                )}
+              </div>
             ) : (
-              <span className="ml-2 text-yellow-400 text-sm">Always Available</span>
+              <div className="text-center text-gray-400 text-xs">
+                Available after first discard
+              </div>
             )}
           </div>
-
-        <div className="space-y-2">
-          {canEliminate ? (
-            <div className="text-center">
-              {hasAlreadyEliminated ? (
-                <div className="text-yellow-400 text-sm">
-                  ⏳ An elimination has already been used this round.
-                  <br />
-                  Wait for someone to discard/replace to start a new round.
-                </div>
-              ) : (
-                <div>
-                  <div className="text-sm text-gray-300 mb-1">
-                    Elimination available! Click ❌ on matching cards.
-                  </div>
-                  <div className="text-xs text-green-300">
-                    Match the top discard card rank to eliminate it for 0
-                    points!
-                  </div>
-                  <br />
-                  <span className="text-yellow-300">
-                    Then select one of your cards to give them.
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center text-gray-400 text-sm">
-              No cards in discard pile yet.
-              <br />
-              Elimination becomes available after first discard.
-            </div>
-          )}
-
-          {/* Elimination Rules */}
-          <div className="text-xs text-gray-400 bg-gray-700 rounded p-2">
-            <div className="font-medium mb-1">Elimination Rules:</div>
-            <div>• Match rank of top discard card</div>
-            <div>• Only 1 card per round per player</div>
-            <div>• Wrong guess = penalty card</div>
-            <div>• Eliminated cards = 0 points</div>
-            <div className="text-green-300">
-              • After elimination: give opponent one of your cards
-            </div>
-          </div>
         </div>
-      </div>
       )}
 
-      {/* Game Status Section */}
-      <div className="p-3 bg-gray-700 rounded-lg">
-        <div className="text-xs text-gray-300 space-y-1">
-          <div className="flex justify-between">
-            <span>Cards in deck:</span>
-            <span className="text-white">{gameState?.deck.length || 0}</span>
+      {/* Game Status - Compact */}
+      <div className="bg-gray-700 rounded-lg p-2">
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="text-center">
+            <div className="text-gray-400">Deck</div>
+            <div className="text-white font-bold">{gameState?.deck.length || 0}</div>
           </div>
-          <div className="flex justify-between">
-            <span>Cards in discard:</span>
-            <span className="text-white">
-              {gameState?.discardPile.length || 0}
-            </span>
+          <div className="text-center">
+            <div className="text-gray-400">Discard</div>
+            <div className="text-white font-bold">{gameState?.discardPile.length || 0}</div>
           </div>
-          <div className="flex justify-between">
-            <span>Round:</span>
-            <span className="text-white">{gameState?.roundNumber || 1}</span>
+          <div className="text-center">
+            <div className="text-gray-400">Round</div>
+            <div className="text-white font-bold">{gameState?.roundNumber || 1}</div>
           </div>
-        </div>
-
-        {/* Quick reminder */}
-        <div className="mt-2 pt-2 border-t border-gray-600 text-xs text-gray-400 text-center">
-          <div className="font-medium mb-1">Remember:</div>
-          <div>K♥/♦ = 0 pts • K♠/♣ = 13 pts • Goal: Lowest total wins</div>
         </div>
       </div>
     </div>

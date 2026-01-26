@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// client/src/components/Card.tsx - Updated with highlight support
+// client/src/components/Card.tsx - Updated with swipe gestures and enhanced design
 import React, { useState, useEffect, useMemo } from "react";
 
 /**
@@ -46,6 +45,8 @@ const ANIMATION_DURATION_MS = 500;
  * @property {boolean|null} [isHighlighted=false] - Whether the card should be highlighted (for power usage)
  * @property {() => void} [onClick] - Callback function when the card is clicked
  * @property {CardAnimation} [animate="none"] - Animation type to apply to the card
+ * @property {() => void} [onSwipeDown] - Callback function when card is swiped down (for discard)
+ * @property {boolean} [swipeable=false] - Whether the card can be swiped to discard
  */
 interface CardProps {
   suit?: CardSuit;
@@ -55,6 +56,8 @@ interface CardProps {
   isHighlighted?: boolean | null;
   onClick?: () => void;
   animate?: CardAnimation;
+  onSwipeDown?: () => void;
+  swipeable?: boolean;
 }
 
 /**
@@ -87,8 +90,17 @@ const Card: React.FC<CardProps> = ({
   isHighlighted = false,
   onClick,
   animate = "none",
+  onSwipeDown,
+  swipeable = false,
 }) => {
   const [animationClass, setAnimationClass] = useState("");
+  const [swipeState, setSwipeState] = useState<{
+    isSwiping: boolean;
+    startY: number;
+    startX: number;
+    currentY: number;
+    currentX: number;
+  } | null>(null);
 
   /**
    * Maps animation types to their corresponding CSS classes
@@ -140,7 +152,7 @@ const Card: React.FC<CardProps> = ({
    */
   const cardStyles = useMemo((): string => {
     const baseStyles =
-      "w-16 h-24 rounded shadow cursor-pointer transform transition-all duration-200 hover:scale-105";
+      "w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44 rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-2xl hover:-translate-y-1";
     const backgroundStyles = isRevealed
       ? "bg-white"
       : "bg-blue-500 pattern-cross-dots-lg";
@@ -173,6 +185,23 @@ const Card: React.FC<CardProps> = ({
   }, [isRevealed, isSelected, isHighlighted, animationClass]);
 
   /**
+   * Calculates swipe transform styles
+   */
+  const swipeTransform = useMemo((): React.CSSProperties => {
+    if (!swipeState) return {};
+    
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const deltaY = swipeState.currentY - swipeState.startY;
+    const opacity = Math.max(0.3, 1 - Math.abs(deltaX) / 150);
+    
+    return {
+      transform: `translate(${deltaX}px, ${deltaY}px)`,
+      opacity,
+      transition: swipeState.isSwiping ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
+    };
+  }, [swipeState]);
+
+  /**
    * Handles animation state changes
    */
   useEffect(() => {
@@ -197,6 +226,57 @@ const Card: React.FC<CardProps> = ({
       event.preventDefault();
       onClick?.();
     }
+  };
+
+  /**
+   * Handles touch start for swipe detection
+   */
+  const handleTouchStart = (event: React.TouchEvent): void => {
+    if (!swipeable || !onSwipeDown) return;
+    
+    const touch = event.touches[0];
+    setSwipeState({
+      isSwiping: true,
+      startY: touch.clientY,
+      startX: touch.clientX,
+      currentY: touch.clientY,
+      currentX: touch.clientX,
+    });
+  };
+
+  /**
+   * Handles touch move for swipe feedback
+   */
+  const handleTouchMove = (event: React.TouchEvent): void => {
+    if (!swipeable || !onSwipeDown || !swipeState) return;
+    
+    const touch = event.touches[0];
+    setSwipeState({
+      ...swipeState,
+      currentY: touch.clientY,
+      currentX: touch.clientX,
+    });
+  };
+
+  /**
+   * Handles touch end for swipe completion
+   */
+  const handleTouchEnd = (): void => {
+    if (!swipeable || !onSwipeDown || !swipeState) return;
+
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const deltaY = Math.abs(swipeState.currentY - swipeState.startY);
+
+    // Swipe right threshold: 50px right, less than 30px vertical
+    if (deltaX > 50 && deltaY < 30) {
+      // Valid swipe right - trigger discard
+      onSwipeDown();
+    }
+
+    // Reset swipe state (with slight delay for visual feedback)
+    setTimeout(() => {
+      setSwipeState(null);
+    }, 100);
   };
 
   /**
@@ -240,10 +320,14 @@ const Card: React.FC<CardProps> = ({
         className={cardStyles}
         onClick={onClick}
         onKeyDown={handleKeyDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         tabIndex={onClick ? 0 : -1}
         role="button"
         aria-label={getAccessibleLabel()}
         aria-pressed={isSelected}
+        style={swipeTransform}
       >
         <div className="h-full flex items-center justify-center">
           <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center">
@@ -256,6 +340,11 @@ const Card: React.FC<CardProps> = ({
             </span>
           </div>
         </div>
+        {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
+          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse">
+            → Swipe right to discard
+          </div>
+        )}
       </div>
     );
   }
@@ -263,17 +352,21 @@ const Card: React.FC<CardProps> = ({
   // Show revealed card with special glow for power reveals
   return (
     <div
-      className={`${cardStyles} flex flex-col justify-between p-1`}
+      className={`${cardStyles} flex flex-col justify-between p-2`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       tabIndex={onClick ? 0 : -1}
       role="button"
       aria-label={getAccessibleLabel()}
       aria-pressed={isSelected}
+      style={swipeTransform}
     >
       {suit && rank ? (
         <>
-          <div className={`text-xs font-bold ${getSuitColor(suit)}`}>
+          <div className={`text-sm md:text-base font-bold ${getSuitColor(suit)}`}>
             {rank}
           </div>
 
@@ -377,7 +470,7 @@ const Card: React.FC<CardProps> = ({
           </div>
 
           <div
-            className={`text-xs font-bold self-end rotate-180 ${getSuitColor(
+            className={`text-sm md:text-base font-bold self-end rotate-180 ${getSuitColor(
               suit
             )}`}
           >
@@ -387,6 +480,11 @@ const Card: React.FC<CardProps> = ({
       ) : (
         <div className="h-full flex items-center justify-center text-sm text-gray-400">
           Empty
+        </div>
+      )}
+      {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
+        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse">
+          → Swipe right to discard
         </div>
       )}
     </div>

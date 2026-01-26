@@ -30,23 +30,14 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
   count,
   onDiscardClick,
 }) => {
-  if (!topCard) {
-    return (
-      <div
-        className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
-        onClick={onDiscardClick}
-      >
-        <span className="text-gray-400">Empty</span>
-      </div>
-    );
-  }
-
+  const isClickable = !!onDiscardClick;
+  
   // Define card colors based on suit
   const suitColors = {
-    hearts: "text-red-600",     // Red hearts
-    diamonds: "text-red-600",   // Red diamonds
-    clubs: "text-black",        // Black clubs
-    spades: "text-black",       // Black spades
+    hearts: "text-red-600",
+    diamonds: "text-red-600",
+    clubs: "text-black",
+    spades: "text-black",
   };
 
   // Define suit symbols
@@ -57,31 +48,95 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
     spades: "♠",
   };
 
-  return (
-    <div
-      className="w-24 h-32 bg-white rounded shadow relative flex flex-col justify-between p-2"
-      onClick={onDiscardClick}
-    >
-      <div className="absolute top-1 right-1 text-xs text-gray-500 font-bold">
-        {count}
-      </div>
-
-      <div className={`text-sm font-bold ${suitColors[topCard.suit]}`}>
-        {topCard.rank}
-        <span className="ml-1">{suitSymbols[topCard.suit]}</span>
-      </div>
-
-      <div className={`text-center text-4xl ${suitColors[topCard.suit]}`}>
-        {suitSymbols[topCard.suit]}
-      </div>
-
+  if (!topCard) {
+    return (
       <div
-        className={`text-sm font-bold self-end rotate-180 ${
-          suitColors[topCard.suit]
-        }`}
+        className={`
+          w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44
+          bg-gray-700 border-2 border-gray-600
+          rounded-lg shadow-lg
+          flex items-center justify-center
+          transition-all duration-200
+          ${isClickable 
+            ? "cursor-pointer hover:scale-105 hover:border-green-400 hover:bg-gray-600" 
+            : "cursor-default"
+          }
+        `}
+        onClick={onDiscardClick}
+        style={{
+          minWidth: "44px",
+          minHeight: "44px",
+        }}
       >
-        {topCard.rank}
-        <span className="ml-1">{suitSymbols[topCard.suit]}</span>
+        <span className="text-gray-400 text-sm font-semibold">Empty</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Stack effect - show multiple cards stacked */}
+      {count > 1 && (
+        <>
+          <div className="absolute top-1 left-1 w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44 bg-gray-600 rounded-lg transform translate-x-1 translate-y-1 opacity-50"></div>
+          {count > 2 && (
+            <div className="absolute top-2 left-2 w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44 bg-gray-500 rounded-lg transform translate-x-1 translate-y-1 opacity-30"></div>
+          )}
+        </>
+      )}
+      
+      <div
+        className={`
+          w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44
+          bg-white border-2 ${isClickable ? "border-green-400" : "border-gray-300"}
+          rounded-lg shadow-xl
+          relative flex flex-col justify-between p-2 md:p-3
+          transition-all duration-200
+          ${isClickable 
+            ? "cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-green-300" 
+            : "cursor-default"
+          }
+        `}
+        onClick={onDiscardClick}
+        style={{
+          minWidth: "44px",
+          minHeight: "44px",
+        }}
+      >
+        {/* Count badge */}
+        {count > 1 && (
+          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-lg border-2 border-white">
+            {count}
+          </div>
+        )}
+
+        {/* Card content */}
+        <div className={`text-sm md:text-base font-bold ${suitColors[topCard.suit]}`}>
+          {topCard.rank}
+          <span className="ml-1">{suitSymbols[topCard.suit]}</span>
+        </div>
+
+        <div className={`text-center text-3xl md:text-4xl ${suitColors[topCard.suit]}`}>
+          {suitSymbols[topCard.suit]}
+        </div>
+
+        <div
+          className={`text-sm md:text-base font-bold self-end rotate-180 ${
+            suitColors[topCard.suit]
+          }`}
+        >
+          {topCard.rank}
+          <span className="ml-1">{suitSymbols[topCard.suit]}</span>
+        </div>
+        
+        {/* Clickable indicator */}
+        {isClickable && (
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+            <div className="text-xs text-white font-semibold bg-green-600 bg-opacity-90 rounded px-2 py-1">
+              Discard
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

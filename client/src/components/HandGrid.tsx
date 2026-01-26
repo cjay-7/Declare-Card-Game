@@ -154,7 +154,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
+    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-xs mx-auto relative">
       {/* DEBUG: Show drawn card state */}
       {process.env.NODE_ENV === "development" &&
         drawnCard &&
@@ -382,17 +382,22 @@ const HandGrid: React.FC<HandGridProps> = memo(({
               </div>
             )}
 
-            {/* Eliminate button */}
+            {/* Eliminate button - 44pt minimum touch target */}
             {showEliminateButton && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEliminateCard(card.id);
                 }}
-                className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 
-                          rounded-full flex items-center justify-center text-white text-xs
-                          border-2 border-white shadow-lg transition-colors"
+                className="absolute -top-2 -right-2 w-11 h-11 bg-red-600 hover:bg-red-700 
+                          rounded-full flex items-center justify-center text-white text-sm
+                          border-2 border-white shadow-lg transition-all duration-200
+                          transform hover:scale-110 active:scale-95"
                 title={`Eliminate this card (Cabo elimination - risk penalty if wrong!)`}
+                style={{
+                  minWidth: "44px",
+                  minHeight: "44px",
+                }}
               >
                 ❌
               </button>

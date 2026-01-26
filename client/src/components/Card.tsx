@@ -151,13 +151,22 @@ const Card: React.FC<CardProps> = ({
    * Memoized to prevent unnecessary recalculations on every render
    */
   const cardStyles = useMemo((): string => {
+    // Fixed dimensions for all cards - uniform size regardless of state
+    // overflow-hidden ensures inner content doesn't affect outer size
+    // Revealed cards are 10% smaller, hidden cards use uniform-card
+    const sizeClass = isRevealed ? "revealed-card-size" : "uniform-card";
     const baseStyles =
-      "w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44 rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-2xl hover:-translate-y-1";
+      `${sizeClass} rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-2xl hover:-translate-y-1 box-border flex-shrink-0 overflow-hidden`;
+    // Only add border for revealed cards, hidden cards have no border
+    // Nice rounded borders for revealed cards with elegant styling
+    const borderStyles = isRevealed
+      ? "revealed-card-border"
+      : "";
     const backgroundStyles = isRevealed
       ? "bg-white"
       : "bg-blue-500 pattern-cross-dots-lg";
     const selectionStyles = isSelected
-      ? "border-2 border-yellow-400 shadow-lg shadow-yellow-400/50"
+      ? "border-yellow-400 shadow-lg shadow-yellow-400/50"
       : "";
     const highlightStyles = isHighlighted
       ? "ring-2 ring-purple-400 ring-opacity-75 shadow-lg shadow-purple-400/50"
@@ -172,6 +181,7 @@ const Card: React.FC<CardProps> = ({
 
     return [
       baseStyles,
+      borderStyles,
       backgroundStyles,
       selectionStyles,
       highlightStyles,
@@ -183,6 +193,10 @@ const Card: React.FC<CardProps> = ({
       .filter(Boolean)
       .join(" ");
   }, [isRevealed, isSelected, isHighlighted, animationClass]);
+
+  // Use Tailwind responsive classes with explicit sizing - same for all cards
+  // Note: uniform-card CSS class enforces the dimensions with !important
+  const dimensionClasses = "w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44";
 
   /**
    * Calculates swipe transform styles
@@ -317,7 +331,7 @@ const Card: React.FC<CardProps> = ({
   if (!isRevealed) {
     return (
       <div
-        className={cardStyles}
+        className={`${dimensionClasses} ${cardStyles} flex items-center justify-center`}
         onClick={onClick}
         onKeyDown={handleKeyDown}
         onTouchStart={handleTouchStart}
@@ -329,16 +343,14 @@ const Card: React.FC<CardProps> = ({
         aria-pressed={isSelected}
         style={swipeTransform}
       >
-        <div className="h-full flex items-center justify-center">
-          <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center">
-            <span
-              className="text-6em"
-              role="img"
-              aria-label="card back"
-            >
-              🎴
-            </span>
-          </div>
+        <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center">
+          <span
+            className="text-6em"
+            role="img"
+            aria-label="card back"
+          >
+            🎴
+          </span>
         </div>
         {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
           <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse">
@@ -352,7 +364,7 @@ const Card: React.FC<CardProps> = ({
   // Show revealed card with special glow for power reveals
   return (
     <div
-      className={`${cardStyles} flex flex-col justify-between p-2`}
+      className={`${dimensionClasses} ${cardStyles}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
@@ -364,9 +376,13 @@ const Card: React.FC<CardProps> = ({
       aria-pressed={isSelected}
       style={swipeTransform}
     >
+      <div className="flex flex-col justify-between p-2 h-full w-full">
       {suit && rank ? (
         <>
-          <div className={`text-sm md:text-base font-bold ${getSuitColor(suit)}`}>
+          <div 
+            className={`text-sm md:text-base font-bold ${getSuitColor(suit)}`}
+            style={{ paddingLeft: '0.25rem', paddingRight: '0.25rem', paddingTop: '0.25rem' }}
+          >
             {rank}
           </div>
 
@@ -473,6 +489,7 @@ const Card: React.FC<CardProps> = ({
             className={`text-sm md:text-base font-bold self-end rotate-180 ${getSuitColor(
               suit
             )}`}
+            style={{ paddingLeft: '0.25rem', paddingRight: '0.25rem', paddingBottom: '0.25rem' }}
           >
             {rank}
           </div>
@@ -482,6 +499,7 @@ const Card: React.FC<CardProps> = ({
           Empty
         </div>
       )}
+      </div>
       {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
         <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse">
           → Swipe right to discard

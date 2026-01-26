@@ -450,11 +450,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         {/* CENTER ZONE */}
         <div className="bg-gray-700 border-y border-gray-600 p-3 md:p-4">
           <div className="max-w-4xl mx-auto">
-            <div className="grid grid-cols-2 gap-6 items-center">
+            <div className="grid grid-cols-2 gap-6 items-start">
               {/* Deck */}
               <div className="flex flex-col items-center relative">
-                <h3 className="text-sm font-semibold mb-2 text-gray-300">Deck</h3>
-                <div className="relative" style={{ minHeight: "180px" }}>
+                <h3 className="text-sm font-semibold mb-2 text-gray-300 w-full text-center">Deck</h3>
+                <div className="relative flex items-center justify-center" style={{ minHeight: "180px", width: "100%" }}>
                   <Deck
                     cardsRemaining={deckSize}
                     onDeckClick={
@@ -473,7 +473,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full animate-pulse border-2 border-white z-30"></div>
                   )}
                 </div>
-                <div className="text-center mt-2 text-xs text-gray-300">
+                <div className="text-center mt-2 text-xs text-gray-300 w-full">
                   {drawnCard ? (
                     selectedPower ? (
                       <span className="text-purple-400">Power: {selectedPower} (activates when discarded)</span>
@@ -489,18 +489,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               </div>
 
               {/* Discard Pile */}
-              <div className="flex flex-col items-center">
-                <h3 className="text-sm font-semibold mb-2 text-gray-300">Discard</h3>
-                <div
+              <div className="flex flex-col items-center relative">
+                <h3 className="text-sm font-semibold mb-2 text-gray-300 w-full text-center">Discard</h3>
+                <div 
+                  className="relative flex items-center justify-center"
+                  style={{ minHeight: "180px", width: "100%" }}
                   onClick={
                     drawnCard && isPlayerTurn
                       ? handleDiscardDrawnCard
                       : undefined
-                  }
-                  className={
-                    drawnCard && isPlayerTurn
-                      ? "cursor-pointer hover:scale-105 transition-transform"
-                      : ""
                   }
                 >
                   <DiscardPile
@@ -513,12 +510,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     }
                   />
                 </div>
-                <div className="text-center mt-2 text-xs text-gray-300">
-                  {drawnCard && isPlayerTurn ? (
+                <div className="text-center mt-2 text-xs text-gray-300 w-full">
+                  {/* {drawnCard && isPlayerTurn ? (
                     <span className="text-green-400 font-semibold">
                       Click to discard
                     </span>
-                  ) : topDiscardCard ? (
+                  ) : null} */}
+                  {topDiscardCard ? (
                     `Top: ${topDiscardCard.rank}${
                       topDiscardCard.suit === "hearts"
                         ? "♥"

@@ -52,21 +52,19 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
     return (
       <div
         className={`
-          w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44
+          uniform-card
           bg-gray-700 border-2 border-gray-600
           rounded-lg shadow-lg
           flex items-center justify-center
           transition-all duration-200
+          box-border
+          flex-shrink-0
           ${isClickable 
             ? "cursor-pointer hover:scale-105 hover:border-green-400 hover:bg-gray-600" 
             : "cursor-default"
           }
         `}
         onClick={onDiscardClick}
-        style={{
-          minWidth: "44px",
-          minHeight: "44px",
-        }}
       >
         <span className="text-gray-400 text-sm font-semibold">Empty</span>
       </div>
@@ -87,21 +85,19 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
       
       <div
         className={`
-          w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44
+          uniform-card
           bg-white border-2 ${isClickable ? "border-green-400" : "border-gray-300"}
           rounded-lg shadow-xl
-          relative flex flex-col justify-between p-2 md:p-3
+          relative flex flex-col justify-between p-2
           transition-all duration-200
+          box-border
+          flex-shrink-0
           ${isClickable 
             ? "cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-green-300" 
             : "cursor-default"
           }
         `}
         onClick={onDiscardClick}
-        style={{
-          minWidth: "44px",
-          minHeight: "44px",
-        }}
       >
         {/* Count badge */}
         {count > 1 && (

@@ -154,15 +154,15 @@ const HandGrid: React.FC<HandGridProps> = memo(({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-xs mx-auto relative">
+    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-xs mx-auto relative items-start">
       {/* DEBUG: Show drawn card state */}
-      {process.env.NODE_ENV === "development" &&
+      {/* {process.env.NODE_ENV === "development" &&
         drawnCard &&
         isCurrentPlayer && (
           <div className="absolute -top-8 left-0 right-0 bg-green-600 text-white text-xs px-2 py-1 rounded text-center z-30">
             Drawn: {drawnCard.rank} - Click any card to replace!
           </div>
-        )}
+        )} */}
 
       {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
@@ -192,32 +192,32 @@ const HandGrid: React.FC<HandGridProps> = memo(({
       )}
 
       {/* Card swapping overlay - NEW */}
-      {drawnCard && isCurrentPlayer && !activePower && (
+      {/* {drawnCard && isCurrentPlayer && !activePower && (
         <div className="absolute inset-0 bg-green-500 bg-opacity-20 rounded-lg border-2 border-green-400 border-dashed flex items-center justify-center z-15 pointer-events-none">
           <div className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
             Click any card to replace with {drawnCard.rank}
           </div>
         </div>
-      )}
+      )} */}
 
       {paddedCards.map((card, index) => {
         if (card === null) {
           // Render eliminated card placeholder
-          return (
+        return (
+          <div
+            key={`eliminated-${index}`}
+            className="flex justify-center items-start relative"
+          >
             <div
-              key={`eliminated-${index}`}
-              className="flex justify-center relative"
+              onClick={() => handleCardClickWithValidation(index)}
+              className="cursor-not-allowed"
             >
-              <div
-                onClick={() => handleCardClickWithValidation(index)}
-                className="cursor-not-allowed"
-              >
-                <div className="w-16 h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded flex items-center justify-center relative">
-                  <span className="text-gray-500 text-xs">Eliminated</span>
-                </div>
+              <div className="uniform-card bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center relative box-border flex-shrink-0">
+                <span className="text-gray-500 text-xs">Eliminated</span>
               </div>
             </div>
-          );
+          </div>
+        );
         }
 
         // Determine if this card should be revealed
@@ -317,7 +317,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         return (
           <div
             key={card.id}
-            className="flex justify-center relative"
+            className="flex justify-center items-start relative"
           >
             <div
               onClick={() => handleCardClickWithValidation(index)}

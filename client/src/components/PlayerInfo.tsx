@@ -40,11 +40,11 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
     }`}>
       <div className="flex items-center gap-3">
         {/* Enhanced Avatar */}
-        <div className={`${playerColor} w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base shadow-lg ${
+        {/* <div className={`${playerColor} w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base shadow-lg ${
           isCurrentTurn ? "ring-2 ring-green-400 ring-offset-2 ring-offset-gray-700" : ""
         }`}>
           {name.charAt(0).toUpperCase()}
-        </div>
+        </div> */}
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span
@@ -54,32 +54,32 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
             >
               {name}
             </span>
-            {isHost && (
+            {/* {isHost && (
               <span className="text-yellow-400 text-sm animate-pulse" title="Host">
                 👑
               </span>
-            )}
-            {isCurrentPlayer && (
+            )} */}
+            {/* {isCurrentPlayer && (
               <span className="text-xs text-blue-400 bg-blue-900 px-2 py-0.5 rounded">
                 You
               </span>
-            )}
+            )} */}
           </div>
-          {isCurrentTurn && (
+          {/* {isCurrentTurn && (
             <span className="text-xs text-green-400 font-semibold animate-pulse">
               ● Active Turn
             </span>
-          )}
+          )} */}
         </div>
       </div>
 
-      {isCurrentTurn && (
+      {/* {isCurrentTurn && (
         <div className="flex items-center bg-green-600 px-3 py-1 rounded-full">
           <span className="animate-pulse text-white text-sm font-semibold">
             ● Turn
           </span>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

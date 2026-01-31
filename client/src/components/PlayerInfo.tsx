@@ -36,7 +36,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
   
   return (
     <div className={`flex items-center justify-between p-2 rounded-lg ${
-      isCurrentTurn ? "bg-gray-600" : "bg-transparent"
+      isCurrentTurn ? "bg-gray-800/50" : "bg-transparent"
     }`}>
       <div className="flex items-center gap-3">
         {/* Enhanced Avatar */}

@@ -244,7 +244,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   if (!gameStarted) {
     return (
-      <div className="min-h-screen p-6 bg-gray-900 text-white">
+      <div className="min-h-screen p-6 bg-black text-white">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -279,7 +279,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             </div>
           </div>
 
-          <div className="p-6 bg-gray-800 rounded-lg text-center">
+          <div className="p-6 bg-gray-900 rounded-lg text-center border border-gray-800">
             <h2 className="text-xl font-bold mb-2">
               {isHost
                 ? "You are the host! Click 'Start Game' when ready!"
@@ -308,12 +308,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                       key={player.id}
                       className={`p-3 rounded-lg border ${
                         player.id === currentSocketId
-                          ? "bg-blue-900 border-blue-600"
-                          : "bg-gray-700 border-gray-600"
+                          ? "bg-gray-900 border-blue-600"
+                          : "bg-gray-900 border-gray-700"
                       }`}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
                           {player.name.charAt(0).toUpperCase()}
                         </div>
                         <span
@@ -333,7 +333,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             )}
 
             {/* Instructions for 2-player mode */}
-            <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-600">
+            <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
               <h3 className="text-sm font-bold text-blue-300 mb-2">
                 2-Player Mode Instructions
               </h3>
@@ -372,7 +372,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-gray-900 text-white"
+      className="min-h-screen bg-black text-white"
       style={{
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
@@ -416,11 +416,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
            }}>
         {/* OPPONENT ZONE (Top) */}
         <div
-          className={`bg-gray-800 border-b-2 ${
+          className={`transition-all duration-300 ${
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
-              ? "border-green-500"
-              : "border-gray-700"
+              ? "border-0"
+              : "bg-black border-b-2 border-gray-800"
           } p-3 md:p-4 overflow-y-auto`}
+          style={
+            gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
+              ? {
+                  backgroundColor: "rgba(30, 58, 138, 0.55)",
+                  boxShadow: "0 0 30px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.2), inset 0 -8px 32px -8px rgba(59, 130, 246, 0.25)",
+                }
+              : undefined
+          }
         >
           <div className="max-w-4xl mx-auto">
             <div className="mb-3">
@@ -448,7 +456,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
 
         {/* CENTER ZONE */}
-        <div className="bg-gray-700 border-y border-gray-600 p-3 md:p-4">
+        <div className="bg-black border-y border-gray-800 p-3 md:p-4">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-2 gap-6 items-start">
               {/* Deck */}
@@ -469,9 +477,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     canDiscardDrawnCard={canDiscardDrawnCard}
                     isPlayerTurn={isPlayerTurn}
                   />
-                  {isPlayerTurn && !drawnCard && !myPlayer?.activePower && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full animate-pulse border-2 border-white z-30"></div>
-                  )}
                 </div>
                 <div className="text-center mt-2 text-xs text-gray-300 w-full">
                   {drawnCard ? (
@@ -538,20 +543,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
         {/* PLAYER ZONE (Bottom) */}
         <div
-          className={`bg-gray-700 border-t-2 ${
+          className={`transition-all duration-300 ${
             isPlayerTurn
-              ? "border-green-500 shadow-lg shadow-green-500/20"
-              : "border-gray-600"
+              ? "border-0"
+              : "bg-black border-t-2 border-gray-800"
           } p-3 md:p-4 overflow-y-auto`}
+          style={
+            isPlayerTurn
+              ? {
+                  backgroundColor: "rgba(127, 29, 29, 0.55)",
+                  boxShadow: "0 0 30px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.2), inset 0 8px 32px -8px rgba(220, 38, 38, 0.25)",
+                }
+              : undefined
+          }
         >
-          <div className="max-w-4xl mx-auto">
-            {/* Your Turn Banner */}
-            {isPlayerTurn && (
-              <div className="mb-3 bg-green-600 text-white text-center py-2 px-4 rounded-lg font-semibold animate-pulse">
-                🟢 YOUR TURN
-              </div>
-            )}
-
+          <div className="max-w-4xl mx-auto h-[85%]">
             <div className="mb-3">
               <PlayerInfo
                 name={myPlayer?.name || initialPlayerName}
@@ -565,7 +571,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
             {/* Special Power Instructions */}
             {powerInstructions && (
-              <div className="mt-4 bg-purple-800 p-3 rounded-lg border border-purple-600">
+              <div className="mt-4 bg-gray-900 p-3 rounded-lg border border-purple-700">
                 <h3 className="text-sm font-bold text-center mb-1 text-purple-200">
                   Special Power Active
                 </h3>

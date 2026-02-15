@@ -1,5 +1,7 @@
 // server/index.js
+import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import os from "os";
@@ -9,10 +11,22 @@ import {
   dealCards,
   revealInitialCards,
 } from "./src/utils/cardUtils.js";
+import authRouter from "./src/routes/auth.js";
+import { verifyToken } from "./src/authMiddleware.js";
+import { initDb } from "./src/db.js";
 
 // Initialize Express app and HTTP server
 const app = express();
 const server = createServer(app);
+
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+
+// Middleware
+app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+app.use(express.json());
+
+// Auth REST routes
+app.use("/api/auth", authRouter);
 
 // Initialize Socket.IO with CORS
 // Allow connections from localhost and network IPs
@@ -22,6 +36,19 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+});
+
+// Socket.IO auth middleware — attach userId if valid token provided
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (token) {
+    const decoded = verifyToken(token);
+    if (decoded?.userId) {
+      socket.userId = decoded.userId;
+      socket.displayName = decoded.displayName;
+    }
+  }
+  next(); // allow unauthenticated sockets for now (guest fallback)
 });
 
 // Game rooms storage - store all active game rooms
@@ -1942,7 +1969,10 @@ app.get("/", (req, res) => {
 });
 
 // Start the server
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
+// Initialize DB schema then start
+await initDb();
+
 // Listen on all interfaces (0.0.0.0) to allow network access from phones
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);

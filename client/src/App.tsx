@@ -1,5 +1,9 @@
-// Updated App.tsx with proper player switching and split contexts
+// Updated App.tsx with auth routing
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Lobby from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { GameProvider } from "./contexts/GameContext";
@@ -14,7 +18,8 @@ import NotificationSystem, {
 } from "./components/NotificationSystem";
 import socket from "./socket";
 
-function App() {
+function GameApp() {
+  const { user, loading, logout } = useAuth();
   const [joinedRoom, setJoinedRoom] = useState(false);
   const [roomInfo, setRoomInfo] = useState({ roomId: "", playerName: "" });
   const [showTestPanel, setShowTestPanel] = useState(false);
@@ -101,6 +106,14 @@ function App() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#262626]">
+        <div className="text-white text-lg">Loading…</div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <GameStateProvider initialCurrentPlayerId={currentPlayer}>
@@ -131,16 +144,49 @@ function App() {
             {/* King Power Notification */}
             <KingPowerNotification />
 
-            {/* Main Content */}
-            {!joinedRoom ? (
-              <Lobby onJoinRoom={handleJoinRoom} />
-            ) : (
-              <GameBoard
-                key={`${roomInfo.roomId}-${currentPlayer}`} // Force re-render on player switch
-                initialRoomId={roomInfo.roomId}
-                initialPlayerName={roomInfo.playerName}
+            <Routes>
+              {/* Public routes */}
+              <Route
+                path="/login"
+                element={user ? <Navigate to="/lobby" replace /> : <Login />}
               />
-            )}
+              <Route
+                path="/register"
+                element={user ? <Navigate to="/lobby" replace /> : <Register />}
+              />
+
+              {/* Protected routes */}
+              <Route
+                path="/lobby"
+                element={
+                  user ? (
+                    <Lobby onJoinRoom={handleJoinRoom} onLogout={logout} />
+                  ) : (
+                    <Navigate to="/login" replace />
+                  )
+                }
+              />
+              <Route
+                path="/game"
+                element={
+                  user && joinedRoom ? (
+                    <GameBoard
+                      key={`${roomInfo.roomId}-${currentPlayer}`}
+                      initialRoomId={roomInfo.roomId}
+                      initialPlayerName={roomInfo.playerName}
+                    />
+                  ) : (
+                    <Navigate to={user ? "/lobby" : "/login"} replace />
+                  )
+                }
+              />
+
+              {/* Default redirect */}
+              <Route
+                path="*"
+                element={<Navigate to={user ? "/lobby" : "/login"} replace />}
+              />
+            </Routes>
 
             {/* Test Control Panel - toggle with Alt+T */}
             {showTestPanel && <TestControlPanel />}
@@ -175,26 +221,19 @@ function App() {
               {showTestPanel ? "Hide Test Panel" : "Show Test Panel (Alt+T)"}
             </button>
 
-            {/* Instructions based on mode */}
+            {/* Mode info */}
             <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-3 rounded-lg text-xs max-w-sm opacity-80">
               {socket.getMode() === "mock" ? (
                 <>
                   <div className="font-bold mb-1">2-Player Same Device Mode</div>
-                  <div>
-                    • Use the player switcher (top right) to alternate between
-                    players
-                  </div>
+                  <div>• Use the player switcher (top right) to alternate</div>
                   <div>• Each player joins as "Player 1" or "Player 2"</div>
-                  <div>• Switch perspectives during gameplay</div>
                 </>
               ) : (
                 <>
                   <div className="font-bold mb-1">Online Multiplayer Mode</div>
-                  <div>
-                    • Share the room ID with another player
-                  </div>
+                  <div>• Share the room ID with another player</div>
                   <div>• Each player connects from their own device</div>
-                  <div>• Server runs on localhost:4000</div>
                 </>
               )}
             </div>
@@ -202,6 +241,16 @@ function App() {
         </UIStateProvider>
       </GameStateProvider>
     </ErrorBoundary>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <GameApp />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

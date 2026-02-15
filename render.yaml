@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        generateValue: false
+        value: 4000
       - key: JWT_SECRET
         sync: false
       - key: DATABASE_URL

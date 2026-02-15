@@ -37,7 +37,30 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
   `);
-  console.log("Database schema ready (users table).");
+  await query(`
+    CREATE TABLE IF NOT EXISTS friendships (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      requester_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(requester_id, addressee_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id);
+    CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL,
+      from_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      payload JSONB DEFAULT '{}',
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
+  `);
+  console.log("Database schema ready.");
 }
 
 export async function getUserById(id) {
@@ -86,6 +109,90 @@ export async function updateUser(id, fields) {
   values.push(id);
   await query(`UPDATE users SET ${updates.join(", ")} WHERE id = $${i}`, values);
   return getUserById(id);
+}
+
+export async function getUserByDisplayName(displayName) {
+  const res = await query(
+    "SELECT id, email, display_name, avatar_url FROM users WHERE LOWER(display_name) = LOWER($1)",
+    [displayName]
+  );
+  return res.rows[0] || null;
+}
+
+export async function sendFriendRequest(requesterId, addresseeId) {
+  const res = await query(
+    `INSERT INTO friendships (requester_id, addressee_id)
+     VALUES ($1, $2)
+     ON CONFLICT (requester_id, addressee_id) DO NOTHING
+     RETURNING *`,
+    [requesterId, addresseeId]
+  );
+  return res.rows[0] || null;
+}
+
+export async function respondFriendRequest(id, status, addresseeId) {
+  const res = await query(
+    `UPDATE friendships SET status = $1
+     WHERE id = $2 AND addressee_id = $3
+     RETURNING *`,
+    [status, id, addresseeId]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getFriends(userId) {
+  const res = await query(
+    `SELECT
+       f.id,
+       CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END AS friend_id,
+       CASE WHEN f.requester_id = $1 THEN u2.display_name ELSE u1.display_name END AS display_name,
+       CASE WHEN f.requester_id = $1 THEN u2.avatar_url ELSE u1.avatar_url END AS avatar_url
+     FROM friendships f
+     JOIN users u1 ON u1.id = f.requester_id
+     JOIN users u2 ON u2.id = f.addressee_id
+     WHERE (f.requester_id = $1 OR f.addressee_id = $1) AND f.status = 'accepted'`,
+    [userId]
+  );
+  return res.rows;
+}
+
+export async function getPendingRequests(userId) {
+  const res = await query(
+    `SELECT f.id, f.created_at, u.id AS from_id, u.display_name, u.avatar_url
+     FROM friendships f
+     JOIN users u ON u.id = f.requester_id
+     WHERE f.addressee_id = $1 AND f.status = 'pending'
+     ORDER BY f.created_at DESC`,
+    [userId]
+  );
+  return res.rows;
+}
+
+export async function createNotification(userId, type, fromUserId, payload = {}) {
+  const res = await query(
+    `INSERT INTO notifications (user_id, type, from_user_id, payload)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [userId, type, fromUserId, JSON.stringify(payload)]
+  );
+  return res.rows[0];
+}
+
+export async function getNotifications(userId) {
+  const res = await query(
+    `SELECT n.*, u.display_name AS from_display_name
+     FROM notifications n
+     JOIN users u ON u.id = n.from_user_id
+     WHERE n.user_id = $1 AND n.read = false
+     ORDER BY n.created_at DESC
+     LIMIT 50`,
+    [userId]
+  );
+  return res.rows;
+}
+
+export async function markNotificationsRead(userId) {
+  await query("UPDATE notifications SET read = true WHERE user_id = $1", [userId]);
 }
 
 export { pool };

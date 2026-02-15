@@ -12,6 +12,7 @@ import {
   revealInitialCards,
 } from "./src/utils/cardUtils.js";
 import authRouter from "./src/routes/auth.js";
+import friendsRouter from "./src/routes/friends.js";
 import { verifyToken } from "./src/authMiddleware.js";
 import { initDb } from "./src/db.js";
 
@@ -27,6 +28,7 @@ app.use(express.json());
 
 // Auth REST routes
 app.use("/api/auth", authRouter);
+app.use("/api/friends", friendsRouter);
 
 // Initialize Socket.IO with CORS
 // Allow connections from localhost and network IPs
@@ -50,6 +52,11 @@ io.use((socket, next) => {
   }
   next(); // allow unauthenticated sockets for now (guest fallback)
 });
+
+// Online presence tracking: userId → Set of socketIds
+const onlineUsers = new Map();
+app.set("io", io);
+app.set("onlineUsers", onlineUsers);
 
 // Game rooms storage - store all active game rooms
 const rooms = {};
@@ -159,6 +166,27 @@ const moveToNextPlayer = (room) => {
 // Handle socket connections
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
+
+  // Track online presence
+  if (socket.userId) {
+    if (!onlineUsers.has(socket.userId)) onlineUsers.set(socket.userId, new Set());
+    onlineUsers.get(socket.userId).add(socket.id);
+  }
+
+  // Handle game invite
+  socket.on("send-game-invite", ({ roomId, toUserId }) => {
+    if (!socket.userId || !roomId || !toUserId) return;
+    const targetSockets = onlineUsers.get(toUserId);
+    if (targetSockets) {
+      for (const socketId of targetSockets) {
+        io.to(socketId).emit("game-invite", {
+          fromDisplayName: socket.displayName || "Someone",
+          fromUserId: socket.userId,
+          roomId,
+        });
+      }
+    }
+  });
 
   // Handle joining a room
   socket.on("join-room", ({ roomId, playerName }) => {
@@ -1882,6 +1910,15 @@ io.on("connection", (socket) => {
   // Handle disconnections
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+
+    // Remove from online presence
+    if (socket.userId) {
+      const sockets = onlineUsers.get(socket.userId);
+      if (sockets) {
+        sockets.delete(socket.id);
+        if (sockets.size === 0) onlineUsers.delete(socket.userId);
+      }
+    }
 
     // Check all rooms for this socket
     const roomId = socket.roomId;

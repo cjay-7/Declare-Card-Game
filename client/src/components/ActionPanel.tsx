@@ -23,9 +23,12 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   const activePower = currentPlayer?.activePower;
   const usingPower = currentPlayer?.usingPower;
 
-  // Elimination UI disabled
-  // const canEliminate = gameState?.discardPile && gameState.discardPile.length > 0 && !gameState?.eliminationUsedThisRound;
-  // const hasAlreadyEliminated = gameState?.eliminationUsedThisRound || false;
+  // Check elimination eligibility - only one elimination per round total
+  const canEliminate =
+    gameState?.discardPile &&
+    gameState.discardPile.length > 0 &&
+    !gameState?.eliminationUsedThisRound;
+  const hasAlreadyEliminated = gameState?.eliminationUsedThisRound || false;
 
   // Check if player can declare (must have at least 1 non-eliminated card)
   const canDeclare = currentPlayer ? getActiveCardCount(currentPlayer) > 0 : false;
@@ -107,59 +110,8 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
     }
   };
 
-  // Helper function to render power choice section
-  const renderPowerChoiceSection = () => {
-    if (!activePower || usingPower) return null;
-    
-    const powerInfo = getPowerChoiceInstructions(activePower);
-    if (!powerInfo) return null;
-
-    return (
-      <div className="p-4 bg-gray-900 rounded-lg border-l-4 border-purple-500">
-        <div className="flex items-center mb-2">
-          <span className="text-purple-400 mr-2">{powerInfo.icon}</span>
-          <h3 className="font-semibold text-white">Power Available</h3>
-          <span className="ml-2 text-purple-400 text-sm">Optional Choice</span>
-        </div>
-
-        <div className="text-center">
-          <div className="text-sm text-white mb-3">{powerInfo.description}</div>
-
-          {powerInfo.warning && (
-            <div className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-2 mb-3">
-              <div className="flex items-center justify-center text-red-200 text-xs">
-                <span className="mr-1">⚠️</span>
-                <strong>Warning:</strong> Both cards will be visible to ALL
-                players!
-                <span className="ml-1">⚠️</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex space-x-3 justify-center mt-4">
-            <button
-              onClick={() => handleActivatePower(activePower)}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm shadow-lg"
-              style={{
-                minHeight: "44px",
-              }}
-            >
-              ⚡ Use {activePower} Power
-            </button>
-            <button
-              onClick={() => handleSkipPower(activePower)}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm shadow-lg"
-              style={{
-                minHeight: "44px",
-              }}
-            >
-              ❌ Skip
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  // Power choice is rendered in GameBoard center (between deck and discard)
+  const renderPowerChoiceSection = () => null;
 
   // Show power usage UI when player is actively using their power
   if (activePower && usingPower) {
@@ -219,7 +171,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       {renderPowerChoiceSection()}
 
       {/* Turn-Based Actions Section - Gaming Style */}
-      <div className="bg-gray-900 rounded-xl border-2 border-gray-700 shadow-xl p-3">
+      <div className="rounded-xl border-2 border-gray-700 shadow-xl p-3" style={{ backgroundColor: "#262626" }}>
         {isPlayerTurn ? (
           <div className="space-y-3">
             {drawnCard ? (
@@ -265,15 +217,31 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
         )}
       </div>
 
-      {/* Elimination Actions Section - disabled
+      {/* Elimination Actions Section */}
       {!(activePower && usingPower) && (
-        <div className="bg-gray-800 rounded-xl border-2 border-red-500 shadow-xl p-3">
-          ...
+        <div className="rounded-xl border-2 border-red-500 shadow-xl p-3" style={{ backgroundColor: "#262626" }}>
+          <div className="flex items-center justify-center mb-2">
+            <span className="text-red-400 mr-2 text-lg">⚡</span>
+            <h3 className="font-bold text-white text-sm">Elimination</h3>
+          </div>
+          <div className="space-y-2">
+            {canEliminate ? (
+              <div className="text-center">
+                {hasAlreadyEliminated ? (
+                  <div className="text-yellow-400 text-xs">⏳ Elimination used this round</div>
+                ) : (
+                  <div className="text-xs text-gray-300">Click ❌ on matching cards</div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 text-xs">Available after first discard</div>
+            )}
+          </div>
         </div>
-      )} */}
+      )}
 
       {/* Game Status - Compact */}
-      <div className="bg-gray-900 rounded-lg p-2 border border-gray-700">
+      <div className="rounded-lg p-2 border border-gray-700" style={{ backgroundColor: "#262626" }}>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="text-center">
             <div className="text-gray-400">Deck</div>

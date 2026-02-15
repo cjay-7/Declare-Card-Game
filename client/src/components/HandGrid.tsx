@@ -164,10 +164,15 @@ const HandGrid: React.FC<HandGridProps> = memo(({
           </div>
         )} */}
 
-      {/* Elimination card selection overlay - disabled
+      {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
-        <div className="absolute inset-0 ...">...</div>
-      )} */}
+        <div className="absolute inset-0 bg-orange-500 bg-opacity-30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
+          <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-pulse">
+            Select a card to give to{" "}
+            {eliminationCardSelection?.eliminatedCardInfo?.cardOwnerName}
+          </div>
+        </div>
+      )}
 
       {/* Power interaction overlay */}
       {canUsePowerOnThisHand && paddedCards.some((card) => card !== null) && (
@@ -255,13 +260,14 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         // 5. Elimination card selection is active (elimination in progress)
         const eliminationAlreadyUsed = gameState?.eliminationUsedThisRound === true;
         const showEliminateButton =
+          isCurrentPlayer && // Only on your own hand
           !drawnCard &&
           hasDiscardCard &&
-          !eliminationAlreadyUsed && // PRIMARY CHECK: Hide if ANY player eliminated this round
-          !hasAlreadyEliminated && // Redundant but kept for safety
+          !eliminationAlreadyUsed &&
+          !hasAlreadyEliminated &&
           !(activePower && usingPower) &&
-          !eliminationCardSelection?.isActive && // Hide during elimination card selection
-          card !== null; // Show on ALL cards - Cabo elimination is about memory risk
+          !eliminationCardSelection?.isActive &&
+          card !== null;
         
         // Debug: Log button visibility decision
         if (process.env.NODE_ENV === "development" && hasDiscardCard && !drawnCard) {
@@ -391,10 +397,20 @@ const HandGrid: React.FC<HandGridProps> = memo(({
               </div>
             )}
 
-            {/* Eliminate button - disabled
+            {/* Eliminate button */}
             {showEliminateButton && (
-              <button onClick={...} ...>❌</button>
-            )} */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEliminateCard(card.id);
+                }}
+                className="absolute -top-2 -right-2 w-11 h-11 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+                title="Eliminate this card (risk penalty if wrong!)"
+                style={{ minWidth: "44px", minHeight: "44px" }}
+              >
+                ❌
+              </button>
+            )}
 
           </div>
         );

@@ -21,12 +21,19 @@ const getServerUrl = () => {
   if (import.meta.env.VITE_SERVER_URL) {
     return import.meta.env.VITE_SERVER_URL;
   }
-  // If accessing via network IP, use same IP for server
+  // Local development fallback
   const hostname = window.location.hostname;
-  if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-    return `http://${hostname}:4000`;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost:4000";
   }
-  return "http://localhost:4000";
+  // On a deployed/remote host with no VITE_SERVER_URL set — warn loudly
+  console.error(
+    "⚠️ VITE_SERVER_URL is not set! Socket cannot connect to the game server. " +
+    "Set VITE_SERVER_URL to your server's URL (e.g. https://declare-server-xxxx.onrender.com) " +
+    "in your deployment environment variables."
+  );
+  // Return a placeholder that will fail gracefully rather than connecting to the wrong host
+  return `${window.location.protocol}//${hostname}`;
 };
 const SERVER_URL = getServerUrl();
 let realSocket: Socket | null = null;

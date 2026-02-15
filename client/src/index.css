@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  margin: 0;
+  color: #fafafa;
+  background-color: #262626;
+}
+
 .text-6em {
   font-size: 6em;
 }
@@ -16,4 +22,327 @@
 }
 .bg-white {
   background-color: white;
+}
+
+/* Card animations */
+@keyframes cardDraw {
+  0% {
+    transform: scale(0.5) translateY(-100px) translateX(0);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.2) translateY(-20px) translateX(0);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.1) translateY(10px) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0) translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes cardDiscard {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes cardSwap {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes cardFlip {
+  0% {
+    transform: rotateY(0deg) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: rotateY(90deg) scale(1.1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: rotateY(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-cardDraw {
+  animation: cardDraw 0.5s ease-out;
+}
+
+.animate-cardDiscard {
+  animation: cardDiscard 0.5s ease-out;
+}
+
+.animate-cardSwap {
+  animation: cardSwap 0.5s ease-out;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-out;
+}
+
+.animate-cardFlip {
+  animation: cardFlip 0.6s ease-out;
+}
+
+/* Enhanced card shadows */
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.card-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.card-shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Enhanced borders for revealed cards */
+.revealed-card-border {
+  border: 2px solid #d1d5db !important; /* border-gray-300 */
+  border-radius: 0.5rem !important; /* rounded-lg */
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Force padding on card rank text */
+.revealed-card-size .text-sm,
+.revealed-card-size .text-base {
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.revealed-card-size .text-sm:first-child,
+.revealed-card-size .text-base:first-child {
+  padding-top: 0.25rem !important;
+}
+
+.revealed-card-size .rotate-180 {
+  padding-bottom: 0.25rem !important;
+}
+
+/* Revealed card image - stretch vertically to fill card, no leak */
+.revealed-card-size img.card {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+}
+
+/* Force uniform card sizing - all cards must be the same size */
+.uniform-card {
+  width: 4.5rem !important;
+  height: 8rem !important;    /* 128px = h-32 */
+  min-width: 4.5rem !important;
+  min-height: 8rem !important;
+  max-width: 4.5rem !important;
+  max-height: 8rem !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .uniform-card {
+    width: 4.5rem !important;
+    height: 9rem !important;  /* 144px = md:h-36 */
+    min-width: 4.5rem !important;
+    min-height: 9rem !important;
+    max-width: 4.5rem !important;
+    max-height: 9rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .uniform-card {
+    width: 4.5rem !important;
+    height: 11rem !important; /* 176px = lg:h-44 */
+    min-width: 4.5rem !important;
+    min-height: 11rem !important;
+    max-width: 4.5rem !important;
+    max-height: 11rem !important;
+  }
+}
+
+/* Revealed cards are 20% smaller (80% of original) - consistent min/max */
+.revealed-card-size {
+  width: 4.5rem !important;
+  height: 6.4rem !important;  /* 102.4px = 128px * 0.8 */
+  min-width: 4.5rem !important;
+  min-height: 6.4rem !important;
+  max-width: 4.5rem !important;
+  max-height: 6.4rem !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+  background-color: #fff !important; /* solid background so content behind doesn't leak */
+  isolation: isolate !important;    /* stacking context so card sits above siblings */
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@media (min-width: 768px) {
+  .revealed-card-size {
+    width: 4.5rem !important;
+    height: 7.2rem !important;   /* 115.2px = 144px * 0.8 */
+    min-width: 4.5rem !important;
+    min-height: 7.2rem !important;
+    max-width: 4.5rem !important;
+    max-height: 7.2rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .revealed-card-size {
+    width: 4.5rem !important;
+    height: 8.8rem !important;  /* 140.8px = 176px * 0.8 */
+    min-width: 4.5rem !important;
+    min-height: 8.8rem !important;
+    max-width: 4.5rem !important;
+    max-height: 8.8rem !important;
+  }
+}
+
+/* cardsJS styles for SVG card images */
+img.card {
+  width: 70px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  vertical-align: initial;
+  box-sizing: initial;
+  object-fit: contain;
+}
+
+/*
+ * A hand is a div containing cards.
+ */
+.hand {
+  padding: 0;
+  margin: 0;
+}
+
+.active-hand img.card { 
+  cursor: pointer;
+}
+
+/*
+ * A horizontal hand, class="hand hhand".  The entire card is visible.
+ */
+.hhand {
+  display: inline-block; 
+}
+
+.hhand img.card { 
+  padding-top: 10px;
+}
+
+.hhand.active-hand img.card:hover { 
+  padding-top: 0px;
+  padding-bottom: 10px;
+}
+
+/*
+ * A vertical hand, class="hand vhand".  The entire card is visible.
+ */
+.vhand {
+  display: block; 
+}
+
+.vhand img.card { 
+  padding-right: 10px;
+}
+
+.vhand.active-hand img.card:hover { 
+  padding-right: 0px;
+  padding-left: 10px;
+}
+
+/*
+ * A compact horizontal hand.  Only the last card is entirely visible.
+ */
+.hhand-compact { 
+  display: inline-block; 
+}
+
+.hhand-compact img.card:first-child { 
+  margin-left: 0px;
+  padding-top: 10px;
+}
+
+.hhand-compact img.card { 
+  margin-left: -52px;
+  padding-top: 10px;
+}
+
+.hhand-compact.active-hand img.card:hover { 
+  padding-top: 0px;
+  padding-bottom: 10px;
+}
+
+/*
+ * A compact vertical hand.  Only the last card is entirely visible.
+ */
+.vhand-compact {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.vhand-compact img.card:first-child { 
+  display: block; 
+  margin-top: 0px;
+  padding-right: 10px;
+}
+
+.vhand-compact img.card {
+  display: block; 
+  margin-top: -80px;
+  padding-right: 10px;
+}
+
+.vhand-compact.active-hand img.card:hover,
+.active-hand .vhand-compact img.card:hover { 
+  display: block; 
+  padding-right: 0px;
+  padding-left: 10px;
+}
+
+/*
+ * A fanned hand.  Only the last card is entirely visible.
+ */
+.fan {
+  display: inline-block;
+  vertical-align: top;
+  position: relative;
+  padding-bottom: 1em;
+}
+
+.fan img.card { 
+  position: absolute;
+  width: 90px;
 }

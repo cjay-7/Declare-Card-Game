@@ -1,17 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useGameContext } from "../contexts/GameContext";
+import { useAuth } from "../contexts/AuthContext";
 import GameInstructionsModal from "./GameInstructionsModal";
 import socket from "../socket";
 
 interface LobbyProps {
   onJoinRoom: (roomId: string, playerName: string) => void;
+  onLogout: () => void;
 }
 
-const Lobby = ({ onJoinRoom }: LobbyProps) => {
+const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
   const [roomId, setRoomId] = useState("");
-  const [customPlayerName, setCustomPlayerName] = useState("");
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const { setPlayerName } = useGameContext();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Check socket mode
   const isMockMode = socket.getMode() === "mock";
@@ -20,17 +24,14 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
   const currentPlayerId = socket.getCurrentPlayer();
   const mockPlayerName = currentPlayerId === "player1" ? "Player 1" : "Player 2";
 
-  // Use mock player name in mock mode, custom name in real mode
-  const playerName = isMockMode ? mockPlayerName : customPlayerName;
+  // Use mock player name in mock mode, user's displayName in real mode
+  const playerName = isMockMode ? mockPlayerName : (user?.displayName ?? "");
 
   const handleJoin = () => {
     if (!roomId) return alert("Please enter a room ID");
-    if (!isMockMode && !customPlayerName.trim()) {
-      return alert("Please enter your name");
-    }
-
     setPlayerName(playerName);
     onJoinRoom(roomId, playerName);
+    navigate("/game");
   };
 
   const generateRandomRoomId = () => {
@@ -39,18 +40,15 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
   };
 
   const handleQuickStart = () => {
-    if (!isMockMode && !customPlayerName.trim()) {
-      return alert("Please enter your name");
-    }
-
     const quickRoomId = "QUICK";
     setRoomId(quickRoomId);
     setPlayerName(playerName);
     onJoinRoom(quickRoomId, playerName);
+    navigate("/game");
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#262626] p-4">
       <div className="bg-gray-800 shadow-lg rounded-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">🎴 Declare</h1>
@@ -59,43 +57,26 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
           </p>
         </div>
 
-        {/* Player Info - Mock Mode */}
-        {isMockMode && (
-          <div className="bg-gray-700 rounded-lg p-4 mb-6">
-            <div className="text-center">
-              <div className="text-lg font-semibold text-white mb-2">
-                You are: <span className="text-blue-400">{mockPlayerName}</span>
-              </div>
-              <div className="text-sm text-gray-300">
-                Use the player switcher (top right) to change players
-              </div>
-            </div>
+        {/* Player Info */}
+        <div className="bg-gray-700 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-gray-400">Playing as</div>
+            <div className="text-lg font-semibold text-white">{playerName}</div>
           </div>
-        )}
+          {!isMockMode && (
+            <button
+              onClick={onLogout}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Sign out
+            </button>
+          )}
+          {isMockMode && (
+            <div className="text-xs text-gray-400">Use switcher (top right)</div>
+          )}
+        </div>
 
         <div className="space-y-4">
-          {/* Player Name Input - Real Mode Only */}
-          {!isMockMode && (
-            <div>
-              <label
-                htmlFor="playerName"
-                className="block text-gray-300 mb-1"
-              >
-                Your Name
-              </label>
-              <input
-                id="playerName"
-                type="text"
-                placeholder="Enter your name"
-                value={customPlayerName}
-                onChange={(e) => setCustomPlayerName(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Choose a unique name to identify yourself
-              </p>
-            </div>
-          )}
 
           <div>
             <label
@@ -129,21 +110,15 @@ const Lobby = ({ onJoinRoom }: LobbyProps) => {
           <div className="flex flex-col space-y-3">
             <button
               onClick={handleJoin}
-              disabled={!roomId || (!isMockMode && !customPlayerName.trim())}
+              disabled={!roomId}
               className="w-full py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
-              {isMockMode
-                ? `Join Room as ${mockPlayerName}`
-                : customPlayerName.trim()
-                  ? `Join Room as ${customPlayerName}`
-                  : "Join Room"
-              }
+              {`Join Room as ${playerName}`}
             </button>
 
             <button
               onClick={handleQuickStart}
-              disabled={!isMockMode && !customPlayerName.trim()}
-              className="w-full py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors"
             >
               Quick Start (Room: QUICK)
             </button>

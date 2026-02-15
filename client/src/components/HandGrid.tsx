@@ -154,15 +154,15 @@ const HandGrid: React.FC<HandGridProps> = memo(({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto relative">
+    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-xs mx-auto relative items-start w-full">
       {/* DEBUG: Show drawn card state */}
-      {process.env.NODE_ENV === "development" &&
+      {/* {process.env.NODE_ENV === "development" &&
         drawnCard &&
         isCurrentPlayer && (
           <div className="absolute -top-8 left-0 right-0 bg-green-600 text-white text-xs px-2 py-1 rounded text-center z-30">
             Drawn: {drawnCard.rank} - Click any card to replace!
           </div>
-        )}
+        )} */}
 
       {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
@@ -192,32 +192,32 @@ const HandGrid: React.FC<HandGridProps> = memo(({
       )}
 
       {/* Card swapping overlay - NEW */}
-      {drawnCard && isCurrentPlayer && !activePower && (
+      {/* {drawnCard && isCurrentPlayer && !activePower && (
         <div className="absolute inset-0 bg-green-500 bg-opacity-20 rounded-lg border-2 border-green-400 border-dashed flex items-center justify-center z-15 pointer-events-none">
           <div className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
             Click any card to replace with {drawnCard.rank}
           </div>
         </div>
-      )}
+      )} */}
 
       {paddedCards.map((card, index) => {
         if (card === null) {
           // Render eliminated card placeholder
-          return (
+        return (
+          <div
+            key={`eliminated-${index}`}
+            className="flex justify-center items-start relative min-w-[5rem] md:min-w-[6rem] lg:min-w-[7rem]"
+          >
             <div
-              key={`eliminated-${index}`}
-              className="flex justify-center relative"
+              onClick={() => handleCardClickWithValidation(index)}
+              className="cursor-not-allowed"
             >
-              <div
-                onClick={() => handleCardClickWithValidation(index)}
-                className="cursor-not-allowed"
-              >
-                <div className="w-16 h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded flex items-center justify-center relative">
-                  <span className="text-gray-500 text-xs">Eliminated</span>
-                </div>
+              <div className="uniform-card bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center relative box-border flex-shrink-0">
+                <span className="text-gray-500 text-xs">Eliminated</span>
               </div>
             </div>
-          );
+          </div>
+        );
         }
 
         // Determine if this card should be revealed
@@ -260,13 +260,14 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         // 5. Elimination card selection is active (elimination in progress)
         const eliminationAlreadyUsed = gameState?.eliminationUsedThisRound === true;
         const showEliminateButton =
+          isCurrentPlayer && // Only on your own hand
           !drawnCard &&
           hasDiscardCard &&
-          !eliminationAlreadyUsed && // PRIMARY CHECK: Hide if ANY player eliminated this round
-          !hasAlreadyEliminated && // Redundant but kept for safety
+          !eliminationAlreadyUsed &&
+          !hasAlreadyEliminated &&
           !(activePower && usingPower) &&
-          !eliminationCardSelection?.isActive && // Hide during elimination card selection
-          card !== null; // Show on ALL cards - Cabo elimination is about memory risk
+          !eliminationCardSelection?.isActive &&
+          card !== null;
         
         // Debug: Log button visibility decision
         if (process.env.NODE_ENV === "development" && hasDiscardCard && !drawnCard) {
@@ -317,19 +318,32 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         return (
           <div
             key={card.id}
-            className="flex justify-center relative"
+            className="flex justify-center items-start relative min-w-[5rem] md:min-w-[6rem] lg:min-w-[7rem]"
           >
             <div
               onClick={() => handleCardClickWithValidation(index)}
               className={`
-                cursor-pointer transition-all duration-200
+                cursor-pointer transition-all duration-200 flex justify-center items-start
                 ${showPowerGlow ? "animate-pulse" : ""}
-                ${showReplaceGlow ? "ring-2 ring-green-400 animate-pulse" : ""}
-                ${
-                  selectedCard?.cardId === card.id ? "ring-2 ring-blue-400" : ""
-                }
+                ${showReplaceGlow ? "animate-pulse" : ""}
               `}
             >
+              <div
+                className="inline-block w-fit h-fit"
+                style={
+                  showReplaceGlow
+                    ? {
+                        boxShadow:
+                          "0 0 6px rgba(34, 197, 94, 0.6), 0 0 12px rgba(34, 197, 94, 0.3), inset 0 0 8px rgba(34, 197, 94, 0.12)",
+                      }
+                    : selectedCard?.cardId === card.id
+                      ? {
+                          boxShadow:
+                            "0 0 6px rgba(59, 130, 246, 0.6), 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.12)",
+                        }
+                      : undefined
+                }
+              >
               <Card
                 suit={shouldReveal ? displayCard.suit : undefined}
                 rank={shouldReveal ? displayCard.rank : undefined}
@@ -350,6 +364,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
                     : undefined
                 }
               />
+              </div>
             </div>
 
             {/* Swap selection indicator */}
@@ -389,15 +404,13 @@ const HandGrid: React.FC<HandGridProps> = memo(({
                   e.stopPropagation();
                   handleEliminateCard(card.id);
                 }}
-                className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 
-                          rounded-full flex items-center justify-center text-white text-xs
-                          border-2 border-white shadow-lg transition-colors"
-                title={`Eliminate this card (Cabo elimination - risk penalty if wrong!)`}
+                className="absolute -top-2 -right-2 w-11 h-11 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+                title="Eliminate this card (risk penalty if wrong!)"
+                style={{ minWidth: "44px", minHeight: "44px" }}
               >
                 ❌
               </button>
             )}
-
 
           </div>
         );

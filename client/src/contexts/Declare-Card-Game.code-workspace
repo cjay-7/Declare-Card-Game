@@ -1,0 +1,14 @@
+{
+  "folders": [
+	{
+		"path": "../../.."
+	},
+	{
+		"path": "../../../../react-playing-cards-master"
+	},
+	{
+		"path": "../../../../cardsJS-master"
+	}
+],
+  "settings": {}
+}

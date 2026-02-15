@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// client/src/components/Card.tsx - Updated with highlight support
+// client/src/components/Card.tsx - Updated with swipe gestures and enhanced design
 import React, { useState, useEffect, useMemo } from "react";
+import { getCardImagePath } from "../utils/cardImageUtils";
 
 /**
  * Represents the possible suits for a playing card
@@ -46,6 +46,8 @@ const ANIMATION_DURATION_MS = 500;
  * @property {boolean|null} [isHighlighted=false] - Whether the card should be highlighted (for power usage)
  * @property {() => void} [onClick] - Callback function when the card is clicked
  * @property {CardAnimation} [animate="none"] - Animation type to apply to the card
+ * @property {() => void} [onSwipeDown] - Callback function when card is swiped down (for discard)
+ * @property {boolean} [swipeable=false] - Whether the card can be swiped to discard
  */
 interface CardProps {
   suit?: CardSuit;
@@ -55,6 +57,8 @@ interface CardProps {
   isHighlighted?: boolean | null;
   onClick?: () => void;
   animate?: CardAnimation;
+  onSwipeDown?: () => void;
+  swipeable?: boolean;
 }
 
 /**
@@ -87,8 +91,17 @@ const Card: React.FC<CardProps> = ({
   isHighlighted = false,
   onClick,
   animate = "none",
+  onSwipeDown,
+  swipeable = false,
 }) => {
   const [animationClass, setAnimationClass] = useState("");
+  const [swipeState, setSwipeState] = useState<{
+    isSwiping: boolean;
+    startY: number;
+    startX: number;
+    currentY: number;
+    currentX: number;
+  } | null>(null);
 
   /**
    * Maps animation types to their corresponding CSS classes
@@ -108,51 +121,35 @@ const Card: React.FC<CardProps> = ({
     }
   };
 
-  /**
-   * Gets the appropriate color class for a given suit
-   */
-  const getSuitColor = (suit: CardSuit): string => {
-    const suitColors: Record<CardSuit, string> = {
-      hearts: "text-red-600",
-      diamonds: "text-red-600",
-      clubs: "text-black",
-      spades: "text-black",
-    };
-    return suitColors[suit];
-  };
-
-  /**
-   * Gets the Unicode symbol for a given suit
-   */
-  const getSuitSymbol = (suit: CardSuit): string => {
-    const suitSymbols: Record<CardSuit, string> = {
-      hearts: "♥",
-      diamonds: "♦",
-      clubs: "♣",
-      spades: "♠",
-    };
-    return suitSymbols[suit] || "?";
-  };
 
   /**
    * Generates the CSS classes for card styling based on current state
    * Memoized to prevent unnecessary recalculations on every render
    */
   const cardStyles = useMemo((): string => {
+    // Fixed dimensions for all cards - uniform size regardless of state
+    // overflow-hidden ensures inner content doesn't affect outer size
+    // Revealed cards are 10% smaller, hidden cards use uniform-card
+    const sizeClass = isRevealed ? "revealed-card-size" : "uniform-card";
     const baseStyles =
-      "w-16 h-24 rounded shadow cursor-pointer transform transition-all duration-200 hover:scale-105";
+      `${sizeClass} rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-2xl hover:-translate-y-1 box-border flex-shrink-0 overflow-hidden`;
+    // Only add border for revealed cards, hidden cards have no border
+    // Nice rounded borders for revealed cards with elegant styling
+    const borderStyles = isRevealed
+      ? "revealed-card-border"
+      : "";
     const backgroundStyles = isRevealed
       ? "bg-white"
       : "bg-blue-500 pattern-cross-dots-lg";
     const selectionStyles = isSelected
-      ? "border-2 border-yellow-400 shadow-lg shadow-yellow-400/50"
+      ? "shadow-lg"
       : "";
     const highlightStyles = isHighlighted
-      ? "ring-2 ring-purple-400 ring-opacity-75 shadow-lg shadow-purple-400/50"
+      ? "shadow-lg"
       : "";
     const tempRevealGlow =
       isRevealed && isHighlighted
-        ? "shadow-lg shadow-yellow-400/75 ring-2 ring-yellow-400"
+        ? "shadow-lg"
         : "";
     const animationStyles = animationClass;
     const pulseStyles = isHighlighted ? "animate-pulse" : "";
@@ -160,6 +157,7 @@ const Card: React.FC<CardProps> = ({
 
     return [
       baseStyles,
+      borderStyles,
       backgroundStyles,
       selectionStyles,
       highlightStyles,
@@ -171,6 +169,57 @@ const Card: React.FC<CardProps> = ({
       .filter(Boolean)
       .join(" ");
   }, [isRevealed, isSelected, isHighlighted, animationClass]);
+
+  // Use Tailwind responsive classes with explicit sizing - same for all cards
+  // Note: uniform-card CSS class enforces the dimensions with !important
+  const dimensionClasses = "w-20 h-32 md:w-24 md:h-36 lg:w-28 lg:h-44";
+
+  /**
+   * Calculates swipe transform styles
+   */
+  const swipeTransform = useMemo((): React.CSSProperties => {
+    if (!swipeState) return {};
+    
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const deltaY = swipeState.currentY - swipeState.startY;
+    const opacity = Math.max(0.3, 1 - Math.abs(deltaX) / 150);
+    
+    return {
+      transform: `translate(${deltaX}px, ${deltaY}px)`,
+      opacity,
+      transition: swipeState.isSwiping ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
+    };
+  }, [swipeState]);
+
+  /**
+   * Glow style for selected/highlighted states (replaces harsh borders/rings)
+   */
+  const glowStyle = useMemo((): React.CSSProperties | undefined => {
+    if (isSelected) {
+      return {
+        boxShadow: "0 0 6px rgba(234, 179, 8, 0.6), 0 0 12px rgba(234, 179, 8, 0.3), inset 0 0 8px rgba(234, 179, 8, 0.12)",
+      };
+    }
+    if (isRevealed && isHighlighted) {
+      return {
+        boxShadow: "0 0 6px rgba(234, 179, 8, 0.6), 0 0 12px rgba(234, 179, 8, 0.25), inset 0 0 8px rgba(234, 179, 8, 0.08)",
+      };
+    }
+    if (isHighlighted) {
+      return {
+        boxShadow: "0 0 6px rgba(192, 132, 252, 0.6), 0 0 12px rgba(192, 132, 252, 0.3), inset 0 0 8px rgba(192, 132, 252, 0.12)",
+      };
+    }
+    return undefined;
+  }, [isSelected, isHighlighted, isRevealed]);
+
+  /**
+   * Get the card image path using cardsJS SVG images
+   * Must be called before any early returns to satisfy React hooks rules
+   */
+  const cardImagePath = useMemo(() => {
+    return getCardImagePath(suit, rank, isRevealed);
+  }, [suit, rank, isRevealed]);
 
   /**
    * Handles animation state changes
@@ -197,6 +246,57 @@ const Card: React.FC<CardProps> = ({
       event.preventDefault();
       onClick?.();
     }
+  };
+
+  /**
+   * Handles touch start for swipe detection
+   */
+  const handleTouchStart = (event: React.TouchEvent): void => {
+    if (!swipeable || !onSwipeDown) return;
+    
+    const touch = event.touches[0];
+    setSwipeState({
+      isSwiping: true,
+      startY: touch.clientY,
+      startX: touch.clientX,
+      currentY: touch.clientY,
+      currentX: touch.clientX,
+    });
+  };
+
+  /**
+   * Handles touch move for swipe feedback
+   */
+  const handleTouchMove = (event: React.TouchEvent): void => {
+    if (!swipeable || !onSwipeDown || !swipeState) return;
+    
+    const touch = event.touches[0];
+    setSwipeState({
+      ...swipeState,
+      currentY: touch.clientY,
+      currentX: touch.clientX,
+    });
+  };
+
+  /**
+   * Handles touch end for swipe completion
+   */
+  const handleTouchEnd = (): void => {
+    if (!swipeable || !onSwipeDown || !swipeState) return;
+
+    const deltaX = swipeState.currentX - swipeState.startX;
+    const deltaY = Math.abs(swipeState.currentY - swipeState.startY);
+
+    // Swipe right threshold: 50px right, less than 30px vertical
+    if (deltaX > 50 && deltaY < 30) {
+      // Valid swipe right - trigger discard
+      onSwipeDown();
+    }
+
+    // Reset swipe state (with slight delay for visual feedback)
+    setTimeout(() => {
+      setSwipeState(null);
+    }, 100);
   };
 
   /**
@@ -237,156 +337,55 @@ const Card: React.FC<CardProps> = ({
   if (!isRevealed) {
     return (
       <div
-        className={cardStyles}
+        className={`${dimensionClasses} ${cardStyles} flex items-center justify-center relative`}
         onClick={onClick}
         onKeyDown={handleKeyDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         tabIndex={onClick ? 0 : -1}
         role="button"
         aria-label={getAccessibleLabel()}
         aria-pressed={isSelected}
+        style={{ ...swipeTransform, ...glowStyle }}
       >
-        <div className="h-full flex items-center justify-center">
-          <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center">
-            <span
-              className="text-6em"
-              role="img"
-              aria-label="card back"
-            >
-              🎴
-            </span>
+        <img
+          src={cardImagePath}
+          alt="Face-down playing card"
+          className="card w-full h-full object-contain"
+        />
+        {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
+          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse bg-white bg-opacity-90 rounded px-1">
+            → Swipe right to discard
           </div>
-        </div>
+        )}
       </div>
     );
   }
 
-  // Show revealed card with special glow for power reveals
+  // Show revealed card with SVG image
   return (
     <div
-      className={`${cardStyles} flex flex-col justify-between p-1`}
+      className={`${dimensionClasses} ${cardStyles} relative`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       tabIndex={onClick ? 0 : -1}
       role="button"
       aria-label={getAccessibleLabel()}
       aria-pressed={isSelected}
+      style={{ ...swipeTransform, ...glowStyle }}
     >
-      {suit && rank ? (
-        <>
-          <div className={`text-xs font-bold ${getSuitColor(suit)}`}>
-            {rank}
-          </div>
-
-          <div
-            className={`flex-1 flex items-center justify-center ${getSuitColor(
-              suit
-            )}`}
-          >
-            {/* Display multiple suit symbols based on rank */}
-            {(() => {
-              const symbol = getSuitSymbol(suit);
-
-              // For face cards, show just one large symbol
-              if (["J", "Q", "K", "A"].includes(rank)) {
-                return <span className="text-lg">{symbol}</span>;
-              }
-
-              // For number cards 2-10, show that many symbols
-              const count = parseInt(rank);
-              if (count >= 2 && count <= 10) {
-                const symbols = Array(count).fill(symbol);
-
-                // Arrange symbols in a nice pattern based on count
-                if (count <= 3) {
-                  // 2-3: vertical column
-                  return (
-                    <div className="flex flex-col items-center gap-0.5">
-                      {symbols.map((sym, i) => (
-                        <span
-                          key={i}
-                          className="text-xs leading-none"
-                        >
-                          {sym}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                } else if (count <= 6) {
-                  // 4-6: two columns
-                  const leftCol = symbols.slice(0, Math.ceil(count / 2));
-                  const rightCol = symbols.slice(Math.ceil(count / 2));
-                  return (
-                    <div className="flex gap-1 items-center">
-                      <div className="flex flex-col gap-0.5">
-                        {leftCol.map((sym, i) => (
-                          <span
-                            key={i}
-                            className="text-xs leading-none"
-                          >
-                            {sym}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        {rightCol.map((sym, i) => (
-                          <span
-                            key={i}
-                            className="text-xs leading-none"
-                          >
-                            {sym}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // 7-10: three columns
-                  const cols = [
-                    symbols.slice(0, Math.ceil(count / 3)),
-                    symbols.slice(
-                      Math.ceil(count / 3),
-                      Math.ceil((count * 2) / 3)
-                    ),
-                    symbols.slice(Math.ceil((count * 2) / 3)),
-                  ];
-                  return (
-                    <div className="flex gap-0.5 items-center">
-                      {cols.map((col, colIndex) => (
-                        <div
-                          key={colIndex}
-                          className="flex flex-col gap-0.5"
-                        >
-                          {col.map((sym, i) => (
-                            <span
-                              key={i}
-                              className="text-xs leading-none"
-                            >
-                              {sym}
-                            </span>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-              }
-
-              // Fallback for any edge cases
-              return <span className="text-lg">{symbol}</span>;
-            })()}
-          </div>
-
-          <div
-            className={`text-xs font-bold self-end rotate-180 ${getSuitColor(
-              suit
-            )}`}
-          >
-            {rank}
-          </div>
-        </>
-      ) : (
-        <div className="h-full flex items-center justify-center text-sm text-gray-400">
-          Empty
+      <img
+        src={cardImagePath}
+        alt={getAccessibleLabel()}
+        className="card w-full h-full object-contain"
+      />
+      {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
+        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse bg-white bg-opacity-90 rounded px-1">
+          → Swipe right to discard
         </div>
       )}
     </div>

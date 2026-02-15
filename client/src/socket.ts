@@ -34,6 +34,7 @@ let realSocket: Socket | null = null;
 // Initialize real socket connection
 const initRealSocket = () => {
   if (!realSocket) {
+    const token = localStorage.getItem("token");
     console.log(`🔌 Connecting to server at: ${SERVER_URL}`);
     realSocket = io(SERVER_URL, {
       // Try polling first (more reliable for network connections), then websocket
@@ -44,6 +45,8 @@ const initRealSocket = () => {
       reconnectionDelayMax: 5000,
       timeout: 20000, // 20 second timeout (default is 20s but make it explicit)
       forceNew: false,
+      // Send JWT token so server can attach userId
+      auth: token ? { token } : {},
       // Enable debug logging in development
       ...(import.meta.env.DEV && { debug: true }),
     });

@@ -1,4 +1,5 @@
 import React from "react";
+import Card from "./Card";
 
 interface CardType {
   id: string;
@@ -27,63 +28,40 @@ interface DiscardPileProps {
 
 const DiscardPile: React.FC<DiscardPileProps> = ({
   topCard,
-  count,
   onDiscardClick,
 }) => {
+  const isClickable = !!onDiscardClick;
+
   if (!topCard) {
     return (
       <div
-        className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
+        className={`
+          uniform-card
+          bg-gray-700 border-2 border-gray-600
+          rounded-lg shadow-lg
+          flex items-center justify-center
+          transition-all duration-200
+          box-border
+          flex-shrink-0
+          ${isClickable
+            ? "cursor-pointer hover:scale-105 hover:border-green-400 hover:bg-gray-600"
+            : "cursor-default"
+          }
+        `}
         onClick={onDiscardClick}
       >
-        <span className="text-gray-400">Empty</span>
+        <span className="text-gray-400 text-sm font-semibold">Empty</span>
       </div>
     );
   }
 
-  // Define card colors based on suit
-  const suitColors = {
-    hearts: "text-red-600",     // Red hearts
-    diamonds: "text-red-600",   // Red diamonds
-    clubs: "text-black",        // Black clubs
-    spades: "text-black",       // Black spades
-  };
-
-  // Define suit symbols
-  const suitSymbols = {
-    hearts: "♥",
-    diamonds: "♦",
-    clubs: "♣",
-    spades: "♠",
-  };
-
   return (
-    <div
-      className="w-24 h-32 bg-white rounded shadow relative flex flex-col justify-between p-2"
+    <Card
+      suit={topCard.suit}
+      rank={topCard.rank}
+      isRevealed={true}
       onClick={onDiscardClick}
-    >
-      <div className="absolute top-1 right-1 text-xs text-gray-500 font-bold">
-        {count}
-      </div>
-
-      <div className={`text-sm font-bold ${suitColors[topCard.suit]}`}>
-        {topCard.rank}
-        <span className="ml-1">{suitSymbols[topCard.suit]}</span>
-      </div>
-
-      <div className={`text-center text-4xl ${suitColors[topCard.suit]}`}>
-        {suitSymbols[topCard.suit]}
-      </div>
-
-      <div
-        className={`text-sm font-bold self-end rotate-180 ${
-          suitColors[topCard.suit]
-        }`}
-      >
-        {topCard.rank}
-        <span className="ml-1">{suitSymbols[topCard.suit]}</span>
-      </div>
-    </div>
+    />
   );
 };
 

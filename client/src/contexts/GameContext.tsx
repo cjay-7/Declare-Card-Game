@@ -1248,7 +1248,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to view the bottom two cards at the start of the game
   const handleViewBottomCards = () => {
-    const firstCardDrawn = gameState?.firstCardDrawn || false;
+    // Fallback: consider first card drawn if gameState is missing or property missing
+    // If the property isn't present, assume it's false for client-side purposes
+    const firstCardDrawn =
+      typeof (gameState as any)?.firstCardDrawn === "boolean"
+        ? (gameState as any).firstCardDrawn
+        : false;
     if (!myPlayer || firstCardDrawn) {
       console.log(
         `[${currentPlayerId}] Cannot view bottom cards - already drawn first card`

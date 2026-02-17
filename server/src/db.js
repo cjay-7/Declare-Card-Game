@@ -37,8 +37,15 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-    CREATE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code);
   `);
+  // Add friend_code column if it doesn't exist (migration for existing DBs)
+  await query(`
+    DO $$ BEGIN
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS friend_code VARCHAR(10) UNIQUE;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+  await query("CREATE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code)");
   await query(`
     CREATE TABLE IF NOT EXISTS friendships (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,14 +69,6 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
   `);
-  // Add friend_code column if it doesn't exist (migration for existing DBs)
-  await query(`
-    DO $$ BEGIN
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS friend_code VARCHAR(10) UNIQUE;
-    EXCEPTION WHEN duplicate_column THEN NULL;
-    END $$;
-  `);
-  await query("CREATE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code)");
   console.log("Database schema ready.");
 }
 

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import NotFound from "./pages/NotFound";
 import Lobby from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { GameProvider } from "./contexts/GameContext";
@@ -181,11 +182,8 @@ function GameApp() {
                 }
               />
 
-              {/* Default redirect */}
-              <Route
-                path="*"
-                element={<Navigate to={user ? "/lobby" : "/login"} replace />}
-              />
+              {/* 404 page */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
 
             {/* Test Control Panel - toggle with Alt+T */}

@@ -586,7 +586,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               : { backgroundColor: "#3a3a3a" }
           }
         >
-          <div className="max-w-4xl mx-auto h-[85%]">
+          <div className="max-w-4xl mx-auto h-full flex flex-col">
             <div className="mb-3">
               <PlayerInfo
                 name={myPlayer?.name || initialPlayerName}
@@ -609,7 +609,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             )}
 
             {/* Action Panel */}
-            <div className="mt-4">
+            <div className="mt-auto pt-4">
               <ActionPanel
                 isPlayerTurn={isPlayerTurn}
                 onDeclare={handleDeclare}

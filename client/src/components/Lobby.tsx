@@ -45,14 +45,6 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
     setRoomId(Math.random().toString(36).substring(2, 8).toUpperCase());
   };
 
-  const handleQuickStart = () => {
-    const quickRoomId = "QUICK";
-    setRoomId(quickRoomId);
-    setPlayerName(playerName);
-    onJoinRoom(quickRoomId, playerName);
-    navigate("/game");
-  };
-
   const handleCopyRoomId = async () => {
     if (!roomId) return;
     await navigator.clipboard.writeText(roomId);
@@ -82,6 +74,9 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
           <div>
             <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Playing as</div>
             <div className="text-base font-semibold text-white mt-0.5">{playerName}</div>
+            {user?.friendCode && (
+              <div className="text-xs text-amber-400 font-mono mt-0.5">#{user.friendCode}</div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!isMockMode && (
@@ -177,12 +172,6 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
               {`Join Room${roomId ? ` · ${roomId}` : ""}`}
             </button>
 
-            <button
-              onClick={handleQuickStart}
-              className="w-full py-3 rounded-xl font-semibold text-white text-sm border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
-            >
-              Quick Start (Room: QUICK)
-            </button>
           </div>
 
           <div className="pt-2 border-t border-white/5">

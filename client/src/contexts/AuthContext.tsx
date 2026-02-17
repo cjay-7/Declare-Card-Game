@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import socket from "../socket";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -6,6 +7,7 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  friendCode: string;
   avatarUrl?: string | null;
 }
 
@@ -53,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(u);
     setToken(t);
     localStorage.setItem("token", t);
+    // Reconnect socket with new auth token so server knows our userId
+    socket.reconnectWithAuth();
   };
 
   async function login(email: string, password: string) {

@@ -14,7 +14,7 @@ import {
 import authRouter from "./src/routes/auth.js";
 import friendsRouter from "./src/routes/friends.js";
 import { verifyToken } from "./src/authMiddleware.js";
-import { initDb } from "./src/db.js";
+import { initDb, backfillFriendCodes } from "./src/db.js";
 
 // Initialize Express app and HTTP server
 const app = express();
@@ -2009,6 +2009,7 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 4000;
 // Initialize DB schema then start
 await initDb();
+await backfillFriendCodes();
 
 // Listen on all interfaces (0.0.0.0) to allow network access from phones
 server.listen(PORT, "0.0.0.0", () => {

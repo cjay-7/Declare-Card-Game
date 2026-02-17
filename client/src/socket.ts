@@ -174,6 +174,17 @@ const socket = {
 
   getCurrentPlayer: () => currentPlayerId,
 
+  // Reconnect with fresh auth token (call after login/register)
+  reconnectWithAuth: () => {
+    if (socketMode !== "real") return;
+    const token = localStorage.getItem("token");
+    if (realSocket) {
+      realSocket.auth = token ? { token } : {};
+      realSocket.disconnect().connect();
+      console.log("🔄 Socket reconnected with fresh auth token");
+    }
+  },
+
   // Get current socket mode
   getMode: () => socketMode,
 

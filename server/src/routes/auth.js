@@ -31,7 +31,7 @@ router.post("/register", async (req, res) => {
     });
     const token = signToken({ userId: user.id, displayName: user.display_name });
     res.status(201).json({
-      user: { id: user.id, email: user.email, displayName: user.display_name, avatarUrl: user.avatar_url },
+      user: { id: user.id, email: user.email, displayName: user.display_name, friendCode: user.friend_code, avatarUrl: user.avatar_url },
       token,
     });
   } catch (err) {
@@ -54,7 +54,7 @@ router.post("/login", async (req, res) => {
     if (!ok) return res.status(401).json({ error: "Invalid email or password" });
     const token = signToken({ userId: user.id, displayName: user.display_name });
     res.json({
-      user: { id: user.id, email: user.email, displayName: user.display_name, avatarUrl: user.avatar_url },
+      user: { id: user.id, email: user.email, displayName: user.display_name, friendCode: user.friend_code, avatarUrl: user.avatar_url },
       token,
     });
   } catch (err) {
@@ -76,6 +76,7 @@ router.get("/me", requireAuth, async (req, res) => {
       id: user.id,
       email: user.email,
       displayName: user.display_name,
+      friendCode: user.friend_code,
       avatarUrl: user.avatar_url,
     });
   } catch (err) {

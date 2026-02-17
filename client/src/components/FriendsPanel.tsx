@@ -26,11 +26,11 @@ interface FriendsPanelProps {
 const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: FriendsPanelProps) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [tab, setTab] = useState<"friends" | "requests" | "add">("friends");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
-  const [addName, setAddName] = useState("");
+  const [addCode, setAddCode] = useState("");
   const [addStatus, setAddStatus] = useState<"" | "loading" | "success" | "error">("");
   const [addError, setAddError] = useState("");
 
@@ -56,18 +56,19 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
 
   async function handleAddFriend(e: React.FormEvent) {
     e.preventDefault();
-    if (!addName.trim()) return;
+    const code = addCode.trim().replace(/^#/, ""); // strip leading # if user types it
+    if (!code) return;
     setAddStatus("loading");
     setAddError("");
     const res = await fetch(`${API}/api/friends/add`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ displayName: addName.trim() }),
+      body: JSON.stringify({ friendCode: code }),
     });
     const data = await res.json();
     if (res.ok) {
       setAddStatus("success");
-      setAddName("");
+      setAddCode("");
       setTimeout(() => setAddStatus(""), 2000);
     } else {
       setAddStatus("error");
@@ -103,7 +104,12 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h2 className="text-white font-bold text-lg">Friends</h2>
+          <div>
+            <h2 className="text-white font-bold text-lg">Friends</h2>
+            {user?.friendCode && (
+              <div className="text-xs text-gray-400">Your code: <span className="text-amber-400 font-mono font-semibold">#{user.friendCode}</span></div>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">
             ×
           </button>
@@ -194,13 +200,14 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
           {/* Add friend */}
           {tab === "add" && (
             <form onSubmit={handleAddFriend} className="space-y-3">
-              <p className="text-gray-400 text-xs">Enter their exact display name:</p>
+              <p className="text-gray-400 text-xs">Enter their friend code (shown on their profile):</p>
               <input
                 type="text"
-                value={addName}
-                onChange={(e) => { setAddName(e.target.value); setAddStatus(""); setAddError(""); }}
-                placeholder="Display name"
-                className="w-full px-3 py-2.5 bg-[#2a2a2a] text-white rounded-xl border border-white/10 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 placeholder-gray-600 text-sm transition-all"
+                value={addCode}
+                onChange={(e) => { setAddCode(e.target.value.toUpperCase()); setAddStatus(""); setAddError(""); }}
+                placeholder="#A1B2C3"
+                maxLength={7}
+                className="w-full px-3 py-2.5 bg-[#2a2a2a] text-white rounded-xl border border-white/10 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 placeholder-gray-600 text-sm font-mono tracking-wider transition-all"
               />
               {addStatus === "error" && (
                 <p className="text-red-400 text-xs">{addError}</p>
@@ -210,7 +217,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
               )}
               <button
                 type="submit"
-                disabled={addStatus === "loading" || !addName.trim()}
+                disabled={addStatus === "loading" || !addCode.trim()}
                 className="w-full py-2.5 rounded-xl font-bold text-[#1a1a1a] text-sm transition-all disabled:opacity-40"
                 style={{ background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
               >

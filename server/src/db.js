@@ -29,6 +29,7 @@ export async function initDb() {
       email VARCHAR(255) UNIQUE,
       password_hash VARCHAR(255),
       display_name VARCHAR(255) NOT NULL,
+      friend_code VARCHAR(10) UNIQUE,
       google_id VARCHAR(255) UNIQUE,
       avatar_url TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -36,6 +37,7 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+    CREATE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code);
   `);
   await query(`
     CREATE TABLE IF NOT EXISTS friendships (
@@ -60,12 +62,43 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
   `);
+  // Add friend_code column if it doesn't exist (migration for existing DBs)
+  await query(`
+    DO $$ BEGIN
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS friend_code VARCHAR(10) UNIQUE;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+  await query("CREATE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code)");
   console.log("Database schema ready.");
+}
+
+// Generate a unique 6-character friend code (e.g. "A1B2C3")
+async function generateFriendCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
+  for (let attempt = 0; attempt < 20; attempt++) {
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    const existing = await query("SELECT 1 FROM users WHERE friend_code = $1", [code]);
+    if (existing.rows.length === 0) return code;
+  }
+  throw new Error("Failed to generate unique friend code");
+}
+
+// Backfill friend codes for users that don't have one yet
+export async function backfillFriendCodes() {
+  if (!pool) return;
+  const res = await query("SELECT id FROM users WHERE friend_code IS NULL");
+  for (const row of res.rows) {
+    const code = await generateFriendCode();
+    await query("UPDATE users SET friend_code = $1 WHERE id = $2", [code, row.id]);
+  }
+  if (res.rows.length > 0) console.log(`Backfilled friend codes for ${res.rows.length} users.`);
 }
 
 export async function getUserById(id) {
   const res = await query(
-    "SELECT id, email, display_name, avatar_url, google_id, created_at FROM users WHERE id = $1",
+    "SELECT id, email, display_name, friend_code, avatar_url, google_id, created_at FROM users WHERE id = $1",
     [id]
   );
   return res.rows[0] || null;
@@ -82,11 +115,12 @@ export async function getUserByGoogleId(googleId) {
 }
 
 export async function createUser({ email, passwordHash, displayName, googleId, avatarUrl }) {
+  const friendCode = await generateFriendCode();
   const res = await query(
-    `INSERT INTO users (email, password_hash, display_name, google_id, avatar_url)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, email, display_name, avatar_url, google_id, created_at`,
-    [email || null, passwordHash || null, displayName, googleId || null, avatarUrl || null]
+    `INSERT INTO users (email, password_hash, display_name, friend_code, google_id, avatar_url)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, email, display_name, friend_code, avatar_url, google_id, created_at`,
+    [email || null, passwordHash || null, displayName, friendCode, googleId || null, avatarUrl || null]
   );
   return res.rows[0];
 }
@@ -113,8 +147,16 @@ export async function updateUser(id, fields) {
 
 export async function getUserByDisplayName(displayName) {
   const res = await query(
-    "SELECT id, email, display_name, avatar_url FROM users WHERE LOWER(display_name) = LOWER($1)",
+    "SELECT id, email, display_name, friend_code, avatar_url FROM users WHERE LOWER(display_name) = LOWER($1)",
     [displayName]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getUserByFriendCode(friendCode) {
+  const res = await query(
+    "SELECT id, email, display_name, friend_code, avatar_url FROM users WHERE UPPER(friend_code) = UPPER($1)",
+    [friendCode]
   );
   return res.rows[0] || null;
 }

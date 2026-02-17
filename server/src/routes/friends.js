@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../authMiddleware.js";
 import {
   getUserByDisplayName,
+  getUserByFriendCode,
   sendFriendRequest,
   respondFriendRequest,
   getFriends,
@@ -16,13 +17,16 @@ const router = Router();
 // All routes require auth
 router.use(requireAuth);
 
-// POST /api/friends/add — send friend request by display name
+// POST /api/friends/add — send friend request by friend code
 router.post("/add", async (req, res) => {
-  const { displayName } = req.body;
-  if (!displayName) return res.status(400).json({ error: "displayName required" });
+  const { friendCode, displayName } = req.body;
+  if (!friendCode && !displayName) return res.status(400).json({ error: "friendCode or displayName required" });
 
-  const target = await getUserByDisplayName(displayName);
-  if (!target) return res.status(404).json({ error: "User not found" });
+  // Prefer friend code lookup, fall back to display name
+  const target = friendCode
+    ? await getUserByFriendCode(friendCode.trim())
+    : await getUserByDisplayName(displayName);
+  if (!target) return res.status(404).json({ error: "No user found with that friend code" });
   if (target.id === req.user.id) return res.status(400).json({ error: "Cannot add yourself" });
 
   const friendship = await sendFriendRequest(req.user.id, target.id);

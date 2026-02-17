@@ -152,11 +152,18 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                     />
                   </div>
                   <span className="text-white text-sm flex-1">{f.display_name}</span>
-                  {roomId && f.isOnline && (
+                  {roomId && (
                     <button
                       onClick={() => handleInvite(f)}
-                      className="text-xs px-2.5 py-1 rounded-lg font-semibold text-[#1a1a1a] transition-all"
-                      style={{ background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                        f.isOnline
+                          ? "text-[#1a1a1a]"
+                          : "text-gray-300 opacity-70"
+                      }`}
+                      style={{ background: f.isOnline
+                        ? "linear-gradient(135deg, #f59e0b, #b45309)"
+                        : "linear-gradient(135deg, #4b5563, #374151)"
+                      }}
                     >
                       Invite
                     </button>

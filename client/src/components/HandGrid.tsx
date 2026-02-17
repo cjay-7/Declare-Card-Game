@@ -260,7 +260,6 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         // 5. Elimination card selection is active (elimination in progress)
         const eliminationAlreadyUsed = gameState?.eliminationUsedThisRound === true;
         const showEliminateButton =
-          isCurrentPlayer && // Only on your own hand
           !drawnCard &&
           hasDiscardCard &&
           !eliminationAlreadyUsed &&

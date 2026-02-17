@@ -24,10 +24,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   const usingPower = currentPlayer?.usingPower;
 
   // Check elimination eligibility - only one elimination per round total
-  const canEliminate =
-    gameState?.discardPile &&
-    gameState.discardPile.length > 0 &&
-    !gameState?.eliminationUsedThisRound;
+  const canEliminate = !gameState?.eliminationUsedThisRound;
   const hasAlreadyEliminated = gameState?.eliminationUsedThisRound || false;
 
   // Check if player can declare (must have at least 1 non-eliminated card)
@@ -218,7 +215,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       </div>
 
       {/* Elimination Actions Section */}
-      {!(activePower && usingPower) && (
+      {/* {!(activePower && usingPower) && (
         <div className="rounded-xl border-2 border-red-500 shadow-xl p-3" style={{ backgroundColor: "#262626" }}>
           <div className="flex items-center justify-center mb-2">
             <span className="text-red-400 mr-2 text-lg">⚡</span>
@@ -238,7 +235,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Game Status - Compact */}
       <div className="rounded-lg p-2 border border-gray-700" style={{ backgroundColor: "#262626" }}>

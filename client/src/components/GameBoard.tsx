@@ -411,7 +411,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {/* Main Game Board - Split Screen Layout */}
       <div className="grid grid-rows-3 gap-0 overflow-hidden" 
            style={{ 
-             gridTemplateRows: "2fr auto 3fr",
+             gridTemplateRows: "2fr auto 2fr",
              minHeight: "calc(100vh - 80px)"
            }}>
         {/* OPPONENT ZONE (Top) */}

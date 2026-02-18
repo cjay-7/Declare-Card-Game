@@ -64,7 +64,7 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#262626] p-4">
       <div className="bg-[#1a1a1a] border border-white/10 shadow-2xl rounded-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <img src="/logo-square.png" alt="Declare" className="w-5 h-5 mx-auto mb-1" />
+          <img src="/logo-square.png" alt="Declare" width={48} height={48} className="mx-auto mb-1" style={{ width: 48, height: 48 }} />
           <h1 className="text-3xl font-bold text-white tracking-wide">Declare</h1>
           <p className="text-gray-500 text-sm mt-1">A multiplayer card game</p>
         </div>

@@ -56,7 +56,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
 
   async function handleAddFriend(e: React.FormEvent) {
     e.preventDefault();
-    const code = addCode.trim().replace(/^#/, ""); // strip leading # if user types it
+    const code = addCode.trim().replace(/^#/, "");
     if (!code) return;
     setAddStatus("loading");
     setAddError("");
@@ -96,10 +96,19 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
 
   if (!isOpen) return null;
 
+  const tabs = ["friends", "requests", "add"] as const;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Friends panel"
+    >
       <div
-        className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl"
+        className="border border-white/10 rounded-2xl w-full max-w-sm"
+        style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-3)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -107,48 +116,55 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
           <div>
             <h2 className="text-white font-bold text-lg">Friends</h2>
             {user?.friendCode && (
-              <div className="text-xs text-gray-400">Your code: <span className="text-amber-400 font-mono font-semibold">#{user.friendCode}</span></div>
+              <div className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Your code: <span className="text-amber-400 font-mono font-semibold">#{user.friendCode}</span></div>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">
-            ×
+          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-white transition-colors text-xl leading-none">
+            &times;
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
-          {(["friends", "requests", "add"] as const).map((t) => (
+        <div className="flex border-b border-white/10" role="tablist">
+          {tabs.map((t) => (
             <button
               key={t}
+              role="tab"
+              aria-selected={tab === t}
               onClick={() => setTab(t)}
               className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
                 tab === t
                   ? "text-amber-400 border-b-2 border-amber-400"
-                  : "text-gray-500 hover:text-gray-300"
+                  : "hover:text-gray-300"
               }`}
+              style={{ color: tab === t ? undefined : "var(--on-surface-variant)" }}
             >
               {t === "friends" ? "Friends" : t === "requests" ? `Requests${requests.length ? ` (${requests.length})` : ""}` : "Add"}
             </button>
           ))}
         </div>
 
-        <div className="p-4 max-h-80 overflow-y-auto">
+        <div className="p-4 max-h-80 overflow-y-auto" role="tabpanel">
           {/* Friends list */}
           {tab === "friends" && (
             <div className="space-y-2">
               {friends.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">No friends yet. Add some!</p>
+                <p className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>No friends yet. Add some!</p>
               )}
               {friends.map((f) => (
                 <div key={f.friend_id} className="flex items-center gap-3 py-2">
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center text-sm text-gray-400">
+                    <div
+                      className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-sm text-gray-400"
+                      style={{ backgroundColor: "var(--surface-container-high)" }}
+                    >
                       {f.display_name[0].toUpperCase()}
                     </div>
                     <span
-                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#1a1a1a] ${
+                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${
                         f.isOnline ? "bg-green-400" : "bg-gray-600"
                       }`}
+                      style={{ borderColor: "var(--surface-container)" }}
                     />
                   </div>
                   <span className="text-white text-sm flex-1">{f.display_name}</span>
@@ -177,11 +193,14 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
           {tab === "requests" && (
             <div className="space-y-2">
               {requests.length === 0 && (
-                <p className="text-gray-500 text-sm text-center py-4">No pending requests.</p>
+                <p className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>No pending requests.</p>
               )}
               {requests.map((r) => (
                 <div key={r.id} className="flex items-center gap-3 py-2">
-                  <div className="w-8 h-8 rounded-full bg-[#2a2a2a] border border-white/10 flex items-center justify-center text-sm text-gray-400">
+                  <div
+                    className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-sm text-gray-400"
+                    style={{ backgroundColor: "var(--surface-container-high)" }}
+                  >
                     {r.display_name[0].toUpperCase()}
                   </div>
                   <span className="text-white text-sm flex-1">{r.display_name}</span>
@@ -207,17 +226,21 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
           {/* Add friend */}
           {tab === "add" && (
             <form onSubmit={handleAddFriend} className="space-y-3">
-              <p className="text-gray-400 text-xs">Enter their friend code (shown on their profile):</p>
+              <label htmlFor="friend-code-input" className="block text-xs" style={{ color: "var(--on-surface-variant)" }}>
+                Enter their friend code (shown on their profile):
+              </label>
               <input
+                id="friend-code-input"
                 type="text"
                 value={addCode}
                 onChange={(e) => { setAddCode(e.target.value.toUpperCase()); setAddStatus(""); setAddError(""); }}
                 placeholder="#A1B2C3"
                 maxLength={7}
-                className="w-full px-3 py-2.5 bg-[#2a2a2a] text-white rounded-xl border border-white/10 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 placeholder-gray-600 text-sm font-mono tracking-wider transition-all"
+                className="w-full px-3 py-2.5 text-white rounded-xl border border-white/10 focus:outline-none focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 placeholder-gray-600 text-sm font-mono tracking-wider transition-all"
+                style={{ backgroundColor: "var(--surface-container-highest)" }}
               />
               {addStatus === "error" && (
-                <p className="text-red-400 text-xs">{addError}</p>
+                <p role="alert" className="text-xs" style={{ color: "var(--error)" }}>{addError}</p>
               )}
               {addStatus === "success" && (
                 <p className="text-green-400 text-xs">Friend request sent!</p>
@@ -225,10 +248,10 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
               <button
                 type="submit"
                 disabled={addStatus === "loading" || !addCode.trim()}
-                className="w-full py-2.5 rounded-xl font-bold text-[#1a1a1a] text-sm transition-all disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
+                className="w-full py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 hover:brightness-110 active:scale-[0.98]"
+                style={{ color: "var(--on-primary)", background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
               >
-                {addStatus === "loading" ? "Sending…" : "Send Request"}
+                {addStatus === "loading" ? "Sending\u2026" : "Send Request"}
               </button>
             </form>
           )}

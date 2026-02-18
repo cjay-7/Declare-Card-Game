@@ -12,13 +12,22 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="instructions-heading"
+    >
+      <div
+        className="rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
+        style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-3)" }}
+      >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-6em font-bold text-white">Game Rules</h2>
+          <h2 id="instructions-heading" className="text-2xl font-bold text-white">Game Rules</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            aria-label="Close"
+            className="text-gray-400 hover:text-white transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -37,7 +46,7 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
           </button>
         </div>
 
-        <div className="text-white space-y-4">
+        <div className="space-y-4" style={{ color: "var(--on-surface)" }}>
           <section>
             <h3 className="text-xl font-semibold mb-2">Objective</h3>
             <p>
@@ -143,7 +152,8 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
         <div className="mt-6 flex justify-center">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ color: "var(--on-primary)", background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
           >
             Got it!
           </button>

@@ -995,6 +995,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     console.log(`[${currentPlayerId}] Eliminating card:`, cardId);
 
+    // Optimistic UI: immediately disable elimination buttons to prevent double-clicks
+    // If the elimination fails (penalty), the server's game-state-update will reset this to false
+    setGameState((prev) =>
+      prev ? { ...prev, eliminationUsedThisRound: true } : prev
+    );
+
     setCardAnimation("discard");
     setAnimatingCardId(cardId);
 

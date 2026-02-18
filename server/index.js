@@ -375,18 +375,10 @@ io.on("connection", (socket) => {
     room.drawnCard = drawnCard;
     room.drawnCardPlayer = playerId;
 
-    // Close elimination window when player draws (next player has started their chance)
-    // This prevents eliminations after the next player has picked a card
-    // According to rules: elimination window closes when next player picks a card
-    if (room.eliminationUsedThisRound) {
-      console.log(`🔒 Closing elimination window - ${currentPlayer.name} has drawn a card`);
-      room.eliminationUsedThisRound = false;
-      eliminationLocks[roomId] = false;
-      // Reset elimination flags for all players
-      room.players.forEach((player) => {
-        player.hasEliminatedThisRound = false;
-      });
-    }
+    // Note: Do NOT reset eliminationUsedThisRound on draw.
+    // It should only reset when a NEW card is actively discarded (replace-with-drawn, discard-drawn-card, etc.)
+    // Resetting on draw would allow multiple successful eliminations for the same discard card rank,
+    // since the eliminated card gets pushed onto the discard pile with the same rank.
 
     // Mark that first card has been drawn (affects card visibility for all players)
     if (!room.firstCardDrawn) {
@@ -502,7 +494,9 @@ io.on("connection", (socket) => {
     // Window will close when the next player draws a card
     room.eliminationUsedThisRound = false; // Reset to allow eliminations for this new discard
     eliminationLocks[roomId] = false; // Reset lock for new elimination opportunity
-    // Note: Don't reset hasEliminatedThisRound here - it's only reset when next player draws
+    room.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
 
     // IMPORTANT: Cards that were in hand lose their powers when discarded
     // Only cards directly discarded from deck (via discard-drawn-card) have powers
@@ -704,7 +698,9 @@ io.on("connection", (socket) => {
     // Window will close when the next player draws a card
     room.eliminationUsedThisRound = false; // Reset to allow eliminations for this new discard
     eliminationLocks[roomId] = false; // Reset lock for new elimination opportunity
-    // Note: Don't reset hasEliminatedThisRound here - it's only reset when next player draws
+    room.players.forEach((player) => {
+      player.hasEliminatedThisRound = false;
+    });
 
     // IMPORTANT: Cards that were in hand lose their powers when discarded
     // Only cards directly discarded from deck (via discard-drawn-card) have powers

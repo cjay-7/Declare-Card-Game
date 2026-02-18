@@ -41,7 +41,7 @@ export default function InviteNotification({ onJoin }: InviteNotificationProps) 
         style={{ boxShadow: "0 8px 32px rgba(245,158,11,0.2)" }}
       >
         <div className="flex items-start gap-3">
-          <div className="text-2xl mt-0.5">🎴</div>
+          <img src="/logo-square.png" alt="Declare" className="w-8 h-8 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-semibold">
               {invite.fromDisplayName} invited you to a game!

@@ -58,12 +58,17 @@ export default function InviteNotification({ onJoin }: InviteNotificationProps) 
   const remaining = Math.max(0, 100 - (elapsed / DISMISS_MS) * 100);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4" role="alert">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full px-4" style={{ maxWidth: "var(--container-sm)" }} role="alert">
       <Alert
         color="warning"
         variant="outline"
-        className="border-amber-500/30 rounded-2xl p-4"
-        style={{ backgroundColor: "var(--surface-container)", boxShadow: "0 8px 32px rgba(245,158,11,0.2)" }}
+        className="p-4"
+        style={{
+          backgroundColor: "var(--surface-container)",
+          boxShadow: "0 8px 32px rgba(245,158,11,0.2)",
+          borderColor: "rgba(245, 158, 11, 0.3)",
+          borderRadius: "var(--radius-2xl)",
+        }}
       >
         <div className="flex items-start gap-3">
           <Alert.Icon className="mt-0.5">
@@ -71,30 +76,33 @@ export default function InviteNotification({ onJoin }: InviteNotificationProps) 
               as="div"
               alt={invite.fromDisplayName}
               size="sm"
-              className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center rounded-full"
+              className="bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center rounded-full"
+              style={{ fontSize: "var(--text-sm)" }}
             >
               {invite.fromDisplayName[0]?.toUpperCase() ?? "?"}
             </Avatar>
           </Alert.Icon>
           <Alert.Content className="flex-1 min-w-0">
-            <Typography className="text-white text-sm font-semibold">
+            <Typography className="text-white font-semibold" style={{ fontSize: "var(--text-sm)" }}>
               {invite.fromDisplayName} invited you to a game!
             </Typography>
-            <Typography className="text-xs mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
+            <Typography className="mt-0.5" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}>
               Room: {invite.roomId}
             </Typography>
           </Alert.Content>
           <Alert.DismissTrigger
             onClick={() => setInvite(null)}
             aria-label="Dismiss invitation"
-            className="text-gray-500 hover:text-gray-300 flex-shrink-0"
+            className="flex-shrink-0"
+            style={{ color: "var(--on-surface-variant)" }}
           />
         </div>
         <div className="flex gap-2 mt-3">
           <Button
             variant="gradient"
             color="primary"
-            className="flex-1 font-bold text-sm"
+            className="flex-1 font-bold"
+            style={{ fontSize: "var(--text-sm)", borderRadius: "var(--radius-lg)" }}
             onClick={() => {
               onJoin(invite.roomId);
               setInvite(null);
@@ -105,12 +113,13 @@ export default function InviteNotification({ onJoin }: InviteNotificationProps) 
           <Button
             variant="ghost"
             onClick={() => setInvite(null)}
-            className="px-4 text-sm text-gray-400"
+            className="px-4"
+            style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}
           >
             Dismiss
           </Button>
         </div>
-        <Progress value={remaining} color="primary" size="sm" className="h-1 mt-3 opacity-60">
+        <Progress value={remaining} color="primary" size="sm" className="h-1 mt-3 opacity-60" style={{ borderRadius: "var(--radius-full)" }}>
           <Progress.Bar />
         </Progress>
       </Alert>

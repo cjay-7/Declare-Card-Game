@@ -110,9 +110,9 @@ function GameApp() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#262626] gap-3">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3" style={{ backgroundColor: "var(--surface)" }}>
         <Spinner className="w-8 h-8" color="primary" />
-        <Typography className="text-sm" style={{ color: "var(--on-surface-variant)" }}>Loading&hellip;</Typography>
+        <Typography style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}>Loading&hellip;</Typography>
       </div>
     );
   }
@@ -125,7 +125,7 @@ function GameApp() {
             {/* Player Switch Indicator - only show in mock mode */}
             {socket.getMode() === "mock" && (
               <div className="fixed top-20 right-4 z-40">
-                <Chip variant="ghost" color="info" className="text-sm">
+                <Chip variant="ghost" color="info" style={{ fontSize: "var(--text-sm)" }}>
                   <Chip.Label>
                     Playing as: <span className="font-bold">{currentPlayer === "player1" ? "Player 1" : "Player 2"}</span>
                   </Chip.Label>
@@ -198,7 +198,8 @@ function GameApp() {
                 as={IconButton}
                 isCircular
                 variant="solid"
-                className="fixed bottom-4 left-4 bg-gray-700 hover:bg-gray-600 shadow-lg"
+                className="fixed bottom-4 left-4 shadow-lg"
+                style={{ backgroundColor: "var(--surface-container-highest)" }}
                 onClick={() => setShowInstructions(true)}
                 aria-label="Game Instructions (Alt+H)"
               >
@@ -217,7 +218,15 @@ function GameApp() {
                   />
                 </svg>
               </Tooltip.Trigger>
-              <Tooltip.Content className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+              <Tooltip.Content
+                className="px-2 py-1"
+                style={{
+                  backgroundColor: "var(--surface-container-highest)",
+                  color: "var(--on-surface)",
+                  fontSize: "var(--text-xs)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
                 Game Instructions (Alt+H)
               </Tooltip.Content>
             </Tooltip>
@@ -226,26 +235,43 @@ function GameApp() {
             <Button
               variant="ghost"
               size="sm"
-              className="fixed top-0 left-4 p-1 text-xs text-gray-500 opacity-30 hover:opacity-100"
+              className="fixed top-0 left-4 p-1 opacity-30 hover:opacity-100"
+              style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)", transition: "opacity var(--transition-fast)" }}
               onClick={() => setShowTestPanel(!showTestPanel)}
             >
               {showTestPanel ? "Hide Test Panel" : "Show Test Panel (Alt+T)"}
             </Button>
 
             {/* Mode info */}
-            <Card variant="ghost" className="fixed bottom-4 right-4 max-w-sm opacity-80" style={{ backgroundColor: "var(--surface-container-high)" }}>
-              <Card.Body className="p-3 text-xs text-white">
+            <Card
+              variant="ghost"
+              className="fixed bottom-4 right-4 opacity-80"
+              style={{ maxWidth: "var(--container-sm)", backgroundColor: "var(--surface-container-high)", borderRadius: "var(--radius-lg)" }}
+            >
+              <Card.Body className="p-3">
                 {socket.getMode() === "mock" ? (
                   <>
-                    <Typography className="font-bold text-xs mb-1">2-Player Same Device Mode</Typography>
-                    <Typography className="text-xs" style={{ color: "var(--on-surface-variant)" }}>• Use the player switcher (top right) to alternate</Typography>
-                    <Typography className="text-xs" style={{ color: "var(--on-surface-variant)" }}>• Each player joins as "Player 1" or "Player 2"</Typography>
+                    <Typography className="font-bold mb-1" style={{ fontSize: "var(--text-xs)", color: "var(--on-surface)" }}>
+                      2-Player Same Device Mode
+                    </Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
+                      • Use the player switcher (top right) to alternate
+                    </Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
+                      • Each player joins as "Player 1" or "Player 2"
+                    </Typography>
                   </>
                 ) : (
                   <>
-                    <Typography className="font-bold text-xs mb-1">Online Multiplayer Mode</Typography>
-                    <Typography className="text-xs" style={{ color: "var(--on-surface-variant)" }}>• Share the room ID with another player</Typography>
-                    <Typography className="text-xs" style={{ color: "var(--on-surface-variant)" }}>• Each player connects from their own device</Typography>
+                    <Typography className="font-bold mb-1" style={{ fontSize: "var(--text-xs)", color: "var(--on-surface)" }}>
+                      Online Multiplayer Mode
+                    </Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
+                      • Share the room ID with another player
+                    </Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
+                      • Each player connects from their own device
+                    </Typography>
                   </>
                 )}
               </Card.Body>

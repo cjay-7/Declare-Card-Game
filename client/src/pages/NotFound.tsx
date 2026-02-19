@@ -25,18 +25,29 @@ export default function NotFound() {
   }, [navigate, destination]);
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[#262626] p-4 text-center">
-      <Card className="border border-white/10 w-full max-w-md p-8" style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-2)" }}>
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 text-center" style={{ backgroundColor: "var(--surface)" }}>
+      <Card
+        className="w-full border p-8"
+        style={{
+          maxWidth: "var(--container-md)",
+          backgroundColor: "var(--surface-container)",
+          boxShadow: "var(--elevation-2)",
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderRadius: "var(--radius-2xl)",
+        }}
+      >
         <Card.Body className="flex flex-col items-center">
-          <div className="text-8xl mb-6 opacity-80">
-            <span className="inline-block rotate-12">?</span>
+          <div className="mb-6 opacity-80" style={{ fontSize: "var(--text-4xl)" }}>
+            <span className="inline-block rotate-12 text-7xl sm:text-8xl">?</span>
           </div>
 
-          <Typography as="h1" className="text-4xl font-bold text-white mb-2">Lost Card</Typography>
+          <Typography as="h1" className="font-bold text-white mb-2" style={{ fontSize: "var(--text-4xl)" }}>
+            Lost Card
+          </Typography>
 
-          <Alert color="warning" variant="ghost" className="mb-6 w-full">
+          <Alert color="warning" variant="ghost" className="mb-6 w-full" style={{ borderRadius: "var(--radius-lg)" }}>
             <Alert.Content>
-              <Typography className="text-sm text-center">
+              <Typography className="text-center" style={{ fontSize: "var(--text-sm)" }}>
                 This page doesn't exist. Looks like someone shuffled it out of the deck.
               </Typography>
             </Alert.Content>
@@ -46,16 +57,17 @@ export default function NotFound() {
             onClick={() => navigate(destination, { replace: true })}
             variant="gradient"
             color="primary"
-            className="px-8 py-3 font-bold text-base"
+            className="px-8 py-3 font-bold"
+            style={{ fontSize: "var(--text-base)", borderRadius: "var(--radius-lg)" }}
           >
             Back to {user ? "Lobby" : "Login"}
           </Button>
 
           <div className="w-full mt-6 space-y-2">
-            <Progress value={(countdown / 4) * 100} color="primary" size="sm" className="h-1.5">
+            <Progress value={(countdown / 4) * 100} color="primary" size="sm" className="h-1.5" style={{ borderRadius: "var(--radius-full)" }}>
               <Progress.Bar />
             </Progress>
-            <Typography aria-live="polite" className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+            <Typography aria-live="polite" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}>
               Redirecting in {countdown}s...
             </Typography>
           </div>

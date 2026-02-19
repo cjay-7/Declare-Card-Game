@@ -68,39 +68,58 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[#262626] p-4">
-      <Card className="border border-white/10 w-full max-w-md" style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-2)" }}>
-        <Card.Header className="text-center pt-8 px-8 pb-0">
-          <img src="/logo-square.png" alt="" width={48} height={48} className="mx-auto mb-1" style={{ width: 48, height: 48 }} />
-          <Typography as="h1" className="text-3xl font-bold text-white tracking-wide">
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6" style={{ backgroundColor: "var(--surface)" }}>
+      <Card
+        className="w-full border"
+        style={{
+          maxWidth: "var(--container-md)",
+          backgroundColor: "var(--surface-container)",
+          boxShadow: "var(--elevation-2)",
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderRadius: "var(--radius-2xl)",
+        }}
+      >
+        <Card.Header className="text-center pt-8 px-6 sm:px-8 pb-0">
+          <img src="/logo-square.png" alt="" width={48} height={48} className="mx-auto mb-2" style={{ width: 48, height: 48 }} />
+          <Typography as="h1" className="font-bold text-white tracking-wide" style={{ fontSize: "var(--text-3xl)" }}>
             Declare
           </Typography>
-          <Typography className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>
+          <Typography className="mt-1" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}>
             A multiplayer card game
           </Typography>
         </Card.Header>
 
-        <Card.Body className="px-8 pt-6 pb-2">
+        <Card.Body className="px-6 sm:px-8 pt-6 pb-2">
           {/* Player Info Navbar */}
-          <Navbar className="border border-white/10 rounded-xl p-3.5 mb-6" style={{ backgroundColor: "var(--surface-container-high)" }}>
+          <Navbar
+            className="border p-3.5 mb-6"
+            style={{
+              backgroundColor: "var(--surface-container-high)",
+              borderColor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "var(--radius-xl)",
+            }}
+          >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <Avatar
                   as="div"
                   alt={playerName}
                   size="sm"
-                  className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center rounded-full"
+                  className="bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center rounded-full"
+                  style={{ fontSize: "var(--text-sm)" }}
                 >
                   {playerName[0]?.toUpperCase() ?? "?"}
                 </Avatar>
                 <div>
-                  <Typography className="text-xs uppercase tracking-wider font-semibold" style={{ color: "var(--on-surface-variant)" }}>
+                  <Typography className="uppercase tracking-wider font-semibold" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}>
                     Playing as
                   </Typography>
-                  <Typography className="text-base font-semibold text-white mt-0.5">{playerName}</Typography>
+                  <Typography className="font-semibold text-white mt-0.5" style={{ fontSize: "var(--text-base)" }}>
+                    {playerName}
+                  </Typography>
                   {user?.friendCode && (
                     <Chip isPill size="sm" variant="ghost" color="primary" className="mt-0.5 inline-flex">
-                      <Chip.Label className="text-xs font-mono">#{user.friendCode}</Chip.Label>
+                      <Chip.Label className="font-mono" style={{ fontSize: "var(--text-xs)" }}>#{user.friendCode}</Chip.Label>
                     </Chip>
                   )}
                 </div>
@@ -109,12 +128,27 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                 {!isMockMode && (
                   <>
                     <Tooltip>
-                      <Tooltip.Trigger as={IconButton} variant="ghost" size="sm" onClick={() => setIsFriendsOpen(true)} aria-label="Open friends panel" className="text-gray-400 hover:text-amber-400">
+                      <Tooltip.Trigger
+                        as={IconButton}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsFriendsOpen(true)}
+                        aria-label="Open friends panel"
+                        style={{ color: "var(--on-surface-variant)" }}
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </Tooltip.Trigger>
-                      <Tooltip.Content className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                      <Tooltip.Content
+                        className="px-2 py-1"
+                        style={{
+                          backgroundColor: "var(--surface-container-highest)",
+                          color: "var(--on-surface)",
+                          fontSize: "var(--text-xs)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
                         Friends
                       </Tooltip.Content>
                     </Tooltip>
@@ -122,15 +156,16 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                       variant="ghost"
                       size="sm"
                       onClick={onLogout}
-                      className="text-xs"
-                      style={{ color: "var(--on-surface-variant)" }}
+                      style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}
                     >
                       Sign out
                     </Button>
                   </>
                 )}
                 {isMockMode && (
-                  <Typography className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Use switcher (top right)</Typography>
+                  <Typography style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}>
+                    Use switcher (top right)
+                  </Typography>
                 )}
               </div>
             </div>
@@ -139,7 +174,11 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
           <div className="space-y-4">
             {/* Room ID input */}
             <div>
-              <label htmlFor="lobby-room-id" className="block mb-1.5 text-xs font-medium uppercase tracking-wider" style={{ color: "var(--on-surface-variant)" }}>
+              <label
+                htmlFor="lobby-room-id"
+                className="block mb-1.5 font-medium uppercase tracking-wider"
+                style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}
+              >
                 Room ID
               </label>
               <div className="flex gap-2">
@@ -159,7 +198,15 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                   <Tooltip.Trigger as={IconButton} variant="outline" onClick={generateRandomRoomId} aria-label="Generate random room ID" className="flex-shrink-0">
                     🎲
                   </Tooltip.Trigger>
-                  <Tooltip.Content className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                  <Tooltip.Content
+                    className="px-2 py-1"
+                    style={{
+                      backgroundColor: "var(--surface-container-highest)",
+                      color: "var(--on-surface)",
+                      fontSize: "var(--text-xs)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  >
                     Random room ID
                   </Tooltip.Content>
                 </Tooltip>
@@ -168,23 +215,31 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                     <Tooltip.Trigger as={IconButton} variant="outline" onClick={handleCopyRoomId} aria-label="Copy room code" className="flex-shrink-0">
                       {copied ? "\u2713" : "\uD83D\uDCCB"}
                     </Tooltip.Trigger>
-                    <Tooltip.Content className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                    <Tooltip.Content
+                      className="px-2 py-1"
+                      style={{
+                        backgroundColor: "var(--surface-container-highest)",
+                        color: "var(--on-surface)",
+                        fontSize: "var(--text-xs)",
+                        borderRadius: "var(--radius-sm)",
+                      }}
+                    >
                       Copy room code
                     </Tooltip.Content>
                   </Tooltip>
                 )}
               </div>
               {roomError && (
-                <Alert color="error" variant="ghost" className="mt-1.5 py-1 px-2">
+                <Alert color="error" variant="ghost" className="mt-1.5 py-1 px-2" style={{ borderRadius: "var(--radius-md)" }}>
                   <Alert.Content>
-                    <Typography id="room-error" role="alert" className="text-xs">{roomError}</Typography>
+                    <Typography id="room-error" role="alert" style={{ fontSize: "var(--text-xs)" }}>{roomError}</Typography>
                   </Alert.Content>
                 </Alert>
               )}
               {copied && (
-                <Alert color="success" variant="ghost" className="mt-1 py-1 px-2">
+                <Alert color="success" variant="ghost" className="mt-1 py-1 px-2" style={{ borderRadius: "var(--radius-md)" }}>
                   <Alert.Content>
-                    <Typography className="text-xs">Room code copied!</Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)" }}>Room code copied!</Typography>
                   </Alert.Content>
                 </Alert>
               )}
@@ -197,7 +252,8 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                   isFullWidth
                   size="sm"
                   onClick={() => setIsFriendsOpen(true)}
-                  className="mt-2 text-xs font-semibold"
+                  className="mt-2 font-semibold"
+                  style={{ fontSize: "var(--text-xs)" }}
                 >
                   Invite Friends &rarr;
                 </Button>
@@ -205,9 +261,9 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
 
               {/* Invited confirmation */}
               {invitedNames.length > 0 && (
-                <Alert color="success" variant="ghost" className="mt-1 py-1 px-2">
+                <Alert color="success" variant="ghost" className="mt-1 py-1 px-2" style={{ borderRadius: "var(--radius-md)" }}>
                   <Alert.Content>
-                    <Typography className="text-xs">Invited: {invitedNames.join(", ")}</Typography>
+                    <Typography style={{ fontSize: "var(--text-xs)" }}>Invited: {invitedNames.join(", ")}</Typography>
                   </Alert.Content>
                 </Alert>
               )}
@@ -220,19 +276,19 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
                 variant="gradient"
                 color="primary"
                 isFullWidth
-                className="py-3.5 font-bold text-base tracking-wide"
+                className="py-3.5 font-bold tracking-wide"
+                style={{ fontSize: "var(--text-base)", borderRadius: "var(--radius-lg)" }}
               >
                 {`Join Room${roomId ? ` \u00B7 ${roomId}` : ""}`}
               </Button>
             </div>
 
-            <div className="pt-2 border-t border-white/5">
+            <div className="pt-2" style={{ borderTop: "var(--border-subtle)" }}>
               <Button
                 variant="ghost"
                 isFullWidth
                 onClick={() => setIsInstructionsOpen(true)}
-                className="text-sm"
-                style={{ color: "var(--on-surface-variant)" }}
+                style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}
               >
                 How to Play
               </Button>

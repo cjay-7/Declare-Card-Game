@@ -99,16 +99,23 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
       <Drawer.Overlay lockScroll className="bg-black/60 backdrop-blur-sm">
         <Drawer.Panel
           placement="right"
-          className="border-l border-white/10 w-full max-w-sm h-full"
-          style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-3)" }}
+          className="border-l w-full h-full"
+          style={{
+            maxWidth: "var(--container-sm)",
+            backgroundColor: "var(--surface-container)",
+            boxShadow: "var(--elevation-3)",
+            borderColor: "rgba(255, 255, 255, 0.1)",
+          }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <div className="flex items-center justify-between p-4" style={{ borderBottom: "var(--border-subtle)" }}>
             <div>
-              <Typography as="h2" className="text-white font-bold text-lg">Friends</Typography>
+              <Typography as="h2" className="text-white font-bold" style={{ fontSize: "var(--text-lg)" }}>
+                Friends
+              </Typography>
               {user?.friendCode && (
                 <Chip isPill size="sm" variant="ghost" color="primary" className="mt-0.5 inline-flex">
-                  <Chip.Label className="text-xs font-mono">#{user.friendCode}</Chip.Label>
+                  <Chip.Label className="font-mono" style={{ fontSize: "var(--text-xs)" }}>#{user.friendCode}</Chip.Label>
                 </Chip>
               )}
             </div>
@@ -117,7 +124,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
               variant="ghost"
               size="sm"
               aria-label="Close"
-              className="text-gray-400 hover:text-white"
+              style={{ color: "var(--on-surface-variant)" }}
             >
               &times;
             </Drawer.DismissTrigger>
@@ -125,23 +132,23 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
 
           {/* Tabs */}
           <Tabs defaultValue="friends">
-            <Tabs.List className="flex border-b border-white/10 bg-transparent">
-              <Tabs.Trigger value="friends" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+            <Tabs.List className="flex bg-transparent" style={{ borderBottom: "var(--border-subtle)" }}>
+              <Tabs.Trigger value="friends" className="flex-1 py-2.5 font-semibold uppercase tracking-wider" style={{ fontSize: "var(--text-xs)" }}>
                 Friends
               </Tabs.Trigger>
-              <Tabs.Trigger value="requests" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+              <Tabs.Trigger value="requests" className="flex-1 py-2.5 font-semibold uppercase tracking-wider" style={{ fontSize: "var(--text-xs)" }}>
                 <span className="relative">
                   Requests
                   {requests.length > 0 && (
                     <Badge color="error" placement="top-end" className="absolute -top-2 -right-5">
-                      <Badge.Indicator className="text-[10px] min-w-[18px] h-[18px] flex items-center justify-center">
+                      <Badge.Indicator className="min-w-[18px] h-[18px] flex items-center justify-center" style={{ fontSize: "10px" }}>
                         {requests.length}
                       </Badge.Indicator>
                     </Badge>
                   )}
                 </span>
               </Tabs.Trigger>
-              <Tabs.Trigger value="add" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+              <Tabs.Trigger value="add" className="flex-1 py-2.5 font-semibold uppercase tracking-wider" style={{ fontSize: "var(--text-xs)" }}>
                 Add
               </Tabs.Trigger>
               <Tabs.TriggerIndicator />
@@ -150,7 +157,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
             {/* Friends list */}
             <Tabs.Panel value="friends" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
               {friends.length === 0 ? (
-                <Typography className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>
+                <Typography className="text-center py-4" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}>
                   No friends yet. Add some!
                 </Typography>
               ) : (
@@ -171,7 +178,8 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                                 as="div"
                                 alt={f.display_name}
                                 size="sm"
-                                className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center rounded-full"
+                                className="bg-gray-700 text-gray-400 flex items-center justify-center rounded-full"
+                                style={{ fontSize: "var(--text-sm)" }}
                               >
                                 {f.display_name[0].toUpperCase()}
                               </Avatar>
@@ -181,9 +189,9 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                         </Badge>
                       </List.ItemStart>
                       <div className="flex-1 min-w-0">
-                        <Typography className="text-white text-sm">{f.display_name}</Typography>
+                        <Typography className="text-white" style={{ fontSize: "var(--text-sm)" }}>{f.display_name}</Typography>
                         <Chip isPill size="sm" variant="ghost" color={f.isOnline ? "success" : "secondary"} className="mt-0.5 inline-flex">
-                          <Chip.Label className="text-[10px]">{f.isOnline ? "Online" : "Offline"}</Chip.Label>
+                          <Chip.Label style={{ fontSize: "10px" }}>{f.isOnline ? "Online" : "Offline"}</Chip.Label>
                         </Chip>
                       </div>
                       {roomId && (
@@ -193,7 +201,8 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                             variant={f.isOnline ? "gradient" : "outline"}
                             color="primary"
                             onClick={() => handleInvite(f)}
-                            className="text-xs font-semibold"
+                            className="font-semibold"
+                            style={{ fontSize: "var(--text-xs)" }}
                           >
                             Invite
                           </Button>
@@ -208,7 +217,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
             {/* Friend requests */}
             <Tabs.Panel value="requests" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
               {requests.length === 0 ? (
-                <Typography className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>
+                <Typography className="text-center py-4" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-sm)" }}>
                   No pending requests.
                 </Typography>
               ) : (
@@ -220,19 +229,21 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                           as="div"
                           alt={r.display_name}
                           size="sm"
-                          className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center rounded-full"
+                          className="bg-gray-700 text-gray-400 flex items-center justify-center rounded-full"
+                          style={{ fontSize: "var(--text-sm)" }}
                         >
                           {r.display_name[0].toUpperCase()}
                         </Avatar>
                       </List.ItemStart>
-                      <Typography className="text-white text-sm flex-1">{r.display_name}</Typography>
+                      <Typography className="text-white flex-1" style={{ fontSize: "var(--text-sm)" }}>{r.display_name}</Typography>
                       <List.ItemEnd className="flex gap-1.5">
                         <Button
                           size="sm"
                           variant="outline"
                           color="success"
                           onClick={() => handleRespond(r.id, "accepted")}
-                          className="text-xs font-semibold"
+                          className="font-semibold"
+                          style={{ fontSize: "var(--text-xs)" }}
                         >
                           Accept
                         </Button>
@@ -241,7 +252,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                           variant="ghost"
                           color="error"
                           onClick={() => handleRespond(r.id, "declined")}
-                          className="text-xs"
+                          style={{ fontSize: "var(--text-xs)" }}
                         >
                           Decline
                         </Button>
@@ -255,7 +266,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
             {/* Add friend */}
             <Tabs.Panel value="add" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
               <form onSubmit={handleAddFriend} className="space-y-3">
-                <Typography as="label" htmlFor="friend-code-input" className="block text-xs" style={{ color: "var(--on-surface-variant)" }}>
+                <Typography as="label" htmlFor="friend-code-input" className="block" style={{ color: "var(--on-surface-variant)", fontSize: "var(--text-xs)" }}>
                   Enter their friend code (shown on their profile):
                 </Typography>
                 <Input
@@ -269,16 +280,16 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                   className="dark font-mono tracking-wider"
                 />
                 {addStatus === "error" && (
-                  <Alert color="error" variant="ghost" className="py-1.5 px-2">
+                  <Alert color="error" variant="ghost" className="py-1.5 px-2" style={{ borderRadius: "var(--radius-md)" }}>
                     <Alert.Content>
-                      <Typography role="alert" className="text-xs">{addError}</Typography>
+                      <Typography role="alert" style={{ fontSize: "var(--text-xs)" }}>{addError}</Typography>
                     </Alert.Content>
                   </Alert>
                 )}
                 {addStatus === "success" && (
-                  <Alert color="success" variant="ghost" className="py-1.5 px-2">
+                  <Alert color="success" variant="ghost" className="py-1.5 px-2" style={{ borderRadius: "var(--radius-md)" }}>
                     <Alert.Content>
-                      <Typography className="text-xs">Friend request sent!</Typography>
+                      <Typography style={{ fontSize: "var(--text-xs)" }}>Friend request sent!</Typography>
                     </Alert.Content>
                   </Alert>
                 )}
@@ -288,7 +299,8 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                   variant="gradient"
                   color="primary"
                   isFullWidth
-                  className="font-bold text-sm"
+                  className="font-bold"
+                  style={{ fontSize: "var(--text-sm)", borderRadius: "var(--radius-lg)" }}
                 >
                   {addStatus === "loading" ? (
                     <span className="flex items-center justify-center gap-2">

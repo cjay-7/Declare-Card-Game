@@ -68,9 +68,10 @@ export default function InviteNotification({ onJoin }: InviteNotificationProps) 
         <div className="flex items-start gap-3">
           <Alert.Icon className="mt-0.5">
             <Avatar
+              as="div"
               alt={invite.fromDisplayName}
               size="sm"
-              className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center"
+              className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center rounded-full"
             >
               {invite.fromDisplayName[0]?.toUpperCase() ?? "?"}
             </Avatar>

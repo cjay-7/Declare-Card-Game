@@ -160,14 +160,22 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                       <List.ItemStart className="mr-3">
                         <Badge overlap="circular" color={f.isOnline ? "success" : "secondary"} placement="bottom-end">
                           <Badge.Content>
-                            <Avatar
-                              src={f.avatar_url ?? undefined}
-                              alt={f.display_name}
-                              size="sm"
-                              className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center"
-                            >
-                              {f.display_name[0].toUpperCase()}
-                            </Avatar>
+                            {f.avatar_url ? (
+                              <Avatar
+                                src={f.avatar_url}
+                                alt={f.display_name}
+                                size="sm"
+                              />
+                            ) : (
+                              <Avatar
+                                as="div"
+                                alt={f.display_name}
+                                size="sm"
+                                className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center rounded-full"
+                              >
+                                {f.display_name[0].toUpperCase()}
+                              </Avatar>
+                            )}
                           </Badge.Content>
                           <Badge.Indicator className="w-2.5 h-2.5" />
                         </Badge>
@@ -209,9 +217,10 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                     <List.Item key={r.id} ripple={false} className="py-2 px-1">
                       <List.ItemStart className="mr-3">
                         <Avatar
+                          as="div"
                           alt={r.display_name}
                           size="sm"
-                          className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center"
+                          className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center rounded-full"
                         >
                           {r.display_name[0].toUpperCase()}
                         </Avatar>

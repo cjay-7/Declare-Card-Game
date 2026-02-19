@@ -86,10 +86,10 @@ const Lobby = ({ onJoinRoom, onLogout }: LobbyProps) => {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <Avatar
-                  src={undefined}
+                  as="div"
                   alt={playerName}
                   size="sm"
-                  className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center"
+                  className="bg-amber-500/20 text-amber-400 font-bold text-sm flex items-center justify-center rounded-full"
                 >
                   {playerName[0]?.toUpperCase() ?? "?"}
                 </Avatar>

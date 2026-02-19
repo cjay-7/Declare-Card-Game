@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { Drawer, Tabs, Input, Button, IconButton, Typography, Spinner, Avatar, Badge, Chip, Alert, List } from "@material-tailwind/react";
 
 interface Friend {
   id: string;
@@ -27,7 +28,6 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: FriendsPanelProps) {
   const { token, user } = useAuth();
-  const [tab, setTab] = useState<"friends" | "requests" | "add">("friends");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [addCode, setAddCode] = useState("");
@@ -94,169 +94,206 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
     onInviteSent?.(friend.friend_id, friend.display_name);
   }
 
-  if (!isOpen) return null;
-
-  const tabs = ["friends", "requests", "add"] as const;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Friends panel"
-    >
-      <div
-        className="border border-white/10 rounded-2xl w-full max-w-sm"
-        style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-3)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div>
-            <h2 className="text-white font-bold text-lg">Friends</h2>
-            {user?.friendCode && (
-              <div className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Your code: <span className="text-amber-400 font-mono font-semibold">#{user.friendCode}</span></div>
-            )}
-          </div>
-          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-white transition-colors text-xl leading-none">
-            &times;
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-white/10" role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
-                tab === t
-                  ? "text-amber-400 border-b-2 border-amber-400"
-                  : "hover:text-gray-300"
-              }`}
-              style={{ color: tab === t ? undefined : "var(--on-surface-variant)" }}
+    <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Drawer.Overlay lockScroll className="bg-black/60 backdrop-blur-sm">
+        <Drawer.Panel
+          placement="right"
+          className="border-l border-white/10 w-full max-w-sm h-full"
+          style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-3)" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div>
+              <Typography as="h2" className="text-white font-bold text-lg">Friends</Typography>
+              {user?.friendCode && (
+                <Chip isPill size="sm" variant="ghost" color="primary" className="mt-0.5 inline-flex">
+                  <Chip.Label className="text-xs font-mono">#{user.friendCode}</Chip.Label>
+                </Chip>
+              )}
+            </div>
+            <Drawer.DismissTrigger
+              as={IconButton}
+              variant="ghost"
+              size="sm"
+              aria-label="Close"
+              className="text-gray-400 hover:text-white"
             >
-              {t === "friends" ? "Friends" : t === "requests" ? `Requests${requests.length ? ` (${requests.length})` : ""}` : "Add"}
-            </button>
-          ))}
-        </div>
+              &times;
+            </Drawer.DismissTrigger>
+          </div>
 
-        <div className="p-4 max-h-80 overflow-y-auto" role="tabpanel">
-          {/* Friends list */}
-          {tab === "friends" && (
-            <div className="space-y-2">
-              {friends.length === 0 && (
-                <p className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>No friends yet. Add some!</p>
-              )}
-              {friends.map((f) => (
-                <div key={f.friend_id} className="flex items-center gap-3 py-2">
-                  <div className="relative">
-                    <div
-                      className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-sm text-gray-400"
-                      style={{ backgroundColor: "var(--surface-container-high)" }}
-                    >
-                      {f.display_name[0].toUpperCase()}
-                    </div>
-                    <span
-                      className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${
-                        f.isOnline ? "bg-green-400" : "bg-gray-600"
-                      }`}
-                      style={{ borderColor: "var(--surface-container)" }}
-                    />
-                  </div>
-                  <span className="text-white text-sm flex-1">{f.display_name}</span>
-                  {roomId && (
-                    <button
-                      onClick={() => handleInvite(f)}
-                      className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                        f.isOnline
-                          ? "text-[#1a1a1a]"
-                          : "text-gray-300 opacity-70"
-                      }`}
-                      style={{ background: f.isOnline
-                        ? "linear-gradient(135deg, #f59e0b, #b45309)"
-                        : "linear-gradient(135deg, #4b5563, #374151)"
-                      }}
-                    >
-                      Invite
-                    </button>
+          {/* Tabs */}
+          <Tabs defaultValue="friends">
+            <Tabs.List className="flex border-b border-white/10 bg-transparent">
+              <Tabs.Trigger value="friends" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+                Friends
+              </Tabs.Trigger>
+              <Tabs.Trigger value="requests" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+                <span className="relative">
+                  Requests
+                  {requests.length > 0 && (
+                    <Badge color="error" placement="top-end" className="absolute -top-2 -right-5">
+                      <Badge.Indicator className="text-[10px] min-w-[18px] h-[18px] flex items-center justify-center">
+                        {requests.length}
+                      </Badge.Indicator>
+                    </Badge>
                   )}
-                </div>
-              ))}
-            </div>
-          )}
+                </span>
+              </Tabs.Trigger>
+              <Tabs.Trigger value="add" className="flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider">
+                Add
+              </Tabs.Trigger>
+              <Tabs.TriggerIndicator />
+            </Tabs.List>
 
-          {/* Friend requests */}
-          {tab === "requests" && (
-            <div className="space-y-2">
-              {requests.length === 0 && (
-                <p className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>No pending requests.</p>
+            {/* Friends list */}
+            <Tabs.Panel value="friends" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
+              {friends.length === 0 ? (
+                <Typography className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>
+                  No friends yet. Add some!
+                </Typography>
+              ) : (
+                <List className="p-0">
+                  {friends.map((f) => (
+                    <List.Item key={f.friend_id} ripple={false} className="py-2 px-1">
+                      <List.ItemStart className="mr-3">
+                        <Badge overlap="circular" color={f.isOnline ? "success" : "secondary"} placement="bottom-end">
+                          <Badge.Content>
+                            <Avatar
+                              src={f.avatar_url ?? undefined}
+                              alt={f.display_name}
+                              size="sm"
+                              className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center"
+                            >
+                              {f.display_name[0].toUpperCase()}
+                            </Avatar>
+                          </Badge.Content>
+                          <Badge.Indicator className="w-2.5 h-2.5" />
+                        </Badge>
+                      </List.ItemStart>
+                      <div className="flex-1 min-w-0">
+                        <Typography className="text-white text-sm">{f.display_name}</Typography>
+                        <Chip isPill size="sm" variant="ghost" color={f.isOnline ? "success" : "secondary"} className="mt-0.5 inline-flex">
+                          <Chip.Label className="text-[10px]">{f.isOnline ? "Online" : "Offline"}</Chip.Label>
+                        </Chip>
+                      </div>
+                      {roomId && (
+                        <List.ItemEnd>
+                          <Button
+                            size="sm"
+                            variant={f.isOnline ? "gradient" : "outline"}
+                            color="primary"
+                            onClick={() => handleInvite(f)}
+                            className="text-xs font-semibold"
+                          >
+                            Invite
+                          </Button>
+                        </List.ItemEnd>
+                      )}
+                    </List.Item>
+                  ))}
+                </List>
               )}
-              {requests.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 py-2">
-                  <div
-                    className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-sm text-gray-400"
-                    style={{ backgroundColor: "var(--surface-container-high)" }}
-                  >
-                    {r.display_name[0].toUpperCase()}
-                  </div>
-                  <span className="text-white text-sm flex-1">{r.display_name}</span>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => handleRespond(r.id, "accepted")}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors font-semibold"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleRespond(r.id, "declined")}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            </Tabs.Panel>
 
-          {/* Add friend */}
-          {tab === "add" && (
-            <form onSubmit={handleAddFriend} className="space-y-3">
-              <label htmlFor="friend-code-input" className="block text-xs" style={{ color: "var(--on-surface-variant)" }}>
-                Enter their friend code (shown on their profile):
-              </label>
-              <input
-                id="friend-code-input"
-                type="text"
-                value={addCode}
-                onChange={(e) => { setAddCode(e.target.value.toUpperCase()); setAddStatus(""); setAddError(""); }}
-                placeholder="#A1B2C3"
-                maxLength={7}
-                className="w-full px-3 py-2.5 text-white rounded-xl border border-white/10 focus:outline-none focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 placeholder-gray-600 text-sm font-mono tracking-wider transition-all"
-                style={{ backgroundColor: "var(--surface-container-highest)" }}
-              />
-              {addStatus === "error" && (
-                <p role="alert" className="text-xs" style={{ color: "var(--error)" }}>{addError}</p>
+            {/* Friend requests */}
+            <Tabs.Panel value="requests" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
+              {requests.length === 0 ? (
+                <Typography className="text-sm text-center py-4" style={{ color: "var(--on-surface-variant)" }}>
+                  No pending requests.
+                </Typography>
+              ) : (
+                <List className="p-0">
+                  {requests.map((r) => (
+                    <List.Item key={r.id} ripple={false} className="py-2 px-1">
+                      <List.ItemStart className="mr-3">
+                        <Avatar
+                          alt={r.display_name}
+                          size="sm"
+                          className="bg-gray-700 text-gray-400 text-sm flex items-center justify-center"
+                        >
+                          {r.display_name[0].toUpperCase()}
+                        </Avatar>
+                      </List.ItemStart>
+                      <Typography className="text-white text-sm flex-1">{r.display_name}</Typography>
+                      <List.ItemEnd className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          color="success"
+                          onClick={() => handleRespond(r.id, "accepted")}
+                          className="text-xs font-semibold"
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          color="error"
+                          onClick={() => handleRespond(r.id, "declined")}
+                          className="text-xs"
+                        >
+                          Decline
+                        </Button>
+                      </List.ItemEnd>
+                    </List.Item>
+                  ))}
+                </List>
               )}
-              {addStatus === "success" && (
-                <p className="text-green-400 text-xs">Friend request sent!</p>
-              )}
-              <button
-                type="submit"
-                disabled={addStatus === "loading" || !addCode.trim()}
-                className="w-full py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 hover:brightness-110 active:scale-[0.98]"
-                style={{ color: "var(--on-primary)", background: "linear-gradient(135deg, #f59e0b, #b45309)" }}
-              >
-                {addStatus === "loading" ? "Sending\u2026" : "Send Request"}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+            </Tabs.Panel>
+
+            {/* Add friend */}
+            <Tabs.Panel value="add" className="p-4 max-h-[calc(100vh-180px)] overflow-y-auto">
+              <form onSubmit={handleAddFriend} className="space-y-3">
+                <Typography as="label" htmlFor="friend-code-input" className="block text-xs" style={{ color: "var(--on-surface-variant)" }}>
+                  Enter their friend code (shown on their profile):
+                </Typography>
+                <Input
+                  id="friend-code-input"
+                  type="text"
+                  value={addCode}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setAddCode(e.target.value.toUpperCase()); setAddStatus(""); setAddError(""); }}
+                  placeholder="#A1B2C3"
+                  isError={addStatus === "error"}
+                  color="primary"
+                  className="dark font-mono tracking-wider"
+                />
+                {addStatus === "error" && (
+                  <Alert color="error" variant="ghost" className="py-1.5 px-2">
+                    <Alert.Content>
+                      <Typography role="alert" className="text-xs">{addError}</Typography>
+                    </Alert.Content>
+                  </Alert>
+                )}
+                {addStatus === "success" && (
+                  <Alert color="success" variant="ghost" className="py-1.5 px-2">
+                    <Alert.Content>
+                      <Typography className="text-xs">Friend request sent!</Typography>
+                    </Alert.Content>
+                  </Alert>
+                )}
+                <Button
+                  type="submit"
+                  disabled={addStatus === "loading" || !addCode.trim()}
+                  variant="gradient"
+                  color="primary"
+                  isFullWidth
+                  className="font-bold text-sm"
+                >
+                  {addStatus === "loading" ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Spinner className="w-4 h-4" /> Sending&hellip;
+                    </span>
+                  ) : (
+                    "Send Request"
+                  )}
+                </Button>
+              </form>
+            </Tabs.Panel>
+          </Tabs>
+        </Drawer.Panel>
+      </Drawer.Overlay>
+    </Drawer>
   );
 }

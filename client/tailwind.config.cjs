@@ -1,6 +1,12 @@
+import { mtConfig } from "@material-tailwind/react";
+
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@material-tailwind/react/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       animation: {
@@ -44,5 +50,14 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    mtConfig({
+      darkColors: {
+        primary: { default: "#f59e0b", dark: "#d97706", light: "#fbbf24", foreground: "#1a1a1a" },
+        secondary: { default: "#6b7280", dark: "#4b5563", light: "#9ca3af", foreground: "#ffffff" },
+        success: { default: "#22c55e", dark: "#16a34a", light: "#4ade80", foreground: "#ffffff" },
+        error: { default: "#f87171", dark: "#ef4444", light: "#fca5a5", foreground: "#ffffff" },
+      },
+    }),
+  ],
 };

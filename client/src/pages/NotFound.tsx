@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { Button, Typography, Card, Progress, Alert } from "@material-tailwind/react";
 
 export default function NotFound() {
   const { user } = useAuth();
@@ -25,30 +26,41 @@ export default function NotFound() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[#262626] p-4 text-center">
-      <div className="text-8xl mb-6 opacity-80">
-        <span className="inline-block rotate-12">?</span>
-      </div>
+      <Card className="border border-white/10 w-full max-w-md p-8" style={{ backgroundColor: "var(--surface-container)", boxShadow: "var(--elevation-2)" }}>
+        <Card.Body className="flex flex-col items-center">
+          <div className="text-8xl mb-6 opacity-80">
+            <span className="inline-block rotate-12">?</span>
+          </div>
 
-      <h1 className="text-4xl font-bold text-white mb-2">Lost Card</h1>
-      <p className="text-lg mb-8 max-w-sm" style={{ color: "var(--on-surface-variant)" }}>
-        This page doesn't exist. Looks like someone shuffled it out of the deck.
-      </p>
+          <Typography as="h1" className="text-4xl font-bold text-white mb-2">Lost Card</Typography>
 
-      <button
-        onClick={() => navigate(destination, { replace: true })}
-        className="px-8 py-3 rounded-xl font-bold text-base transition-all hover:brightness-110 active:scale-[0.98]"
-        style={{
-          color: "var(--on-primary)",
-          background: "linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",
-          boxShadow: "0 4px 20px rgba(245, 158, 11, 0.35)",
-        }}
-      >
-        Back to {user ? "Lobby" : "Login"}
-      </button>
+          <Alert color="warning" variant="ghost" className="mb-6 w-full">
+            <Alert.Content>
+              <Typography className="text-sm text-center">
+                This page doesn't exist. Looks like someone shuffled it out of the deck.
+              </Typography>
+            </Alert.Content>
+          </Alert>
 
-      <p aria-live="polite" className="text-sm mt-6" style={{ color: "var(--on-surface-variant)" }}>
-        Redirecting in {countdown}s...
-      </p>
+          <Button
+            onClick={() => navigate(destination, { replace: true })}
+            variant="gradient"
+            color="primary"
+            className="px-8 py-3 font-bold text-base"
+          >
+            Back to {user ? "Lobby" : "Login"}
+          </Button>
+
+          <div className="w-full mt-6 space-y-2">
+            <Progress value={(countdown / 4) * 100} color="primary" size="sm" className="h-1.5">
+              <Progress.Bar />
+            </Progress>
+            <Typography aria-live="polite" className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+              Redirecting in {countdown}s...
+            </Typography>
+          </div>
+        </Card.Body>
+      </Card>
     </main>
   );
 }

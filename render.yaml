@@ -16,7 +16,7 @@ services:
         fromDatabase:
           name: declare-db
           property: connectionString
-      - key: CLIENT_URL
+      - key: CLIENT_ORIGIN
         sync: false
 
 databases:

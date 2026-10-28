@@ -2004,8 +2004,13 @@ app.get("/", (req, res) => {
 // Start the server
 const PORT = process.env.PORT || 4000;
 // Initialize DB schema then start
-await initDb();
-await backfillFriendCodes();
+try {
+  await initDb();
+  await backfillFriendCodes();
+} catch (err) {
+  // Don't crash the whole server (and the guest game) if the DB is unreachable
+  console.error("Database init failed; continuing without persistence:", err);
+}
 
 // Listen on all interfaces (0.0.0.0) to allow network access from phones
 server.listen(PORT, "0.0.0.0", () => {

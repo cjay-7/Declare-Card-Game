@@ -12,7 +12,11 @@ const pool = connectionString
       connectionString,
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 10000,
+      // Render's external connection strings require SSL; internal ones don't
+      ssl: connectionString.includes("render.com")
+        ? { rejectUnauthorized: false }
+        : undefined,
     })
   : null;
 

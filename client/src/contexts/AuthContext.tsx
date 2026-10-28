@@ -33,22 +33,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    fetch(`${API_URL}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.id) setUser(data);
-        else {
-          localStorage.removeItem("token");
-          setToken(null);
+    // The free Render server sleeps and can take ~50s to wake. Don't block the
+    // UI on it: stop showing the loader after a few seconds, keep retrying in
+    // the background, and only drop the token when the server says it's invalid.
+    let cancelled = false;
+    const loaderTimer = setTimeout(() => setLoading(false), 4000);
+
+    const restore = async () => {
+      while (!cancelled) {
+        try {
+          const r = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (cancelled) return;
+          if (r.ok) {
+            const data = await r.json();
+            if (data?.id) setUser(data);
+          } else if (r.status === 401 || r.status === 403 || r.status === 404) {
+            localStorage.removeItem("token");
+            setToken(null);
+          }
+          // Any other status (e.g. 502/503 while waking): treat as done, keep token
+          break;
+        } catch {
+          // Network error / server still waking: retry
+          await new Promise((res) => setTimeout(res, 3000));
         }
-      })
-      .catch(() => {
-        localStorage.removeItem("token");
-        setToken(null);
-      })
-      .finally(() => setLoading(false));
+      }
+      clearTimeout(loaderTimer);
+      if (!cancelled) setLoading(false);
+    };
+    restore();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(loaderTimer);
+    };
   }, []);
 
   const saveSession = (u: AuthUser, t: string) => {

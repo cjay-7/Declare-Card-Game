@@ -59,6 +59,10 @@ npm run dev        # Start server (node index.js)
 - `client/src/utils/DualPlayerMockSocket.ts` - Mock socket for dual-player testing
 - `client/src/TestControlPanel.tsx` - Development testing interface
 
+## Design System
+
+Read `DESIGN.md` (repo root) before making any UI or styling change. It defines the color, typography, spacing, shape, and motion tokens (Google DESIGN.md format) and the Do's and Don'ts. Use the live CSS variables in `client/src/index.css` and the Material Tailwind config rather than raw hex values, and update `DESIGN.md` if you change a token.
+
 ## Game Features
 
 ### Special Card Powers

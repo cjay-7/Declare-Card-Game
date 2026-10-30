@@ -112,7 +112,7 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                 content: (
                   <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--on-surface)" }}>
                     <li><strong>7 & 8:</strong> Peek at one of your cards</li>
-                    <li><strong>9 & 10:</strong> Peek at one of another player's card</li>
+                    <li><strong>9 & 10:</strong> Peek at one of another player's cards</li>
                     <li><strong>Jack:</strong>  Skip the next player's turn</li>
                     <li><strong>Queen:</strong> Swap one of your cards with another player's card without peeking at it</li>
                     <li><strong>King:</strong> Swap one of your cards with another player's card and peek at both cards</li>
@@ -128,7 +128,7 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                     <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--on-surface)" }}>
                       <li>All cards in the player's hand are known</li>
                       <li>The player has the lowest hand value among all players</li>
-                      <li>Ties are broken in the favor of the player who didn't declared</li>
+                      <li>Ties are broken in the favor of the player who didn't declare</li>
                     </ul>
                   </>
                 ),

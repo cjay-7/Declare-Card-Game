@@ -149,6 +149,12 @@ function GameApp() {
             <KingPowerNotification />
 
             <Routes>
+              {/* Home: send to lobby or login */}
+              <Route
+                path="/"
+                element={<Navigate to={user ? "/lobby" : "/login"} replace />}
+              />
+
               {/* Public routes */}
               <Route
                 path="/login"

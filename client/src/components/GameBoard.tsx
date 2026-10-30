@@ -424,8 +424,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           style={
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
               ? {
-                  backgroundColor: "rgba(30, 58, 138, 0.55)",
-                  boxShadow: "0 0 30px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.2), inset 0 -8px 32px -8px rgba(59, 130, 246, 0.25)",
+                  backgroundColor: "rgba(245, 158, 11, 0.10)",
+                  boxShadow: "inset 0 -2px 0 0 var(--primary), inset 0 -24px 32px -24px rgba(245, 158, 11, 0.25)",
                 }
               : { backgroundColor: "var(--surface-container-highest)" }
           }
@@ -580,8 +580,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           style={
             isPlayerTurn
               ? {
-                  backgroundColor: "rgba(127, 29, 29, 0.55)",
-                  boxShadow: "0 0 30px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.2), inset 0 8px 32px -8px rgba(220, 38, 38, 0.25)",
+                  backgroundColor: "rgba(245, 158, 11, 0.10)",
+                  boxShadow: "inset 0 2px 0 0 var(--primary), inset 0 24px 32px -24px rgba(245, 158, 11, 0.25)",
                 }
               : { backgroundColor: "var(--surface-container-highest)" }
           }

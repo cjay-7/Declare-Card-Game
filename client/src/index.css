@@ -222,7 +222,8 @@ textarea {
   padding-bottom: 0.25rem !important;
 }
 
-/* Revealed card image - stretch vertically to fill card, no leak */
+/* Card image (face-up and face-down) fills the shared card box, overriding the cardsJS 70px default */
+.uniform-card img.card,
 .revealed-card-size img.card {
   position: absolute !important;
   inset: 0 !important;

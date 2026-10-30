@@ -115,7 +115,7 @@ const Card: React.FC<CardProps> = ({
       case "swap":
         return "animate-cardSwap";
       case "reveal":
-        return "animate-bounce";
+        return "animate-cardFlip";
       default:
         return "";
     }
@@ -132,7 +132,7 @@ const Card: React.FC<CardProps> = ({
     // Revealed cards are 10% smaller, hidden cards use uniform-card
     const sizeClass = isRevealed ? "revealed-card-size" : "uniform-card";
     const baseStyles =
-      `${sizeClass} rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-2xl hover:-translate-y-1 box-border flex-shrink-0 overflow-hidden`;
+      `${sizeClass} rounded-lg shadow-lg cursor-pointer transform transition-all duration-200 hover:scale-105 hover:shadow-xl hover:-translate-y-0.5 box-border flex-shrink-0 overflow-hidden`;
     // Only add border for revealed cards, hidden cards have no border
     // Nice rounded borders for revealed cards with elegant styling
     const borderStyles = isRevealed
@@ -140,7 +140,7 @@ const Card: React.FC<CardProps> = ({
       : "";
     const backgroundStyles = isRevealed
       ? "bg-white"
-      : "bg-blue-500 pattern-cross-dots-lg";
+      : "bg-transparent";
     const selectionStyles = isSelected
       ? "shadow-lg"
       : "";
@@ -152,8 +152,8 @@ const Card: React.FC<CardProps> = ({
         ? "shadow-lg"
         : "";
     const animationStyles = animationClass;
-    const pulseStyles = isHighlighted ? "animate-pulse" : "";
-    const bounceStyles = tempRevealGlow ? "animate-bounce" : "";
+    const pulseStyles = isHighlighted ? "animate-soft-pulse" : "";
+    const bounceStyles = "";
 
     return [
       baseStyles,
@@ -355,7 +355,7 @@ const Card: React.FC<CardProps> = ({
           className="card w-full h-full object-contain"
         />
         {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
-          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse bg-white bg-opacity-90 rounded px-1">
+          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white bg-opacity-90 rounded px-1">
             → Swipe right to discard
           </div>
         )}
@@ -384,7 +384,7 @@ const Card: React.FC<CardProps> = ({
         className="card w-full h-full object-contain"
       />
       {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
-        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-pulse bg-white bg-opacity-90 rounded px-1">
+        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white bg-opacity-90 rounded px-1">
           → Swipe right to discard
         </div>
       )}

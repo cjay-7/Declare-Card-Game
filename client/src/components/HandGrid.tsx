@@ -167,7 +167,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
       {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
         <div className="absolute inset-0 bg-orange-500 bg-opacity-30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
-          <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-pulse">
+          <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-soft-pulse">
             Select a card to give to{" "}
             {eliminationCardSelection?.eliminatedCardInfo?.cardOwnerName}
           </div>
@@ -194,7 +194,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
       {/* Card swapping overlay - NEW */}
       {/* {drawnCard && isCurrentPlayer && !activePower && (
         <div className="absolute inset-0 bg-success-strong bg-opacity-20 rounded-lg border-2 border-success-fg border-dashed flex items-center justify-center z-15 pointer-events-none">
-          <div className="bg-success-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
+          <div className="bg-success-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-soft-pulse">
             Click any card to replace with {drawnCard.rank}
           </div>
         </div>
@@ -323,8 +323,8 @@ const HandGrid: React.FC<HandGridProps> = memo(({
               onClick={() => handleCardClickWithValidation(index)}
               className={`
                 cursor-pointer transition-all duration-200 flex justify-center items-start
-                ${showPowerGlow ? "animate-pulse" : ""}
-                ${showReplaceGlow ? "animate-pulse" : ""}
+                ${showPowerGlow ? "animate-soft-pulse" : ""}
+                ${showReplaceGlow ? "animate-soft-pulse" : ""}
               `}
             >
               <div
@@ -368,7 +368,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
             {/* Swap selection indicator */}
             {isSelectedForSwap && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-info-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-info-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-soft-pulse">
                 {swapSelections.findIndex(
                   (sel) => sel.playerId === playerId && sel.cardIndex === index
                 ) + 1}
@@ -377,21 +377,21 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
             {/* Replace indicator for drawn card mode */}
             {showReplaceGlow && !isSelectedForSwap && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-success-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-success-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-soft-pulse">
                 ↔
               </div>
             )}
 
             {/* Power indicator for active powers */}
             {showPowerGlow && !isSelectedForSwap && !showReplaceGlow && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-power-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-power-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-soft-pulse">
                 {activePower}
               </div>
             )}
 
             {/* Temporary reveal indicator for power-revealed cards */}
             {isTemporarilyRevealedOpponentCard && (
-              <div className="absolute -top-2 -left-2 w-6 h-6 bg-warning-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-ping">
+              <div className="absolute -top-2 -left-2 w-6 h-6 bg-warning-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-soft-pulse">
                 👁️
               </div>
             )}

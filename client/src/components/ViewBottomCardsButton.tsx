@@ -17,7 +17,7 @@ const ViewBottomCardsButton: React.FC = () => {
                 ${
                   isDisabled
                     ? "bg-surface-container-highest cursor-not-allowed opacity-50"
-                    : "bg-indigo-600 hover:bg-indigo-700 animate-pulse"
+                    : "bg-indigo-600 hover:bg-indigo-700 animate-soft-pulse"
                 }`}
     >
       <svg

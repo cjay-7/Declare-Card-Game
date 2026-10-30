@@ -55,7 +55,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
               {name}
             </span>
             {/* {isHost && (
-              <span className="text-warning text-sm animate-pulse" title="Host">
+              <span className="text-warning text-sm animate-soft-pulse" title="Host">
                 👑
               </span>
             )} */}
@@ -66,7 +66,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
             )} */}
           </div>
           {/* {isCurrentTurn && (
-            <span className="text-xs text-success-fg font-semibold animate-pulse">
+            <span className="text-xs text-success-fg font-semibold animate-soft-pulse">
               ● Active Turn
             </span>
           )} */}
@@ -75,7 +75,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
 
       {/* {isCurrentTurn && (
         <div className="flex items-center bg-success-strong px-3 py-1 rounded-full">
-          <span className="animate-pulse text-white text-sm font-semibold">
+          <span className="animate-soft-pulse text-white text-sm font-semibold">
             ● Turn
           </span>
         </div>

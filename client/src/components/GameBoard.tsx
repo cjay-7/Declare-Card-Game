@@ -398,7 +398,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="text-right">
           <p className="text-sm font-semibold">
             {isPlayerTurn ? (
-              <span className="text-success-fg animate-pulse">🟢 Your Turn</span>
+              <span className="text-success-fg animate-soft-pulse">🟢 Your Turn</span>
             ) : (
               <span className="text-on-surface-variant">
                 ⏳ {gameState?.players[gameState.currentPlayerIndex]?.name || "Unknown"}'s Turn

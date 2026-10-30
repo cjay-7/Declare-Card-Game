@@ -263,7 +263,7 @@ describe("Card Component", () => {
       );
 
       const cardElement = screen.getByRole("button");
-      expect(cardElement).toHaveClass("animate-bounce");
+      expect(cardElement).toHaveClass("animate-cardFlip");
     });
 
     it("should not apply animation class when animate is none", () => {
@@ -279,7 +279,7 @@ describe("Card Component", () => {
       const cardElement = screen.getByRole("button");
       expect(cardElement).not.toHaveClass("animate-cardDraw");
       expect(cardElement).not.toHaveClass("animate-cardDiscard");
-      expect(cardElement).not.toHaveClass("animate-bounce");
+      expect(cardElement).not.toHaveClass("animate-cardFlip");
     });
   });
 

@@ -5,6 +5,8 @@
 
 /* M3-inspired design tokens — dark theme */
 :root {
+  /* card width scales with viewport height so both hands always fit without scrolling */
+  --card-w: clamp(3.25rem, 10vh, 6rem);
   color-scheme: dark; /* native controls (select, scrollbars) render dark */
   /* Color palette */
   --surface: #1a1a1a;
@@ -231,7 +233,6 @@ textarea {
    (rank/suit corners included) is never cropped or stretched. */
 .uniform-card,
 .revealed-card-size {
-  --card-w: 4.5rem;
   width: var(--card-w) !important;
   min-width: var(--card-w) !important;
   max-width: var(--card-w) !important;
@@ -248,16 +249,6 @@ textarea {
   isolation: isolate !important;
   position: relative !important;
   z-index: 1 !important;
-}
-
-@media (min-width: 768px) {
-  .uniform-card,
-  .revealed-card-size { --card-w: 5rem; }
-}
-
-@media (min-width: 1024px) {
-  .uniform-card,
-  .revealed-card-size { --card-w: 5.5rem; }
 }
 
 /* cardsJS styles for SVG card images */

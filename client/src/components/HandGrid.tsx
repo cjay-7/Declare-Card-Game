@@ -154,7 +154,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-xs mx-auto relative items-start w-full">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:gap-x-6 max-w-xs mx-auto relative items-start w-full">
       {/* DEBUG: Show drawn card state */}
       {/* {process.env.NODE_ENV === "development" &&
         drawnCard &&
@@ -206,7 +206,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         return (
           <div
             key={`eliminated-${index}`}
-            className="flex justify-center items-start relative min-w-[5rem] md:min-w-[6rem] lg:min-w-[7rem]"
+            className="flex justify-center items-start relative min-w-[var(--card-w,5rem)]"
           >
             <div
               onClick={() => handleCardClickWithValidation(index)}
@@ -317,7 +317,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
         return (
           <div
             key={card.id}
-            className="flex justify-center items-start relative min-w-[5rem] md:min-w-[6rem] lg:min-w-[7rem]"
+            className="flex justify-center items-start relative min-w-[var(--card-w,5rem)]"
           >
             <div
               onClick={() => handleCardClickWithValidation(index)}

@@ -375,9 +375,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       style={{
         background: "radial-gradient(ellipse at center, var(--table) 0%, var(--table-edge) 100%)",
         display: "grid",
-        gridTemplateRows: "auto 1fr auto",
+        gridTemplateRows: "minmax(0, 1fr)",
         gridTemplateColumns: "1fr",
-        height: "100vh",
+        height: "100dvh",
       }}
     >
       {/* Game End Screen */}
@@ -409,18 +409,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       </div> */}
 
       {/* Main Game Board - Split Screen Layout */}
-      <div className="grid grid-rows-3 gap-2 p-2 md:p-3 overflow-hidden" 
-           style={{ 
-             gridTemplateRows: "2fr auto 2fr",
-             minHeight: "calc(100vh - 80px)"
-           }}>
+      <div className="grid gap-2 p-2 md:p-3 overflow-hidden min-h-0 h-full"
+           style={{ gridTemplateRows: "minmax(0, 1fr) auto minmax(0, 1fr)" }}>
         {/* OPPONENT ZONE (Top) */}
         <div
           className={`transition-all duration-300 ${
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
               ? "border border-primary"
               : "border border-white/10"
-          } rounded-2xl p-3 md:p-4 overflow-y-auto`}
+          } rounded-2xl p-2 md:p-3 overflow-y-auto`}
           style={
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
               ? {
@@ -458,13 +455,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
 
         {/* CENTER ZONE */}
-        <div className="p-3 md:p-4">
+        <div className="px-3 py-1">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-3 gap-4 items-center">
               {/* Deck */}
               <div className="flex flex-col items-center relative">
-                <h3 className="text-sm font-semibold mb-2 text-on-surface w-full text-center">Deck</h3>
-                <div className="relative flex items-center justify-center" style={{ minHeight: "180px", width: "100%" }}>
+                <h3 className="text-sm font-semibold mb-1 text-on-surface w-full text-center">Deck</h3>
+                <div className="relative flex items-center justify-center w-full">
                   <Deck
                     cardsRemaining={deckSize}
                     onDeckClick={
@@ -480,7 +477,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     isPlayerTurn={isPlayerTurn}
                   />
                 </div>
-                <div className="text-center mt-2 text-xs text-on-surface w-full">
+                <div className="text-center mt-1 text-xs text-on-surface w-full">
                   {drawnCard ? (
                     selectedPower ? (
                       <span className="text-power">Power: {selectedPower} (activates when discarded)</span>
@@ -533,10 +530,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
               {/* Discard Pile */}
               <div className="flex flex-col items-center relative">
-                <h3 className="text-sm font-semibold mb-2 text-on-surface w-full text-center">Discard</h3>
+                <h3 className="text-sm font-semibold mb-1 text-on-surface w-full text-center">Discard</h3>
                 <div 
-                  className="relative flex items-center justify-center"
-                  style={{ minHeight: "180px", width: "100%" }}
+                  className="relative flex items-center justify-center w-full"
                   onClick={
                     drawnCard && isPlayerTurn
                       ? handleDiscardDrawnCard
@@ -553,7 +549,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     }
                   />
                 </div>
-                <div className="text-center mt-2 text-xs text-on-surface w-full">
+                <div className="text-center mt-1 text-xs text-on-surface w-full">
                   {/* {drawnCard && isPlayerTurn ? (
                     <span className="text-success-fg font-semibold">
                       Click to discard
@@ -585,7 +581,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             isPlayerTurn
               ? "border border-primary"
               : "border border-white/10"
-          } rounded-2xl p-3 md:p-4 overflow-y-auto`}
+          } rounded-2xl p-2 md:p-3 overflow-y-auto`}
           style={
             isPlayerTurn
               ? {

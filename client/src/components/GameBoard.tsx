@@ -373,7 +373,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     <div
       className="min-h-screen text-white"
       style={{
-        backgroundColor: "var(--page-background)",
+        background: "radial-gradient(ellipse at center, var(--table) 0%, var(--table-edge) 100%)",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
         gridTemplateColumns: "1fr",
@@ -409,7 +409,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       </div> */}
 
       {/* Main Game Board - Split Screen Layout */}
-      <div className="grid grid-rows-3 gap-0 overflow-hidden" 
+      <div className="grid grid-rows-3 gap-2 p-2 md:p-3 overflow-hidden" 
            style={{ 
              gridTemplateRows: "2fr auto 2fr",
              minHeight: "calc(100vh - 80px)"
@@ -418,16 +418,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           className={`transition-all duration-300 ${
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
-              ? "border-0"
-              : "border-b-2 border-outline"
-          } p-3 md:p-4 overflow-y-auto`}
+              ? "border border-primary"
+              : "border border-white/10"
+          } rounded-2xl p-3 md:p-4 overflow-y-auto`}
           style={
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
               ? {
                   backgroundColor: "rgba(245, 158, 11, 0.10)",
                   boxShadow: "inset 0 -2px 0 0 var(--primary), inset 0 -24px 32px -24px rgba(245, 158, 11, 0.25)",
                 }
-              : { backgroundColor: "var(--surface-container-highest)" }
+              : { backgroundColor: "rgba(0, 0, 0, 0.28)" }
           }
         >
           <div className="max-w-4xl mx-auto">
@@ -456,7 +456,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
 
         {/* CENTER ZONE */}
-        <div className="border-y border-outline p-3 md:p-4" style={{ backgroundColor: "var(--page-background)" }}>
+        <div className="p-3 md:p-4">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-3 gap-4 items-center">
               {/* Deck */}
@@ -574,16 +574,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           className={`transition-all duration-300 ${
             isPlayerTurn
-              ? "border-0"
-              : "border-t-2 border-outline"
-          } p-3 md:p-4 overflow-y-auto`}
+              ? "border border-primary"
+              : "border border-white/10"
+          } rounded-2xl p-3 md:p-4 overflow-y-auto`}
           style={
             isPlayerTurn
               ? {
                   backgroundColor: "rgba(245, 158, 11, 0.10)",
                   boxShadow: "inset 0 2px 0 0 var(--primary), inset 0 24px 32px -24px rgba(245, 158, 11, 0.25)",
                 }
-              : { backgroundColor: "var(--surface-container-highest)" }
+              : { backgroundColor: "rgba(0, 0, 0, 0.28)" }
           }
         >
           <div className="max-w-4xl mx-auto h-full flex flex-col">

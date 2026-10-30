@@ -237,7 +237,8 @@ function GameApp() {
               </Tooltip.Content>
             </Tooltip>
 
-            {/* Test panel toggle button */}
+            {/* Test panel toggle button (dev builds only) */}
+            {import.meta.env.DEV && (
             <Button
               variant="ghost"
               size="sm"
@@ -247,6 +248,7 @@ function GameApp() {
             >
               {showTestPanel ? "Hide Test Panel" : "Show Test Panel (Alt+T)"}
             </Button>
+            )}
 
             {/* Mode info */}
             <Card

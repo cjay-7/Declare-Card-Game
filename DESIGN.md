@@ -8,6 +8,8 @@ colors:
   surface-container-high: "#2d2d2d"
   surface-container-highest: "#383838"
   page-background: "#262626"
+  table: "#14271f"
+  table-edge: "#0b1511"
   on-surface: "#e6e1e5"
   on-surface-variant: "#9a959e"
   primary: "#f59e0b"
@@ -144,6 +146,7 @@ The non-game screens (login, register, lobby, friends) follow Material 3 convent
 The palette is a dark neutral ramp plus amber, with semantic status colors.
 
 - **Surfaces** (`surface` → `surface-container-highest`): four elevation steps from `#1a1a1a` to `#383838`. Page background is `page-background`. Higher elevation means lighter.
+- **Table**: the game board sits on a dark felt gradient (`table` to `table-edge`). Zones (opponent, center, you) are rounded translucent-black panels over it. The active player's zone gets a 1px `primary` border and a faint amber tint, and their name plate turns solid amber with `on-primary` text.
 - **On-surface** text is `on-surface` (`#e6e1e5`) for primary text and `on-surface-variant` (`#9a959e`) for secondary/helper text.
 - **Primary** `#f59e0b` is the only brand color. `primary-hover` is the pressed/hover shade; `primary-container` is a dark amber tint for subtle selected backgrounds. Text on primary is always `on-primary` (near-black), never white.
 - **Secondary** gray is for low-emphasis actions.

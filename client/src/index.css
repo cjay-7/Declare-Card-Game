@@ -21,6 +21,8 @@
   /* Semantic status + game tokens (used via Tailwind: bg-success-strong etc.) */
   --outline: #4b5563;
   --page-background: #262626;
+  --table: #14271f;       /* card-table felt */
+  --table-edge: #0b1511;
   --secondary: #6b7280;
   --success-strong: #16a34a;
   --success-strong-hover: #15803d;

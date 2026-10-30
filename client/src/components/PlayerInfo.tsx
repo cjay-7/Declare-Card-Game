@@ -35,9 +35,15 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
   const playerColor = getPlayerColor(name);
   
   return (
-    <div className={`flex items-center justify-between p-2 rounded-lg ${
-      isCurrentTurn ? "bg-surface-container/50" : "bg-transparent"
-    }`}>
+    <div className="flex items-center">
+      <div
+        className={`inline-flex items-center gap-2 rounded-full px-4 py-1 ${
+          isCurrentTurn
+            ? "bg-primary text-on-primary"
+            : "bg-surface-container-high text-on-surface"
+        }`}
+        style={{ boxShadow: "var(--elevation-1)", transition: "background-color var(--transition-base)" }}
+      >
       <div className="flex items-center gap-3">
         {/* Enhanced Avatar */}
         {/* <div className={`${playerColor} w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base shadow-lg ${
@@ -49,11 +55,12 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
           <div className="flex items-center gap-2">
             <span
               className={`font-bold text-base md:text-lg ${
-                isCurrentPlayer ? "text-info" : "text-white"
+                isCurrentTurn ? "text-on-primary" : "text-on-surface"
               }`}
             >
               {name}
             </span>
+            {isCurrentPlayer && <span className="text-xs opacity-70">you</span>}
             {/* {isHost && (
               <span className="text-warning text-sm animate-soft-pulse" title="Host">
                 👑
@@ -80,6 +87,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
           </span>
         </div>
       )} */}
+      </div>
     </div>
   );
 };

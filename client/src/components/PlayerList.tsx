@@ -22,7 +22,7 @@ const PlayersList: React.FC<Props> = ({ players }) => {
           >
             <span>{player.name}</span>
             {player.isHost && (
-              <span className="text-sm text-yellow-600 font-medium ml-2">
+              <span className="text-sm text-warning-strong font-medium ml-2">
                 👑 Host
               </span>
             )}

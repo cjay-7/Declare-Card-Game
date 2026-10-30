@@ -49,10 +49,10 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   }, [notification, onDismiss]);
 
   const bgColor = {
-    info: "bg-blue-500",
-    success: "bg-green-500",
-    warning: "bg-yellow-500",
-    error: "bg-red-500",
+    info: "bg-info-strong",
+    success: "bg-success-strong",
+    warning: "bg-warning-strong",
+    error: "bg-error-strong",
   }[notification.type];
 
   const icon = {
@@ -130,7 +130,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
       <div className="flex-grow">{notification.message}</div>
       <button
         onClick={onDismiss}
-        className="ml-3 text-white hover:text-gray-200"
+        className="ml-3 text-white hover:text-on-surface"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

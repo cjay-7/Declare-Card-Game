@@ -20,6 +20,17 @@ colors:
   success: "#34d399"
   warning: "#fbbf24"
   error: "#f87171"
+  outline: "#4b5563"
+  success-strong: "#16a34a"
+  success-container: "#14532d"
+  error-strong: "#dc2626"
+  error-container: "#7f1d1d"
+  warning-strong: "#ca8a04"
+  info: "#60a5fa"
+  info-strong: "#2563eb"
+  info-container: "#1e3a8a"
+  power: "#c084fc"
+  power-strong: "#9333ea"
   card-red: "#dc2626"
   card-black: "#000000"
   card-face: "#ffffff"
@@ -139,6 +150,9 @@ The palette is a dark neutral ramp plus amber, with semantic status colors.
 - **Status**: `success` (confirmed, correct elimination), `warning` (attention, timers), `error` (wrong elimination, validation, disconnects).
 - **Card colors**: hearts/diamonds use `card-red`, clubs/spades use `card-black`, on a `card-face` white card. `card-selected` (amber) outlines a selected card; `card-highlighted` (violet) outlines cards eligible for a power (peek, swap).
 
+- **Semantic game tokens**: `outline` (borders), `success-strong`/`error-strong`/`info-strong`/`power-strong` (filled buttons and badges, white text), `*-container` (dark tinted backgrounds), and `info`/`power` (text and borders). They are CSS variables in `client/src/index.css` and Tailwind classes such as `bg-success-strong`, `text-on-surface-variant`, `border-outline`. `success` and `error` as text/border colors are `text-success-fg` and `border-error-fg` because Material Tailwind already owns `success`/`error`.
+- Per-player accent colors (indigo, teal, pink, orange) and the blue card back are data colors, not theme tokens.
+
 Rules: body text on any surface must keep at least 4.5:1 contrast. Do not put `on-surface-variant` on `surface-container-highest` for body-size text. Never use red and green as the only distinction between two states.
 
 ## Typography
@@ -196,7 +210,8 @@ Short and purposeful, and disabled under `prefers-reduced-motion`.
 ## Do's and Don'ts
 
 Do:
-- Use design tokens (CSS variables / Tailwind theme) instead of raw hex values.
+- Use design tokens (CSS variables / Tailwind theme) instead of raw hex values or raw Tailwind palette classes like `bg-gray-800`.
+- Keep Tailwind v4 set up with `@import "tailwindcss"` and `@config` in `index.css`; the old `@tailwind base/utilities` directives generate almost no utilities in v4.
 - Keep amber for the single most important action or selection.
 - Give every power-related highlight a text or icon cue as well as color.
 - Test layouts at 360px width and with long display names.

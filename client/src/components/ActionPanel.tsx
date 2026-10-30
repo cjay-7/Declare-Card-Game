@@ -38,7 +38,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           title: `${power} Power Available`,
           description: "Peek at one of your own cards to secretly view it.",
           icon: "👁️",
-          color: "bg-blue-600",
+          color: "bg-info-strong",
         };
       case "9":
       case "10":
@@ -46,21 +46,21 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           title: `${power} Power Available`,
           description: "Peek at one of your opponent's cards to secretly view it.",
           icon: "🔍",
-          color: "bg-green-600",
+          color: "bg-success-strong",
         };
       case "Q":
         return {
           title: "Queen Power Available",
           description: "Swap any two cards without seeing them first (unseen swap).",
           icon: "♠️",
-          color: "bg-purple-600",
+          color: "bg-power-strong",
         };
       case "K":
         return {
           title: "King Power Available",
           description: "Swap any two cards (both cards will be revealed to all players first).",
           icon: "👑",
-          color: "bg-yellow-600",
+          color: "bg-warning-strong",
           warning: true,
         };
       default:
@@ -76,7 +76,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           title: `${power} Power: Peek at Your Own Card`,
           description: "Click on one of your own cards to secretly view it.",
           icon: "👁️",
-          color: "bg-blue-600",
+          color: "bg-info-strong",
         };
       case "9":
       case "10":
@@ -85,21 +85,21 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           description:
             "Click on one of your opponent's cards to secretly view it.",
           icon: "🔍",
-          color: "bg-green-600",
+          color: "bg-success-strong",
         };
       case "Q":
         return {
           title: "Queen Power: Unseen Swap",
           description: `Select 2 cards to swap without seeing them first. (${swapSelections.length}/2 selected)`,
           icon: "🔄",
-          color: "bg-purple-600",
+          color: "bg-power-strong",
         };
       case "K":
         return {
           title: "King Power: Seen Swap",
           description: `Select 2 cards to swap. Both cards will be revealed to all players before swapping! (${swapSelections.length}/2 selected)`,
           icon: "👑",
-          color: "bg-yellow-600",
+          color: "bg-warning-strong",
           warning: true,
         };
       default:
@@ -129,8 +129,8 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="text-sm text-white mb-3">{powerInfo.description}</div>
 
           {powerInfo.warning && (
-            <div className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-2 mb-3">
-              <div className="flex items-center justify-center text-red-200 text-xs">
+            <div className="bg-error-strong bg-opacity-20 border border-error-fg rounded-lg p-2 mb-3">
+              <div className="flex items-center justify-center text-error-fg text-xs">
                 <span className="mr-1">⚠️</span>
                 <strong>Warning:</strong> Both cards will be visible to ALL
                 players!
@@ -168,7 +168,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       {renderPowerChoiceSection()}
 
       {/* Turn-Based Actions Section - Gaming Style */}
-      <div className="rounded-xl border-2 border-gray-700 shadow-xl p-3" style={{ backgroundColor: "#262626" }}>
+      <div className="rounded-xl border-2 border-outline shadow-xl p-3" style={{ backgroundColor: "var(--page-background)" }}>
         {isPlayerTurn ? (
           <div className="space-y-3">
             {drawnCard ? (
@@ -176,7 +176,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                 <div className="text-sm font-semibold text-white">
                   Card Drawn! Choose action:
                 </div>
-                <div className="text-xs text-gray-300">
+                <div className="text-xs text-on-surface">
                   Swipe right to discard • Click hand card to swap
                 </div>
               </div>
@@ -194,9 +194,9 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                     🎯 DECLARE HAND
                   </button>
                 ) : (
-                  <div className="w-full px-6 py-4 bg-gray-800 rounded-lg text-white text-sm font-medium opacity-50 cursor-not-allowed text-center">
+                  <div className="w-full px-6 py-4 bg-surface-container rounded-lg text-white text-sm font-medium opacity-50 cursor-not-allowed text-center">
                     🎯 Declare Hand
-                    <div className="text-xs mt-1 text-gray-400">
+                    <div className="text-xs mt-1 text-on-surface-variant">
                       (Need at least 1 card)
                     </div>
                   </div>
@@ -206,8 +206,8 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           </div>
         ) : (
           <div className="text-center py-2">
-            <div className="text-sm text-gray-400 font-semibold">Waiting for your turn...</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-sm text-on-surface-variant font-semibold">Waiting for your turn...</div>
+            <div className="text-xs text-on-surface-variant mt-1">
               {gameState?.players[gameState.currentPlayerIndex]?.name || "Unknown"}'s turn
             </div>
           </div>
@@ -216,40 +216,40 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
       {/* Elimination Actions Section */}
       {/* {!(activePower && usingPower) && (
-        <div className="rounded-xl border-2 border-red-500 shadow-xl p-3" style={{ backgroundColor: "#262626" }}>
+        <div className="rounded-xl border-2 border-error-fg shadow-xl p-3" style={{ backgroundColor: "var(--page-background)" }}>
           <div className="flex items-center justify-center mb-2">
-            <span className="text-red-400 mr-2 text-lg">⚡</span>
+            <span className="text-error-fg mr-2 text-lg">⚡</span>
             <h3 className="font-bold text-white text-sm">Elimination</h3>
           </div>
           <div className="space-y-2">
             {canEliminate ? (
               <div className="text-center">
                 {hasAlreadyEliminated ? (
-                  <div className="text-yellow-400 text-xs">⏳ Elimination used this round</div>
+                  <div className="text-warning text-xs">⏳ Elimination used this round</div>
                 ) : (
-                  <div className="text-xs text-gray-300">Click ❌ on matching cards</div>
+                  <div className="text-xs text-on-surface">Click ❌ on matching cards</div>
                 )}
               </div>
             ) : (
-              <div className="text-center text-gray-400 text-xs">Available after first discard</div>
+              <div className="text-center text-on-surface-variant text-xs">Available after first discard</div>
             )}
           </div>
         </div>
       )} */}
 
       {/* Game Status - Compact */}
-      <div className="rounded-lg p-2 border border-gray-700" style={{ backgroundColor: "#262626" }}>
+      <div className="rounded-lg p-2 border border-outline" style={{ backgroundColor: "var(--page-background)" }}>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="text-center">
-            <div className="text-gray-400">Deck</div>
+            <div className="text-on-surface-variant">Deck</div>
             <div className="text-white font-bold">{gameState?.deck.length || 0}</div>
           </div>
           <div className="text-center">
-            <div className="text-gray-400">Discard</div>
+            <div className="text-on-surface-variant">Discard</div>
             <div className="text-white font-bold">{gameState?.discardPile.length || 0}</div>
           </div>
           <div className="text-center">
-            <div className="text-gray-400">Round</div>
+            <div className="text-on-surface-variant">Round</div>
             <div className="text-white font-bold">{gameState?.roundNumber || 1}</div>
           </div>
         </div>

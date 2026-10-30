@@ -98,7 +98,7 @@ export class ErrorBoundary extends Component<
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
                 <svg
-                  className="h-8 w-8 text-red-400"
+                  className="h-8 w-8 text-error-fg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -117,14 +117,14 @@ export class ErrorBoundary extends Component<
                 </h3>
               </div>
             </div>
-            <div className="text-sm text-gray-500 mb-4">
+            <div className="text-sm text-on-surface-variant mb-4">
               The game encountered an unexpected error. Please refresh the page
               to continue.
             </div>
             <div className="flex space-x-3">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                className="bg-info-strong hover:bg-info-strong-hover text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
               >
                 Refresh Page
               </button>
@@ -136,7 +136,7 @@ export class ErrorBoundary extends Component<
                     errorInfo: undefined,
                   })
                 }
-                className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                className="bg-surface-container-highest hover:bg-surface-container-high text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
               >
                 Try Again
               </button>

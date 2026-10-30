@@ -159,7 +159,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
       {/* {process.env.NODE_ENV === "development" &&
         drawnCard &&
         isCurrentPlayer && (
-          <div className="absolute -top-8 left-0 right-0 bg-green-600 text-white text-xs px-2 py-1 rounded text-center z-30">
+          <div className="absolute -top-8 left-0 right-0 bg-success-strong text-white text-xs px-2 py-1 rounded text-center z-30">
             Drawn: {drawnCard.rank} - Click any card to replace!
           </div>
         )} */}
@@ -176,8 +176,8 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
       {/* Power interaction overlay */}
       {canUsePowerOnThisHand && paddedCards.some((card) => card !== null) && (
-        <div className="absolute inset-0 bg-purple-500 bg-opacity-20 rounded-lg border-2 border-purple-400 border-dashed flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-purple-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
+        <div className="absolute inset-0 bg-power-strong bg-opacity-20 rounded-lg border-2 border-power border-dashed flex items-center justify-center z-10 pointer-events-none">
+          <div className="bg-power-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
             {["7", "8"].includes(activePower)
               ? "Peek at your card"
               : ["9", "10"].includes(activePower)
@@ -193,8 +193,8 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
       {/* Card swapping overlay - NEW */}
       {/* {drawnCard && isCurrentPlayer && !activePower && (
-        <div className="absolute inset-0 bg-green-500 bg-opacity-20 rounded-lg border-2 border-green-400 border-dashed flex items-center justify-center z-15 pointer-events-none">
-          <div className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
+        <div className="absolute inset-0 bg-success-strong bg-opacity-20 rounded-lg border-2 border-success-fg border-dashed flex items-center justify-center z-15 pointer-events-none">
+          <div className="bg-success-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-pulse">
             Click any card to replace with {drawnCard.rank}
           </div>
         </div>
@@ -212,8 +212,8 @@ const HandGrid: React.FC<HandGridProps> = memo(({
               onClick={() => handleCardClickWithValidation(index)}
               className="cursor-not-allowed"
             >
-              <div className="uniform-card bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center relative box-border flex-shrink-0">
-                <span className="text-gray-500 text-xs">Eliminated</span>
+              <div className="uniform-card bg-surface-container border-2 border-dashed border-outline rounded-lg flex items-center justify-center relative box-border flex-shrink-0">
+                <span className="text-on-surface-variant text-xs">Eliminated</span>
               </div>
             </div>
           </div>
@@ -368,7 +368,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
             {/* Swap selection indicator */}
             {isSelectedForSwap && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-info-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {swapSelections.findIndex(
                   (sel) => sel.playerId === playerId && sel.cardIndex === index
                 ) + 1}
@@ -377,21 +377,21 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
             {/* Replace indicator for drawn card mode */}
             {showReplaceGlow && !isSelectedForSwap && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-success-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 ↔
               </div>
             )}
 
             {/* Power indicator for active powers */}
             {showPowerGlow && !isSelectedForSwap && !showReplaceGlow && (
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-power-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 {activePower}
               </div>
             )}
 
             {/* Temporary reveal indicator for power-revealed cards */}
             {isTemporarilyRevealedOpponentCard && (
-              <div className="absolute -top-2 -left-2 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-ping">
+              <div className="absolute -top-2 -left-2 w-6 h-6 bg-warning-strong rounded-full flex items-center justify-center text-white text-xs font-bold animate-ping">
                 👁️
               </div>
             )}
@@ -403,7 +403,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
                   e.stopPropagation();
                   handleEliminateCard(card.id);
                 }}
-                className="absolute -top-2 -right-2 w-11 h-11 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+                className="absolute -top-2 -right-2 w-11 h-11 bg-error-strong hover:bg-error-strong-hover rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
                 title="Eliminate this card (risk penalty if wrong!)"
                 style={{ minWidth: "44px", minHeight: "44px" }}
               >

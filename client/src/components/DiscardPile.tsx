@@ -37,20 +37,20 @@ const DiscardPile: React.FC<DiscardPileProps> = ({
       <div
         className={`
           uniform-card
-          bg-gray-700 border-2 border-gray-600
+          bg-surface-container-high border-2 border-outline
           rounded-lg shadow-lg
           flex items-center justify-center
           transition-all duration-200
           box-border
           flex-shrink-0
           ${isClickable
-            ? "cursor-pointer hover:scale-105 hover:border-green-400 hover:bg-gray-600"
+            ? "cursor-pointer hover:scale-105 hover:border-success-fg hover:bg-surface-container-highest"
             : "cursor-default"
           }
         `}
         onClick={onDiscardClick}
       >
-        <span className="text-gray-400 text-sm font-semibold">Empty</span>
+        <span className="text-on-surface-variant text-sm font-semibold">Empty</span>
       </div>
     );
   }

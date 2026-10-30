@@ -178,7 +178,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                                 as="div"
                                 alt={f.display_name}
                                 size="sm"
-                                className="bg-gray-700 text-gray-400 flex items-center justify-center rounded-full"
+                                className="bg-surface-container-high text-on-surface-variant flex items-center justify-center rounded-full"
                                 style={{ fontSize: "var(--text-sm)" }}
                               >
                                 {f.display_name[0].toUpperCase()}
@@ -229,7 +229,7 @@ export default function FriendsPanel({ isOpen, onClose, roomId, onInviteSent }: 
                           as="div"
                           alt={r.display_name}
                           size="sm"
-                          className="bg-gray-700 text-gray-400 flex items-center justify-center rounded-full"
+                          className="bg-surface-container-high text-on-surface-variant flex items-center justify-center rounded-full"
                           style={{ fontSize: "var(--text-sm)" }}
                         >
                           {r.display_name[0].toUpperCase()}

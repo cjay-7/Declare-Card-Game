@@ -109,7 +109,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
           <h2 className="text-xl font-bold text-white">Declare Your Hand</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-on-surface-variant hover:text-white"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -131,7 +131,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
         <div className="text-white space-y-4">
           {/* Show eliminated cards info */}
           {eliminatedCount > 0 && (
-            <div className="p-3 bg-red-900 bg-opacity-50 border border-red-700 rounded text-red-200">
+            <div className="p-3 bg-error-container bg-opacity-50 border border-error-fg rounded text-error-fg">
               <div className="text-sm font-medium mb-1">
                 🗑️ Eliminated Cards: {eliminatedCount}
               </div>
@@ -139,7 +139,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
             </div>
           )}
 
-          <p className="text-sm text-gray-300">
+          <p className="text-sm text-on-surface">
             Declare the rank of each remaining card in your hand:
           </p>
 
@@ -152,13 +152,13 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
                   key={index}
                   className="space-y-1"
                 >
-                  <label className="block text-sm font-medium text-gray-300">
+                  <label className="block text-sm font-medium text-on-surface">
                     Card:
                   </label>
                   <select
                     value={declaredRanks[index]}
                     onChange={(e) => handleRankChange(index, e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-surface-container-high text-white rounded focus:outline-none focus:ring-2 focus:ring-info-strong"
                   >
                     <option value="">Select rank...</option>
                     {ranks.map((rank) => (
@@ -175,19 +175,19 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
           </div>
 
           {error && (
-            <div className="p-3 bg-red-900 border border-red-700 rounded text-red-200 text-sm">
+            <div className="p-3 bg-error-container border border-error-fg rounded text-error-fg text-sm">
               {error}
             </div>
           )}
 
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-on-surface-variant">
             <p>
               <strong>Win Conditions:</strong>
             </p>
             <p>
               • <strong>Low score:</strong> Have the lowest total among all players
             </p>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-on-surface-variant">
               • Your total = sum of remaining cards + 0 for eliminated cards
             </p>
           </div>
@@ -195,13 +195,13 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
           <div className="flex gap-3 mt-6">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              className="flex-1 px-4 py-2 bg-surface-container-highest text-white rounded hover:bg-surface-container-high"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              className="flex-1 px-4 py-2 bg-success-strong text-white rounded hover:bg-success-strong-hover"
             >
               Declare ({actualCardCount} cards)
             </button>

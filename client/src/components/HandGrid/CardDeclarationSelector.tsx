@@ -32,9 +32,9 @@ export const CardDeclarationSelector: React.FC<CardDeclarationSelectorProps> = (
 }) => {
   if (isEliminated) {
     return (
-      <div className="w-20 h-28 bg-gray-800 border-2 border-dashed border-gray-600 rounded flex flex-col items-center justify-center">
-        <span className="text-gray-500 text-xs mb-1">Eliminated</span>
-        <span className="text-green-400 text-xs font-bold">0 pts</span>
+      <div className="w-20 h-28 bg-surface-container border-2 border-dashed border-outline rounded flex flex-col items-center justify-center">
+        <span className="text-on-surface-variant text-xs mb-1">Eliminated</span>
+        <span className="text-success-fg text-xs font-bold">0 pts</span>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export const CardDeclarationSelector: React.FC<CardDeclarationSelectorProps> = (
   const selectedOption = cardOptions.find(opt => opt.value === selectedRank);
 
   return (
-    <div className="w-20 h-28 bg-gray-700 border-2 border-blue-400 rounded relative">
+    <div className="w-20 h-28 bg-surface-container-high border-2 border-info rounded relative">
       {/* 14 button grid - 7 rows x 2 columns */}
       <div className="grid grid-cols-2 gap-0 h-full p-1">
         {cardOptions.map((option, index) => (
@@ -52,8 +52,8 @@ export const CardDeclarationSelector: React.FC<CardDeclarationSelectorProps> = (
             className={`
               text-xs font-bold rounded transition-all duration-150
               ${selectedRank === option.value 
-                ? 'bg-green-500 text-white shadow-lg scale-105' 
-                : 'bg-gray-600 text-gray-200 hover:bg-gray-500 hover:text-white'
+                ? 'bg-success-strong text-white shadow-lg scale-105' 
+                : 'bg-surface-container-highest text-on-surface hover:bg-surface-container-highest hover:text-white'
               }
               ${index % 2 === 0 ? 'mr-0.5' : 'ml-0.5'}
             `}
@@ -64,7 +64,7 @@ export const CardDeclarationSelector: React.FC<CardDeclarationSelectorProps> = (
             }}
           >
             <div>{option.label}</div>
-            <div className="text-yellow-300" style={{ fontSize: '6px' }}>
+            <div className="text-warning" style={{ fontSize: '6px' }}>
               {option.points}pt
             </div>
           </button>
@@ -73,7 +73,7 @@ export const CardDeclarationSelector: React.FC<CardDeclarationSelectorProps> = (
 
       {/* Selected card display at bottom */}
       {selectedOption && (
-        <div className="absolute -bottom-6 left-0 right-0 bg-blue-600 text-white text-center py-1 rounded text-xs font-bold">
+        <div className="absolute -bottom-6 left-0 right-0 bg-info-strong text-white text-center py-1 rounded text-xs font-bold">
           {selectedOption.label} ({selectedOption.points} pts)
         </div>
       )}

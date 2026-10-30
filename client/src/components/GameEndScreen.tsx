@@ -178,12 +178,12 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
           
           /* Text color overrides */
           .game-end-card-container .text-gray-800,
-          .game-end-card-container .text-gray-400 {
+          .game-end-card-container .text-on-surface-variant {
             color: white !important;
           }
           
-          .game-end-card-container .text-red-500 {
-            color: #ef4444 !important;
+          .game-end-card-container .text-error-fg {
+            color: var(--error) !important;
           }
           
           /* Ensure all text is visible */
@@ -199,12 +199,12 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
           }
           
           /* Red suits stay red, black suits become white */
-          .game-end-card-container .text-red-500 {
-            color: #f87171 !important;
+          .game-end-card-container .text-error-fg {
+            color: var(--error) !important;
           }
           
           .game-end-card-container .text-gray-800 {
-            color: #f3f4f6 !important;
+            color: var(--on-surface) !important;
           }
           
           /* Card container specific styles */
@@ -249,7 +249,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
       >
         <div
           style={{
-            backgroundColor: "#1f2937",
+            backgroundColor: "var(--surface-container)",
             borderRadius: "12px",
             padding: "32px",
             maxWidth: "1200px",
@@ -279,7 +279,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             <div style={{ marginBottom: "24px" }}>
               <div
                 style={{
-                  backgroundColor: declareInfo.isValid ? "#166534" : "#991b1b",
+                  backgroundColor: declareInfo.isValid ? "var(--success-container)" : "var(--error-container)",
                   borderRadius: "8px",
                   padding: "16px",
                   textAlign: "center",
@@ -299,7 +299,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                   <strong>{declarer.name}</strong> declared and{" "}
                   <strong
                     style={{
-                      color: declareInfo.isValid ? "#86efac" : "#fca5a5",
+                      color: declareInfo.isValid ? "var(--success)" : "var(--error)",
                     }}
                   >
                     {declareInfo.isValid ? "WON! 🎉" : "LOST! 💔"}
@@ -308,7 +308,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                 {declarer.penalty > 0 && (
                   <p
                     style={{
-                      color: "#fca5a5",
+                      color: "var(--error)",
                       fontSize: "0.875rem",
                       margin: "4px 0 0 0",
                     }}
@@ -337,7 +337,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                 <div
                   key={winner.id}
                   style={{
-                    backgroundColor: "#ca8a04",
+                    backgroundColor: "var(--warning-strong)",
                     borderRadius: "8px",
                     padding: "12px",
                     display: "flex",
@@ -351,7 +351,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                     style={{
                       width: "32px",
                       height: "32px",
-                      backgroundColor: "#92400e",
+                      backgroundColor: "var(--primary-container)",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
@@ -375,7 +375,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                     </p>
                     <p
                       style={{
-                        color: "#fef3c7",
+                        color: "var(--on-surface)",
                         fontSize: "0.875rem",
                         margin: 0,
                       }}
@@ -418,13 +418,13 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  backgroundColor: "#374151",
+                  backgroundColor: "var(--surface-container-high)",
                   borderRadius: "8px",
                   overflow: "hidden",
                 }}
               >
                 <thead>
-                  <tr style={{ backgroundColor: "#4b5563" }}>
+                  <tr style={{ backgroundColor: "var(--outline)" }}>
                     <th
                       style={{
                         padding: "12px",
@@ -518,7 +518,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                             : player.isWinner
                             ? "rgba(34, 197, 94, 0.2)"
                             : "transparent",
-                        borderBottom: "1px solid #4b5563",
+                        borderBottom: "1px solid var(--outline)",
                       }}
                     >
                       {/* Rank */}
@@ -534,7 +534,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                             style={{
                               fontSize: "1.25rem",
                               fontWeight: "bold",
-                              color: player.rank === 1 ? "#fbbf24" : "white",
+                              color: player.rank === 1 ? "var(--warning)" : "white",
                             }}
                           >
                             {player.rank === 1
@@ -564,7 +564,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                             style={{
                               width: "24px",
                               height: "24px",
-                              backgroundColor: "#6b7280",
+                              backgroundColor: "var(--secondary)",
                               borderRadius: "50%",
                               display: "flex",
                               alignItems: "center",
@@ -583,7 +583,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                             <span
                               style={{
                                 fontSize: "0.75rem",
-                                color: "#93c5fd",
+                                color: "var(--info)",
                               }}
                             >
                               (You)
@@ -621,13 +621,13 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                                   style={{
                                     width: "64px",
                                     height: "96px",
-                                    backgroundColor: "#374151",
+                                    backgroundColor: "var(--surface-container-high)",
                                     borderRadius: "6px",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    border: "2px dashed #6b7280",
-                                    color: "#9ca3af",
+                                    border: "2px dashed var(--secondary)",
+                                    color: "var(--on-surface-variant)",
                                     fontSize: "0.75rem",
                                     fontWeight: "bold",
                                   }}
@@ -654,7 +654,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                           <div
                             style={{
                               fontSize: "0.75rem",
-                              color: "#d1d5db",
+                              color: "var(--on-surface)",
                             }}
                           >
                             Total: {player.totalFromCards}
@@ -666,7 +666,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                       <td style={{ padding: "12px" }}>
                         <span
                           style={{
-                            color: player.penalty > 0 ? "#f87171" : "#86efac",
+                            color: player.penalty > 0 ? "var(--error)" : "var(--success)",
                             fontWeight: "bold",
                           }}
                         >
@@ -684,7 +684,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                       <td style={{ padding: "12px" }}>
                         <span
                           style={{
-                            color: player.roundPoints >= 0 ? "#10b981" : "#ef4444",
+                            color: player.roundPoints >= 0 ? "var(--success)" : "var(--error)",
                             fontSize: "0.875rem",
                             fontWeight: "bold",
                           }}
@@ -723,7 +723,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             <button
               onClick={onPlayAgain}
               style={{
-                backgroundColor: "#16a34a",
+                backgroundColor: "var(--success-strong)",
                 color: "white",
                 padding: "12px 32px",
                 borderRadius: "8px",
@@ -736,10 +736,10 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                 gap: "8px",
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = "#15803d";
+                e.currentTarget.style.backgroundColor = "var(--success-strong-hover)";
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = "#16a34a";
+                e.currentTarget.style.backgroundColor = "var(--success-strong)";
               }}
             >
               🔄 Play Again
@@ -747,7 +747,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             <button
               onClick={onReturnToLobby}
               style={{
-                backgroundColor: "#6b7280",
+                backgroundColor: "var(--secondary)",
                 color: "white",
                 padding: "12px 32px",
                 borderRadius: "8px",
@@ -760,10 +760,10 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
                 gap: "8px",
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = "#4b5563";
+                e.currentTarget.style.backgroundColor = "var(--outline)";
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = "#6b7280";
+                e.currentTarget.style.backgroundColor = "var(--secondary)";
               }}
             >
               🏠 Return to Lobby
@@ -775,7 +775,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             style={{
               marginTop: "24px",
               padding: "16px",
-              backgroundColor: "#374151",
+              backgroundColor: "var(--surface-container-high)",
               borderRadius: "8px",
             }}
           >
@@ -791,7 +791,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({ onPlayAgain, onReturnToLo
             </h4>
             <ul
               style={{
-                color: "#d1d5db",
+                color: "var(--on-surface)",
                 fontSize: "0.875rem",
                 margin: 0,
                 paddingLeft: "20px",

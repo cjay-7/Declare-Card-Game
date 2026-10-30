@@ -10,13 +10,13 @@ interface PlayerInfoProps {
 // Generate consistent color for player based on name
 const getPlayerColor = (name: string): string => {
   const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-purple-500",
+    "bg-info-strong",
+    "bg-success-strong",
+    "bg-power-strong",
     "bg-pink-500",
-    "bg-yellow-500",
+    "bg-warning-strong",
     "bg-indigo-500",
-    "bg-red-500",
+    "bg-error-strong",
     "bg-teal-500",
   ];
   let hash = 0;
@@ -36,12 +36,12 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
   
   return (
     <div className={`flex items-center justify-between p-2 rounded-lg ${
-      isCurrentTurn ? "bg-gray-800/50" : "bg-transparent"
+      isCurrentTurn ? "bg-surface-container/50" : "bg-transparent"
     }`}>
       <div className="flex items-center gap-3">
         {/* Enhanced Avatar */}
         {/* <div className={`${playerColor} w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base shadow-lg ${
-          isCurrentTurn ? "ring-2 ring-green-400 ring-offset-2 ring-offset-gray-700" : ""
+          isCurrentTurn ? "ring-2 ring-success-fg ring-offset-2 ring-offset-gray-700" : ""
         }`}>
           {name.charAt(0).toUpperCase()}
         </div> */}
@@ -49,24 +49,24 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
           <div className="flex items-center gap-2">
             <span
               className={`font-bold text-base md:text-lg ${
-                isCurrentPlayer ? "text-blue-300" : "text-white"
+                isCurrentPlayer ? "text-info" : "text-white"
               }`}
             >
               {name}
             </span>
             {/* {isHost && (
-              <span className="text-yellow-400 text-sm animate-pulse" title="Host">
+              <span className="text-warning text-sm animate-pulse" title="Host">
                 👑
               </span>
             )} */}
             {/* {isCurrentPlayer && (
-              <span className="text-xs text-blue-400 bg-blue-900 px-2 py-0.5 rounded">
+              <span className="text-xs text-info bg-info-container px-2 py-0.5 rounded">
                 You
               </span>
             )} */}
           </div>
           {/* {isCurrentTurn && (
-            <span className="text-xs text-green-400 font-semibold animate-pulse">
+            <span className="text-xs text-success-fg font-semibold animate-pulse">
               ● Active Turn
             </span>
           )} */}
@@ -74,7 +74,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
       </div>
 
       {/* {isCurrentTurn && (
-        <div className="flex items-center bg-green-600 px-3 py-1 rounded-full">
+        <div className="flex items-center bg-success-strong px-3 py-1 rounded-full">
           <span className="animate-pulse text-white text-sm font-semibold">
             ● Turn
           </span>

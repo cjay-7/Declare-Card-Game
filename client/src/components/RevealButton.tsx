@@ -16,8 +16,8 @@ const RevealButton: React.FC<RevealButtonProps> = ({
       className={`px-4 py-2 rounded-lg flex items-center gap-2 
                 ${
                   disabled
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-purple-600 hover:bg-purple-700"
+                    ? "bg-surface-container-highest cursor-not-allowed"
+                    : "bg-power-strong hover:bg-power-strong-hover"
                 }`}
     >
       <svg

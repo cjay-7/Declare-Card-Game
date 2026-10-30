@@ -57,13 +57,13 @@ export const DeclarationMode: React.FC<DeclarationModeProps> = ({
   return (
     <div className="relative pb-20">
       {/* Declaration header */}
-      <div className="absolute -top-12 left-0 right-0 bg-blue-600 text-white text-center py-2 rounded-t-lg z-10">
+      <div className="absolute -top-12 left-0 right-0 bg-info-strong text-white text-center py-2 rounded-t-lg z-10">
         <div className="text-sm font-bold">🎯 Declare Your Hand</div>
         <div className="text-xs">Click buttons to select rank for each card</div>
       </div>
 
       {/* Card grid with selectors - more space needed for button grids */}
-      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative bg-blue-900 bg-opacity-30 p-6 rounded-lg border-2 border-blue-400 mb-8">
+      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative bg-info-container bg-opacity-30 p-6 rounded-lg border-2 border-info mb-8">
         {cards.map((card, index) => (
           <div key={index} className="flex justify-center mb-8">
             <CardDeclarationSelector
@@ -77,17 +77,17 @@ export const DeclarationMode: React.FC<DeclarationModeProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="absolute -bottom-16 left-0 right-0 bg-blue-600 rounded-b-lg p-3 z-10">
+      <div className="absolute -bottom-16 left-0 right-0 bg-info-strong rounded-b-lg p-3 z-10">
         {canConfirm && (
           <div className="text-center mb-2">
-            <span className="text-yellow-300 font-bold text-lg">Total: {calculateTotal()} points</span>
+            <span className="text-warning font-bold text-lg">Total: {calculateTotal()} points</span>
           </div>
         )}
         
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+            className="flex-1 px-3 py-2 bg-surface-container-highest text-white text-sm rounded hover:bg-surface-container-high"
           >
             Cancel
           </button>
@@ -96,8 +96,8 @@ export const DeclarationMode: React.FC<DeclarationModeProps> = ({
             disabled={!canConfirm}
             className={`flex-1 px-3 py-2 text-white text-sm rounded font-bold ${
               canConfirm 
-                ? 'bg-green-600 hover:bg-green-700' 
-                : 'bg-gray-500 cursor-not-allowed'
+                ? 'bg-success-strong hover:bg-success-strong-hover' 
+                : 'bg-surface-container-highest cursor-not-allowed'
             }`}
           >
             Declare ({actualCards.length} cards)

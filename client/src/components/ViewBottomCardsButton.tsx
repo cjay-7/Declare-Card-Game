@@ -16,7 +16,7 @@ const ViewBottomCardsButton: React.FC = () => {
       className={`px-4 py-2 rounded-lg flex items-center gap-2 
                 ${
                   isDisabled
-                    ? "bg-gray-600 cursor-not-allowed opacity-50"
+                    ? "bg-surface-container-highest cursor-not-allowed opacity-50"
                     : "bg-indigo-600 hover:bg-indigo-700 animate-pulse"
                 }`}
     >

@@ -246,13 +246,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   if (!gameStarted) {
     return (
-      <div className="min-h-screen p-6 text-white" style={{ backgroundColor: "#262626" }}>
+      <div className="min-h-screen p-6 text-white" style={{ backgroundColor: "var(--page-background)" }}>
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-3xl font-bold">Room: {initialRoomId}</h1>
               <h2 className="text-lg">You: {initialPlayerName}</h2>
-              <div className="text-sm text-gray-400 mt-1">
+              <div className="text-sm text-on-surface-variant mt-1">
                 Playing as:{" "}
                 {currentPlayerId === "player1" ? "Player 1" : "Player 2"}
               </div>
@@ -263,38 +263,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 gameState.players.length >= 2 && (
                   <button
                     onClick={handleStartGame}
-                    className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 font-semibold"
+                    className="px-6 py-3 bg-success-strong rounded-lg hover:bg-success-strong-hover font-semibold"
                   >
                     Start Game
                   </button>
                 )}
               {!isHost && (
-                <div className="text-gray-400 text-sm">
+                <div className="text-on-surface-variant text-sm">
                   Waiting for host to start...
                 </div>
               )}
               {gameState?.players && gameState.players.length < 2 && (
-                <div className="text-yellow-400 text-sm">
+                <div className="text-warning text-sm">
                   Need at least 2 players to start
                 </div>
               )}
             </div>
           </div>
 
-          <div className="p-6 rounded-lg text-center border border-gray-800" style={{ backgroundColor: "#262626" }}>
+          <div className="p-6 rounded-lg text-center border border-outline" style={{ backgroundColor: "var(--page-background)" }}>
             <h2 className="text-xl font-bold mb-2">
               {isHost
                 ? "You are the host! Click 'Start Game' when ready!"
                 : "Waiting for host to start the game..."}
             </h2>
-            <p className="text-gray-300 mb-4">
+            <p className="text-on-surface mb-4">
               Players: {gameState?.players.length || 0}/8
             </p>
 
             {/* Host indicator */}
             {gameState?.players && gameState.players.length > 0 && (
               <div className="mb-4">
-                <p className="text-sm text-yellow-400">
+                <p className="text-sm text-warning">
                   Host:{" "}
                   {gameState.players.find((p) => p.isHost)?.name || "Unknown"}
                 </p>
@@ -308,16 +308,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   {gameState.players.map((player) => (
                     <div
                       key={player.id}
-                      className={`p-3 rounded-lg border ${player.id === currentSocketId ? "border-blue-600" : "border-gray-700"}`}
-                      style={{ backgroundColor: "#262626" }}
+                      className={`p-3 rounded-lg border ${player.id === currentSocketId ? "border-info-strong" : "border-outline"}`}
+                      style={{ backgroundColor: "var(--page-background)" }}
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-surface-container rounded-full flex items-center justify-center">
                           {player.name.charAt(0).toUpperCase()}
                         </div>
                         <span
                           className={`font-medium ${
-                            player.isHost ? "text-yellow-400" : "text-white"
+                            player.isHost ? "text-warning" : "text-white"
                           }`}
                         >
                           {player.name}
@@ -332,11 +332,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             )}
 
             {/* Instructions for 2-player mode */}
-            <div className="mt-6 p-4 rounded-lg border border-gray-700" style={{ backgroundColor: "#262626" }}>
-              <h3 className="text-sm font-bold text-blue-300 mb-2">
+            <div className="mt-6 p-4 rounded-lg border border-outline" style={{ backgroundColor: "var(--page-background)" }}>
+              <h3 className="text-sm font-bold text-info mb-2">
                 2-Player Mode Instructions
               </h3>
-              <div className="text-xs text-blue-200 space-y-1">
+              <div className="text-xs text-info space-y-1">
                 <div>
                   • Use the player switcher (top right) to alternate between
                   players
@@ -373,7 +373,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     <div
       className="min-h-screen text-white"
       style={{
-        backgroundColor: "#262626",
+        backgroundColor: "var(--page-background)",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
         gridTemplateColumns: "1fr",
@@ -388,19 +388,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       )}
 
       {/* Top Header Bar */}
-      {/* <div className="bg-gray-800 border-b border-gray-700 px-4 py-2 flex justify-between items-center">
+      {/* <div className="bg-surface-container border-b border-outline px-4 py-2 flex justify-between items-center">
         <div>
           <h4 className="text-lg font-bold">Room: {initialRoomId}</h4>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-on-surface-variant">
             Round {gameState?.roundNumber || 1}
           </div>
         </div>
         <div className="text-right">
           <p className="text-sm font-semibold">
             {isPlayerTurn ? (
-              <span className="text-green-400 animate-pulse">🟢 Your Turn</span>
+              <span className="text-success-fg animate-pulse">🟢 Your Turn</span>
             ) : (
-              <span className="text-gray-400">
+              <span className="text-on-surface-variant">
                 ⏳ {gameState?.players[gameState.currentPlayerIndex]?.name || "Unknown"}'s Turn
               </span>
             )}
@@ -419,7 +419,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           className={`transition-all duration-300 ${
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
               ? "border-0"
-              : "border-b-2 border-gray-800"
+              : "border-b-2 border-outline"
           } p-3 md:p-4 overflow-y-auto`}
           style={
             gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
@@ -427,7 +427,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   backgroundColor: "rgba(30, 58, 138, 0.55)",
                   boxShadow: "0 0 30px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.2), inset 0 -8px 32px -8px rgba(59, 130, 246, 0.25)",
                 }
-              : { backgroundColor: "#3a3a3a" }
+              : { backgroundColor: "var(--surface-container-highest)" }
           }
         >
           <div className="max-w-4xl mx-auto">
@@ -447,7 +447,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 {renderOpponentHand()}
               </>
             ) : (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-on-surface-variant">
                 <div className="text-lg mb-2">Waiting for another player...</div>
                 <div className="text-sm">Share room ID: {initialRoomId}</div>
               </div>
@@ -456,12 +456,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
 
         {/* CENTER ZONE */}
-        <div className="border-y border-gray-800 p-3 md:p-4" style={{ backgroundColor: "#262626" }}>
+        <div className="border-y border-outline p-3 md:p-4" style={{ backgroundColor: "var(--page-background)" }}>
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-3 gap-4 items-center">
               {/* Deck */}
               <div className="flex flex-col items-center relative">
-                <h3 className="text-sm font-semibold mb-2 text-gray-300 w-full text-center">Deck</h3>
+                <h3 className="text-sm font-semibold mb-2 text-on-surface w-full text-center">Deck</h3>
                 <div className="relative flex items-center justify-center" style={{ minHeight: "180px", width: "100%" }}>
                   <Deck
                     cardsRemaining={deckSize}
@@ -478,15 +478,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     isPlayerTurn={isPlayerTurn}
                   />
                 </div>
-                <div className="text-center mt-2 text-xs text-gray-300 w-full">
+                <div className="text-center mt-2 text-xs text-on-surface w-full">
                   {drawnCard ? (
                     selectedPower ? (
-                      <span className="text-purple-400">Power: {selectedPower} (activates when discarded)</span>
+                      <span className="text-power">Power: {selectedPower} (activates when discarded)</span>
                     ) : null
                   ) : isPlayerTurn && !myPlayer?.activePower ? (
-                    <span className="text-green-400 font-semibold">Click to draw</span>
+                    <span className="text-success-fg font-semibold">Click to draw</span>
                   ) : myPlayer?.activePower ? (
-                    <span className="text-purple-400">Resolve {myPlayer.activePower} power first</span>
+                    <span className="text-power">Resolve {myPlayer.activePower} power first</span>
                   ) : (
                     `${deckSize} cards`
                   )}
@@ -501,18 +501,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   const usingPower = currentPlayer?.usingPower;
                   if (!activePower || usingPower || !isPlayerTurn) return <div className="min-h-[100px]" />;
                   return (
-                    <div className="p-3 rounded-lg border border-purple-600 text-center" style={{ backgroundColor: "#262626" }}>
-                      <div className="text-xs text-purple-300 mb-2">Power Available</div>
+                    <div className="p-3 rounded-lg border border-power-strong text-center" style={{ backgroundColor: "var(--page-background)" }}>
+                      <div className="text-xs text-power mb-2">Power Available</div>
                       <div className="flex flex-col sm:flex-row gap-2 justify-center">
                         <button
                           onClick={() => handleActivatePower(activePower)}
-                          className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg text-sm whitespace-nowrap"
+                          className="px-4 py-2.5 bg-success-strong hover:bg-success-strong-hover text-white font-semibold rounded-lg text-sm whitespace-nowrap"
                         >
                           ⚡ Use {activePower} Power
                         </button>
                         <button
                           onClick={() => handleSkipPower(activePower)}
-                          className="px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg text-sm"
+                          className="px-4 py-2.5 bg-surface-container-highest hover:bg-surface-container-high text-white font-medium rounded-lg text-sm"
                         >
                           ❌ Skip
                         </button>
@@ -524,7 +524,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
               {/* Discard Pile */}
               <div className="flex flex-col items-center relative">
-                <h3 className="text-sm font-semibold mb-2 text-gray-300 w-full text-center">Discard</h3>
+                <h3 className="text-sm font-semibold mb-2 text-on-surface w-full text-center">Discard</h3>
                 <div 
                   className="relative flex items-center justify-center"
                   style={{ minHeight: "180px", width: "100%" }}
@@ -544,9 +544,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     }
                   />
                 </div>
-                <div className="text-center mt-2 text-xs text-gray-300 w-full">
+                <div className="text-center mt-2 text-xs text-on-surface w-full">
                   {/* {drawnCard && isPlayerTurn ? (
-                    <span className="text-green-400 font-semibold">
+                    <span className="text-success-fg font-semibold">
                       Click to discard
                     </span>
                   ) : null} */}
@@ -575,7 +575,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           className={`transition-all duration-300 ${
             isPlayerTurn
               ? "border-0"
-              : "border-t-2 border-gray-800"
+              : "border-t-2 border-outline"
           } p-3 md:p-4 overflow-y-auto`}
           style={
             isPlayerTurn
@@ -583,7 +583,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   backgroundColor: "rgba(127, 29, 29, 0.55)",
                   boxShadow: "0 0 30px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.2), inset 0 8px 32px -8px rgba(220, 38, 38, 0.25)",
                 }
-              : { backgroundColor: "#3a3a3a" }
+              : { backgroundColor: "var(--surface-container-highest)" }
           }
         >
           <div className="max-w-4xl mx-auto h-full flex flex-col">
@@ -600,11 +600,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
             {/* Special Power Instructions */}
             {powerInstructions && (
-              <div className="mt-4 p-3 rounded-lg border border-purple-700" style={{ backgroundColor: "#262626" }}>
-                <h3 className="text-sm font-bold text-center mb-1 text-purple-200">
+              <div className="mt-4 p-3 rounded-lg border border-power-strong" style={{ backgroundColor: "var(--page-background)" }}>
+                <h3 className="text-sm font-bold text-center mb-1 text-power">
                   Special Power Active
                 </h3>
-                <p className="text-center text-xs text-purple-100">{powerInstructions}</p>
+                <p className="text-center text-xs text-power">{powerInstructions}</p>
               </div>
             )}
 

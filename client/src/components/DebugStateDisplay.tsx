@@ -21,18 +21,18 @@ const DebugStateDisplay: React.FC = () => {
 
   return (
     <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs max-w-sm z-50">
-      <h3 className="font-bold text-yellow-400 mb-2">DEBUG STATE</h3>
+      <h3 className="font-bold text-warning mb-2">DEBUG STATE</h3>
 
       <div className="space-y-1">
-        <div className="text-green-400">
+        <div className="text-success-fg">
           <strong>Player ID:</strong> {currentPlayerId}
         </div>
 
-        <div className="text-blue-400">
+        <div className="text-info">
           <strong>Is My Turn:</strong> {isPlayerTurn ? "YES" : "NO"}
         </div>
 
-        <div className="text-purple-400">
+        <div className="text-power">
           <strong>Drawn Card:</strong>{" "}
           {drawnCard
             ? `${drawnCard.rank} of ${drawnCard.suit} (ID: ${drawnCard.id})`
@@ -44,7 +44,7 @@ const DebugStateDisplay: React.FC = () => {
           {selectedCard ? `ID: ${selectedCard.cardId}` : "NONE"}
         </div>
 
-        <div className="text-red-400">
+        <div className="text-error-fg">
           <strong>Active Power:</strong> {selectedPower || "NONE"}
         </div>
 
@@ -52,17 +52,17 @@ const DebugStateDisplay: React.FC = () => {
           <strong>Power Instructions:</strong> {powerInstructions || "NONE"}
         </div>
 
-        <div className="text-gray-400">
+        <div className="text-on-surface-variant">
           <strong>My Hand:</strong> {myPlayer?.hand?.length || 0} cards
         </div>
 
-        <div className="text-gray-400">
+        <div className="text-on-surface-variant">
           <strong>Game Status:</strong> {gameState?.gameStatus || "unknown"}
         </div>
 
         {drawnCard && (
-          <div className="mt-2 p-2 bg-green-900 rounded">
-            <div className="text-green-300 font-bold">✅ READY TO REPLACE!</div>
+          <div className="mt-2 p-2 bg-success-container rounded">
+            <div className="text-success-fg font-bold">✅ READY TO REPLACE!</div>
             <div className="text-xs">
               Click any hand card to replace with {drawnCard.rank}
             </div>

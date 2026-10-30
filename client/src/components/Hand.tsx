@@ -20,9 +20,9 @@ const Hand: React.FC<HandProps> = memo(({ cards, playerId, isCurrentPlayer }) =>
         {[...Array(4)].map((_, index) => (
           <div
             key={index}
-            className="w-16 h-24 bg-gray-700 rounded shadow flex items-center justify-center"
+            className="w-16 h-24 bg-surface-container-high rounded shadow flex items-center justify-center"
           >
-            <span className="text-gray-400">Empty</span>
+            <span className="text-on-surface-variant">Empty</span>
           </div>
         ))}
       </div>

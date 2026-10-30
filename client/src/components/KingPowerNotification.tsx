@@ -61,13 +61,13 @@ const KingPowerNotification: React.FC = () => {
       >
         <div
           style={{
-            backgroundColor: "#aaaaaa",
+            backgroundColor: "var(--on-surface-variant)",
             color: "white",
             borderRadius: "12px",
             padding: "32px",
             maxWidth: "800px",
             width: "100%",
-            border: "4px solid #808080",
+            border: "4px solid var(--outline)",
             boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
           }}
         >
@@ -139,7 +139,7 @@ const KingPowerNotification: React.FC = () => {
                     backgroundColor: "rgba(0, 0, 0, 0.7)",
                     borderRadius: "8px",
                     padding: "8px",
-                    border: "2px solid #13130f",
+                    border: "2px solid var(--on-primary)",
                   }}
                   className="king-power-card-container"
                 >
@@ -197,7 +197,7 @@ const KingPowerNotification: React.FC = () => {
                     backgroundColor: "rgba(0, 0, 0, 0.7)",
                     borderRadius: "8px",
                     padding: "8px",
-                    border: "2px solid #13130f",
+                    border: "2px solid var(--on-primary)",
                   }}
                   className="king-power-card-container"
                 >
@@ -224,7 +224,7 @@ const KingPowerNotification: React.FC = () => {
                 backgroundColor: "gray",
                 borderRadius: "8px",
                 padding: "16px",
-                border: "2px solid #13130f",
+                border: "2px solid var(--on-primary)",
                 marginBottom: "16px",
               }}
             >
@@ -242,7 +242,7 @@ const KingPowerNotification: React.FC = () => {
                   </p>
                   <div
                     style={{
-                      color: "#13130f",
+                      color: "var(--on-primary)",
                       fontSize: "0.875rem",
                       marginBottom: "16px",
                     }}
@@ -259,7 +259,7 @@ const KingPowerNotification: React.FC = () => {
                     <button
                       onClick={handleConfirmKingPowerSwap}
                       style={{
-                        backgroundColor: "#16a34a",
+                        backgroundColor: "var(--success-strong)",
                         color: "white",
                         padding: "8px 24px",
                         borderRadius: "8px",
@@ -274,7 +274,7 @@ const KingPowerNotification: React.FC = () => {
                     <button
                       onClick={handleCancelKingPowerSwap}
                       style={{
-                        backgroundColor: "#dc2626",
+                        backgroundColor: "var(--error-strong)",
                         color: "white",
                         padding: "8px 24px",
                         borderRadius: "8px",
@@ -300,7 +300,7 @@ const KingPowerNotification: React.FC = () => {
                   >
                     🔄 Swapping in progress...
                   </p>
-                  <p style={{ color: "#13130f", fontSize: "0.875rem" }}>
+                  <p style={{ color: "var(--on-primary)", fontSize: "0.875rem" }}>
                     Both cards are revealed as required by the King power. The
                     swap will complete automatically.
                   </p>
@@ -311,7 +311,7 @@ const KingPowerNotification: React.FC = () => {
 
           {/* Power Description */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <div style={{ color: "#13130f", fontSize: "0.75rem" }}>
+            <div style={{ color: "var(--on-primary)", fontSize: "0.75rem" }}>
               <strong>King Power:</strong> Allows seen swap - both cards are
               revealed before swapping
             </div>

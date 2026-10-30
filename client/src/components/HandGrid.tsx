@@ -166,7 +166,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
       {/* Elimination card selection overlay */}
       {isEliminationSelectionActive && isCurrentPlayer && (
-        <div className="absolute inset-0 bg-orange-500 bg-opacity-30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
+        <div className="absolute inset-0 bg-orange-500/30 rounded-lg border-2 border-orange-400 border-dashed flex items-center justify-center z-20 pointer-events-none">
           <div className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg animate-soft-pulse">
             Select a card to give to{" "}
             {eliminationCardSelection?.eliminatedCardInfo?.cardOwnerName}
@@ -176,7 +176,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
       {/* Power interaction overlay */}
       {canUsePowerOnThisHand && paddedCards.some((card) => card !== null) && (
-        <div className="absolute inset-0 bg-power-strong bg-opacity-20 rounded-lg border-2 border-power border-dashed flex items-center justify-center z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-power-strong/20 rounded-lg border-2 border-power border-dashed flex items-center justify-center z-10 pointer-events-none">
           <div className="bg-power-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
             {["7", "8"].includes(activePower)
               ? "Peek at your card"
@@ -193,7 +193,7 @@ const HandGrid: React.FC<HandGridProps> = memo(({
 
       {/* Card swapping overlay - NEW */}
       {/* {drawnCard && isCurrentPlayer && !activePower && (
-        <div className="absolute inset-0 bg-success-strong bg-opacity-20 rounded-lg border-2 border-success-fg border-dashed flex items-center justify-center z-15 pointer-events-none">
+        <div className="absolute inset-0 bg-success-strong/20 rounded-lg border-2 border-success-fg border-dashed flex items-center justify-center z-15 pointer-events-none">
           <div className="bg-success-strong text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg animate-soft-pulse">
             Click any card to replace with {drawnCard.rank}
           </div>

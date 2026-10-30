@@ -57,8 +57,7 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                 title: "Objective",
                 content: (
                   <Typography style={{ color: "var(--on-surface)" }}>
-                    The goal of Declare is to be the first player to form a valid set
-                    or sequence with all 4 cards in your hand, or to have the lowest
+                    The goal of Declare is to be the player with the lowest
                     point total when someone declares.
                   </Typography>
                 ),

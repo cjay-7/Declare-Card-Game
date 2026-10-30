@@ -103,7 +103,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
   const eliminatedCount = playerHand.filter(card => card === null).length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">Declare Your Hand</h2>
@@ -131,7 +131,7 @@ const DeclareModal: React.FC<DeclareModalProps> = ({
         <div className="text-white space-y-4">
           {/* Show eliminated cards info */}
           {eliminatedCount > 0 && (
-            <div className="p-3 bg-error-container bg-opacity-50 border border-error-fg rounded text-error-fg">
+            <div className="p-3 bg-error-container/50 border border-error-fg rounded text-error-fg">
               <div className="text-sm font-medium mb-1">
                 🗑️ Eliminated Cards: {eliminatedCount}
               </div>

@@ -35,9 +35,9 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
   const playerColor = getPlayerColor(name);
   
   return (
-    <div className="flex items-center">
+    <div className="flex items-center min-w-0">
       <div
-        className={`inline-flex items-center gap-2 rounded-full px-4 py-1 ${
+        className={`inline-flex min-w-0 items-center gap-2 rounded-full px-4 py-1 ${
           isCurrentTurn
             ? "bg-primary text-on-primary"
             : "bg-surface-container-high text-on-surface"
@@ -54,7 +54,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span
-              className={`font-bold text-base md:text-lg ${
+              className={`truncate font-bold text-base md:text-lg ${
                 isCurrentTurn ? "text-on-primary" : "text-on-surface"
               }`}
             >

@@ -117,7 +117,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
     return (
       <div
-        className={`p-4 rounded-lg ${powerInfo.color} border-2 border-opacity-50`}
+        className={`p-4 rounded-lg ${powerInfo.color} border-2/50`}
       >
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
@@ -129,7 +129,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           <div className="text-sm text-white mb-3">{powerInfo.description}</div>
 
           {powerInfo.warning && (
-            <div className="bg-error-strong bg-opacity-20 border border-error-fg rounded-lg p-2 mb-3">
+            <div className="bg-error-strong/20 border border-error-fg rounded-lg p-2 mb-3">
               <div className="flex items-center justify-center text-error-fg text-xs">
                 <span className="mr-1">⚠️</span>
                 <strong>Warning:</strong> Both cards will be visible to ALL
@@ -140,12 +140,12 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           )}
 
           {["Q", "K"].includes(activePower) && swapSelections.length > 0 && (
-            <div className="text-xs text-white bg-black bg-opacity-20 rounded p-2">
+            <div className="text-xs text-white bg-black/20 rounded p-2">
               Selected:{" "}
               {swapSelections.map((sel, idx) => (
                 <span
                   key={idx}
-                  className="inline-block mx-1 px-2 py-1 bg-white bg-opacity-20 rounded"
+                  className="inline-block mx-1 px-2 py-1 bg-white/20 rounded"
                 >
                   {sel.playerId === myPlayer?.id ? "Your" : "Opponent's"} card
                 </span>
@@ -153,7 +153,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
             </div>
           )}
 
-          <div className="text-xs text-white text-opacity-75 mt-2">
+          <div className="text-xs text-white/75 mt-2">
             Click on cards to use your power
           </div>
         </div>
@@ -194,7 +194,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
                     🎯 DECLARE HAND
                   </button>
                 ) : (
-                  <div className="w-full px-6 py-4 bg-surface-container rounded-lg text-white text-sm font-medium opacity-50 cursor-not-allowed text-center">
+                  <div className="w-full px-6 py-3 bg-surface-container-high rounded-lg text-on-surface-variant text-sm font-medium cursor-not-allowed text-center">
                     🎯 Declare Hand
                     <div className="text-xs mt-1 text-on-surface-variant">
                       (Need at least 1 card)
@@ -236,24 +236,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
           </div>
         </div>
       )} */}
-
-      {/* Game Status - Compact */}
-      <div className="rounded-lg p-2 border border-outline" style={{ backgroundColor: "var(--page-background)" }}>
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="text-center">
-            <div className="text-on-surface-variant">Deck</div>
-            <div className="text-white font-bold">{gameState?.deck.length || 0}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-on-surface-variant">Discard</div>
-            <div className="text-white font-bold">{gameState?.discardPile.length || 0}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-on-surface-variant">Round</div>
-            <div className="text-white font-bold">{gameState?.roundNumber || 1}</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

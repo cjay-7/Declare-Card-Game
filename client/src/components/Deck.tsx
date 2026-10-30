@@ -43,7 +43,7 @@ const Deck: React.FC<DeckProps> = ({
         {/* Clickable indicator */}
         {isClickable && (
           <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none">
-            <div className="text-xs text-white font-semibold bg-info-strong-hover bg-opacity-75 rounded px-2 py-1 inline-block">
+            <div className="text-xs text-white font-semibold bg-info-strong-hover/75 rounded px-2 py-1 inline-block">
               Draw
             </div>
           </div>

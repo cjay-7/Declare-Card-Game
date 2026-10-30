@@ -66,7 +66,7 @@ export const InlineCardDeclaration: React.FC<InlineCardDeclarationProps> = ({
   const eliminatedCount = playerHand.filter(card => card === null).length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-surface-container rounded-lg p-6 max-w-4xl w-full">
         <div className="mb-4">
           <h2 className="text-xl font-bold text-white mb-2">Declare Your Hand</h2>
@@ -75,7 +75,7 @@ export const InlineCardDeclaration: React.FC<InlineCardDeclarationProps> = ({
 
         {/* Show eliminated cards info */}
         {eliminatedCount > 0 && (
-          <div className="mb-4 p-3 bg-error-container bg-opacity-50 border border-error-fg rounded text-error-fg">
+          <div className="mb-4 p-3 bg-error-container/50 border border-error-fg rounded text-error-fg">
             <div className="text-sm font-medium mb-1">
               🗑️ Eliminated Cards: {eliminatedCount}
             </div>
@@ -126,7 +126,7 @@ export const InlineCardDeclaration: React.FC<InlineCardDeclarationProps> = ({
 
         {/* Total Score Preview */}
         {canConfirm && (
-          <div className="mb-4 p-3 bg-info-container bg-opacity-50 border border-info-strong rounded text-center">
+          <div className="mb-4 p-3 bg-info-container/50 border border-info-strong rounded text-center">
             <div className="text-info text-sm">
               Your declared total: <span className="font-bold text-lg">{calculateTotal()}</span> points
             </div>

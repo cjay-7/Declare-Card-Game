@@ -355,7 +355,7 @@ const Card: React.FC<CardProps> = ({
           className="card w-full h-full object-contain"
         />
         {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
-          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white bg-opacity-90 rounded px-1">
+          <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white/90 rounded px-1">
             → Swipe right to discard
           </div>
         )}
@@ -384,7 +384,7 @@ const Card: React.FC<CardProps> = ({
         className="card w-full h-full object-contain"
       />
       {swipeable && swipeState && swipeState.currentX - swipeState.startX > 20 && (
-        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white bg-opacity-90 rounded px-1">
+        <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-red-600 font-bold animate-soft-pulse bg-white/90 rounded px-1">
           → Swipe right to discard
         </div>
       )}

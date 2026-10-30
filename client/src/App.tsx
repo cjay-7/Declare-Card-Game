@@ -18,7 +18,7 @@ import NotificationSystem, {
   useNotifications,
 } from "./components/NotificationSystem";
 import socket from "./socket";
-import { Spinner, IconButton, Tooltip, Chip, Card, Button, Typography } from "@material-tailwind/react";
+import { Spinner, IconButton, Tooltip, Chip, Button, Typography } from "@material-tailwind/react";
 
 function GameApp() {
   const { user, loading, logout } = useAuth();
@@ -205,7 +205,7 @@ function GameApp() {
                 isCircular
                 variant="solid"
                 className="fixed bottom-4 left-4 shadow-lg"
-                style={{ backgroundColor: "var(--surface-container-highest)" }}
+                style={{ backgroundColor: "var(--surface-container-highest)", color: "var(--on-surface)" }}
                 onClick={() => setShowInstructions(true)}
                 aria-label="Game Instructions (Alt+H)"
               >
@@ -249,41 +249,6 @@ function GameApp() {
               {showTestPanel ? "Hide Test Panel" : "Show Test Panel (Alt+T)"}
             </Button>
             )}
-
-            {/* Mode info */}
-            <Card
-              variant="ghost"
-              className="fixed bottom-4 right-4 opacity-80"
-              style={{ maxWidth: "var(--container-sm)", backgroundColor: "var(--surface-container-high)", borderRadius: "var(--radius-lg)" }}
-            >
-              <Card.Body className="p-3">
-                {socket.getMode() === "mock" ? (
-                  <>
-                    <Typography className="font-bold mb-1" style={{ fontSize: "var(--text-xs)", color: "var(--on-surface)" }}>
-                      2-Player Same Device Mode
-                    </Typography>
-                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
-                      • Use the player switcher (top right) to alternate
-                    </Typography>
-                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
-                      • Each player joins as "Player 1" or "Player 2"
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <Typography className="font-bold mb-1" style={{ fontSize: "var(--text-xs)", color: "var(--on-surface)" }}>
-                      Online Multiplayer Mode
-                    </Typography>
-                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
-                      • Share the room ID with another player
-                    </Typography>
-                    <Typography style={{ fontSize: "var(--text-xs)", color: "var(--on-surface-variant)" }}>
-                      • Each player connects from their own device
-                    </Typography>
-                  </>
-                )}
-              </Card.Body>
-            </Card>
           </GameProvider>
         </UIStateProvider>
       </GameStateProvider>

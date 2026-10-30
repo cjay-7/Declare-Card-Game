@@ -63,7 +63,7 @@ export const DeclarationMode: React.FC<DeclarationModeProps> = ({
       </div>
 
       {/* Card grid with selectors - more space needed for button grids */}
-      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative bg-info-container bg-opacity-30 p-6 rounded-lg border-2 border-info mb-8">
+      <div className="grid grid-cols-2 gap-4 max-w-md mx-auto relative bg-info-container/30 p-6 rounded-lg border-2 border-info mb-8">
         {cards.map((card, index) => (
           <div key={index} className="flex justify-center mb-8">
             <CardDeclarationSelector

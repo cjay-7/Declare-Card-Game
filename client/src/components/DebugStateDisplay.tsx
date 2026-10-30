@@ -20,7 +20,7 @@ const DebugStateDisplay: React.FC = () => {
   }
 
   return (
-    <div className="fixed top-4 right-4 bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs max-w-sm z-50">
+    <div className="fixed top-4 right-4 bg-black/80 text-white p-4 rounded-lg text-xs max-w-sm z-50">
       <h3 className="font-bold text-warning mb-2">DEBUG STATE</h3>
 
       <div className="space-y-1">

@@ -3,13 +3,14 @@
 
 /* M3-inspired design tokens — dark theme */
 :root {
+  color-scheme: dark; /* native controls (select, scrollbars) render dark */
   /* Color palette */
   --surface: #1a1a1a;
   --surface-container: #232323;
   --surface-container-high: #2d2d2d;
   --surface-container-highest: #383838;
   --on-surface: #e6e1e5;
-  --on-surface-variant: #9a959e;
+  --on-surface-variant: #a8a3ad;
   --primary: #f59e0b;
   --primary-hover: #d97706;
   --primary-container: #4a3000;
@@ -24,13 +25,13 @@
   --table: #14271f;       /* card-table felt */
   --table-edge: #0b1511;
   --secondary: #6b7280;
-  --success-strong: #16a34a;
-  --success-strong-hover: #15803d;
+  --success-strong: #15803d;
+  --success-strong-hover: #166534;
   --success-container: #14532d;
   --error-strong: #dc2626;
   --error-strong-hover: #b91c1c;
   --error-container: #7f1d1d;
-  --warning-strong: #ca8a04;
+  --warning-strong: #a16207;
   --info: #60a5fa;
   --info-strong: #2563eb;
   --info-strong-hover: #1d4ed8;
@@ -386,4 +387,38 @@ img.card {
 .fan img.card { 
   position: absolute;
   width: 90px;
+}
+
+/* Native dropdown options must stay legible on every OS */
+option {
+  background-color: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+/* Placeholders and field borders must stay readable on dark surfaces */
+input::placeholder,
+textarea::placeholder {
+  color: var(--on-surface-variant);
+  opacity: 0.85;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Typed text in fields is always the primary on-surface color */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea {
+  color: var(--on-surface);
+}
+
+/* Disabled buttons stay legible: muted surface, not faded brand color */
+button:disabled,
+button[disabled] {
+  background: var(--surface-container-highest) !important;
+  color: var(--on-surface-variant) !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
 }

@@ -40,10 +40,16 @@ export default {
   },
   plugins: [
     mtConfig({
+      colors: {
+        primary: { default: "#f59e0b", dark: "#d97706", light: "#fbbf24", foreground: "#1a1a1a" },
+        secondary: { default: "#6b7280", dark: "#4b5563", light: "#9ca3af", foreground: "#ffffff" },
+        success: { default: "#15803d", dark: "#166534", light: "#4ade80", foreground: "#ffffff" },
+        error: { default: "#dc2626", dark: "#b91c1c", light: "#fca5a5", foreground: "#ffffff" },
+      },
       darkColors: {
         primary: { default: "#f59e0b", dark: "#d97706", light: "#fbbf24", foreground: "#1a1a1a" },
         secondary: { default: "#6b7280", dark: "#4b5563", light: "#9ca3af", foreground: "#ffffff" },
-        success: { default: "#22c55e", dark: "#16a34a", light: "#4ade80", foreground: "#ffffff" },
+        success: { default: "#15803d", dark: "#166534", light: "#4ade80", foreground: "#ffffff" },
         error: { default: "#f87171", dark: "#ef4444", light: "#fca5a5", foreground: "#ffffff" },
       },
     }),

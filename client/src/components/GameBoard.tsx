@@ -431,27 +431,29 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           }
         >
           <div className="max-w-4xl mx-auto">
-            <div className="mb-3">
-              <PlayerInfo
-                name={opponent?.name || "Waiting for opponent..."}
-                isHost={opponent?.isHost || false}
-                isCurrentTurn={
-                  gameState?.players[gameState.currentPlayerIndex]?.id ===
-                  opponent?.id
-                }
-                isCurrentPlayer={false}
-              />
-            </div>
-            {opponent ? (
-              <>
-                {renderOpponentHand()}
-              </>
-            ) : (
-              <div className="text-center py-12 text-on-surface-variant">
-                <div className="text-lg mb-2">Waiting for another player...</div>
-                <div className="text-sm">Share room ID: {initialRoomId}</div>
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="shrink-0 max-w-[6.5rem] md:max-w-[10rem]">
+                <PlayerInfo
+                  name={opponent?.name || "Waiting for opponent..."}
+                  isHost={opponent?.isHost || false}
+                  isCurrentTurn={
+                    gameState?.players[gameState.currentPlayerIndex]?.id ===
+                    opponent?.id
+                  }
+                  isCurrentPlayer={false}
+                />
               </div>
-            )}
+              <div className="flex-1 min-w-0">
+                {opponent ? (
+                  renderOpponentHand()
+                ) : (
+                  <div className="text-center py-12 text-on-surface-variant">
+                    <div className="text-lg mb-2">Waiting for another player...</div>
+                    <div className="text-sm">Share room ID: {initialRoomId}</div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -493,13 +495,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 </div>
               </div>
 
-              {/* Power choice - middle */}
-              <div className="flex flex-col items-center justify-center">
+              {/* Power choice + turn actions (Declare) - middle, next to the deck */}
+              <div className="flex flex-col items-center justify-center gap-3">
                 {(() => {
                   const currentPlayer = gameState?.players.find((p) => p.id === myPlayer?.id);
                   const activePower = currentPlayer?.activePower;
                   const usingPower = currentPlayer?.usingPower;
-                  if (!activePower || usingPower || !isPlayerTurn) return <div className="min-h-[100px]" />;
+                  if (!activePower || usingPower || !isPlayerTurn) return null;
                   return (
                     <div className="p-3 rounded-lg border border-power-strong text-center" style={{ backgroundColor: "var(--page-background)" }}>
                       <div className="text-xs text-power mb-2">Power Available</div>
@@ -520,6 +522,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                     </div>
                   );
                 })()}
+                <div className="w-full max-w-xs">
+                  <ActionPanel
+                    isPlayerTurn={isPlayerTurn}
+                    onDeclare={handleDeclare}
+                    drawnCard={drawnCard}
+                  />
+                </div>
               </div>
 
               {/* Discard Pile */}
@@ -587,16 +596,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           }
         >
           <div className="max-w-4xl mx-auto h-full flex flex-col">
-            <div className="mb-3">
-              <PlayerInfo
-                name={myPlayer?.name || initialPlayerName}
-                isHost={isHost}
-                isCurrentTurn={isPlayerTurn}
-                isCurrentPlayer={true}
-              />
+            <div className="flex items-start gap-3 md:gap-4">
+              <div className="shrink-0 max-w-[6.5rem] md:max-w-[10rem]">
+                <PlayerInfo
+                  name={myPlayer?.name || initialPlayerName}
+                  isHost={isHost}
+                  isCurrentTurn={isPlayerTurn}
+                  isCurrentPlayer={true}
+                />
+              </div>
+              <div className="flex-1 min-w-0">{renderMyHand()}</div>
             </div>
-
-            {renderMyHand()}
 
             {/* Special Power Instructions */}
             {powerInstructions && (
@@ -608,14 +618,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               </div>
             )}
 
-            {/* Action Panel */}
-            <div className="mt-auto pt-4">
-              <ActionPanel
-                isPlayerTurn={isPlayerTurn}
-                onDeclare={handleDeclare}
-                drawnCard={drawnCard}
-              />
-            </div>
           </div>
         </div>
       </div>

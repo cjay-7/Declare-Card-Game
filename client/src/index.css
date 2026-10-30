@@ -136,18 +136,6 @@ textarea {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Ensure card suit colors are applied correctly */
-.text-red-600 {
-  color: #dc2626 !important;
-}
-
-.text-black {
-  color: #000000 !important;
-}
-.bg-white {
-  background-color: white;
-}
-
 /* Card animations: deliberately subtle (short, small movement, no flashing) */
 @keyframes cardDraw {
   from { transform: translateY(-12px); opacity: 0; }

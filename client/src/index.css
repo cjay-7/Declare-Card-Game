@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Class-based dark mode: the app is always dark (<html class="dark">), regardless of OS setting */
+@custom-variant dark (&:where(.dark, .dark *));
 @config "../tailwind.config.mjs";
 
 /* M3-inspired design tokens — dark theme */

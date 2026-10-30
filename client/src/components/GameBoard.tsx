@@ -207,22 +207,60 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   // Get remaining deck size
   const deckSize = gameState?.deck.length || 0;
 
-  // Get the opponent (first player that's not the current player)
+  // Every player that's not the current player
   const opponents =
     gameState?.players.filter((p) => p.id !== myPlayer?.id) || [];
-  const opponent = opponents[0] || null;
 
-  const renderOpponentHand = () => {
-    if (!opponent || !opponent.hand.length) return null;
+  // One panel per opponent. With several opponents the panels sit side by side
+  // and each stacks its name plate above its hand to save width.
+  const renderOpponentZone = (opp: (typeof opponents)[number]) => {
+    const isTheirTurn =
+      gameState?.players[gameState.currentPlayerIndex]?.id === opp.id;
+    const stacked = opponents.length > 1;
 
-    // Return our HandGrid component for opponent cards
     return (
-      <HandGrid
-        cards={opponent.hand}
-        playerId={opponent.id}
-        isCurrentPlayer={false}
-        isPlayerTurn={false}
-      />
+      <div
+        key={opp.id}
+        className={`transition-all duration-300 min-w-0 ${
+          isTheirTurn ? "border border-primary" : "border border-white/10"
+        } rounded-2xl p-2 md:p-3 overflow-y-auto`}
+        style={
+          isTheirTurn
+            ? {
+                backgroundColor: "rgba(245, 158, 11, 0.10)",
+                boxShadow:
+                  "inset 0 -2px 0 0 var(--primary), inset 0 -24px 32px -24px rgba(245, 158, 11, 0.25)",
+              }
+            : { backgroundColor: "rgba(0, 0, 0, 0.28)" }
+        }
+      >
+        <div
+          className={
+            stacked
+              ? "flex flex-col items-center gap-2"
+              : "max-w-4xl mx-auto flex items-start gap-3 md:gap-4"
+          }
+        >
+          <div className="shrink-0 max-w-full md:max-w-[10rem]">
+            <PlayerInfo
+              name={opp.name}
+              isHost={opp.isHost || false}
+              isCurrentTurn={isTheirTurn}
+              isCurrentPlayer={false}
+            />
+          </div>
+          <div className={stacked ? "w-full min-w-0" : "flex-1 min-w-0"}>
+            {opp.hand.length > 0 && (
+              <HandGrid
+                cards={opp.hand}
+                playerId={opp.id}
+                isCurrentPlayer={false}
+                isPlayerTurn={false}
+              />
+            )}
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -411,48 +449,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {/* Main Game Board - Split Screen Layout */}
       <div className="grid gap-2 p-2 md:p-3 overflow-hidden min-h-0 h-full"
            style={{ gridTemplateRows: "minmax(0, 1fr) auto minmax(0, 1fr)" }}>
-        {/* OPPONENT ZONE (Top) */}
-        <div
-          className={`transition-all duration-300 ${
-            gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
-              ? "border border-primary"
-              : "border border-white/10"
-          } rounded-2xl p-2 md:p-3 overflow-y-auto`}
-          style={
-            gameState?.players[gameState.currentPlayerIndex]?.id === opponent?.id
-              ? {
-                  backgroundColor: "rgba(245, 158, 11, 0.10)",
-                  boxShadow: "inset 0 -2px 0 0 var(--primary), inset 0 -24px 32px -24px rgba(245, 158, 11, 0.25)",
-                }
-              : { backgroundColor: "rgba(0, 0, 0, 0.28)" }
-          }
-        >
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-start gap-3 md:gap-4">
-              <div className="shrink-0 max-w-[6.5rem] md:max-w-[10rem]">
-                <PlayerInfo
-                  name={opponent?.name || "Waiting for opponent..."}
-                  isHost={opponent?.isHost || false}
-                  isCurrentTurn={
-                    gameState?.players[gameState.currentPlayerIndex]?.id ===
-                    opponent?.id
-                  }
-                  isCurrentPlayer={false}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                {opponent ? (
-                  renderOpponentHand()
-                ) : (
-                  <div className="text-center py-12 text-on-surface-variant">
-                    <div className="text-lg mb-2">Waiting for another player...</div>
-                    <div className="text-sm">Share room ID: {initialRoomId}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* OPPONENT ZONES (Top): one panel per opponent, side by side */}
+        {opponents.length > 0 ? (
+          <div
+            className="grid gap-2 min-h-0 overflow-x-auto"
+            style={{
+              gridTemplateColumns: `repeat(${opponents.length}, minmax(${
+                opponents.length > 3 ? "11rem" : "0"
+              }, 1fr))`,
+            }}
+          >
+            {opponents.map((opp) => renderOpponentZone(opp))}
           </div>
-        </div>
+        ) : (
+          <div
+            className="rounded-2xl border border-white/10 p-3 flex flex-col items-center justify-center text-on-surface-variant"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.28)" }}
+          >
+            <div className="text-lg mb-2">Waiting for another player...</div>
+            <div className="text-sm">Share room ID: {initialRoomId}</div>
+          </div>
+        )}
 
         {/* CENTER ZONE */}
         <div className="px-3 py-1">

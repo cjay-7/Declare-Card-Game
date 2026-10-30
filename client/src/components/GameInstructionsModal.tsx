@@ -98,10 +98,10 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                   <>
                     <Typography className="mb-1" style={{ color: "var(--on-surface)" }}>On your turn, you must perform one of these actions:</Typography>
                     <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--on-surface)" }}>
-                      <li><strong>Draw</strong> a card from the deck, then discard a card</li>
-                      <li><strong>Swap</strong> a card from your hand with a card from another player's hand (randomly selected)</li>
-                      <li><strong>Discard</strong> a card you've drawn this turn</li>
-                      <li><strong>Declare</strong> when you think you have a valid hand</li>
+                      <li><strong>Draw</strong> a card from the deck, you can choose to</li>
+                      <li><strong>Replace</strong> a card from your hand with the drawn card and place the replaced card in the discard pile</li>
+                      <li><strong>Discard</strong> to activate a special card effect</li>
+                      <li><strong>Declare (instead of drawing)</strong> when you think you have the lowest hand and know all the cards in your hand</li>
                     </ul>
                   </>
                 ),
@@ -111,9 +111,11 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                 title: "Special Cards",
                 content: (
                   <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--on-surface)" }}>
-                    <li><strong>Jack:</strong> When discarded, skips the next player's turn</li>
-                    <li><strong>Queen:</strong> Allows you to look at one of your unknown cards</li>
-                    <li><strong>King:</strong> Allows you to peek at another player's card</li>
+                    <li><strong>7 & 8:</strong> Peek at one of your cards</li>
+                    <li><strong>9 & 10:</strong> Peek at one of another player's card</li>
+                    <li><strong>Jack:</strong>  Skip the next player's turn</li>
+                    <li><strong>Queen:</strong> Swap one of your cards with another player's card without peeking at it</li>
+                    <li><strong>King:</strong> Swap one of your cards with another player's card and peek at both cards</li>
                   </ul>
                 ),
               },
@@ -122,10 +124,11 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
                 title: "Valid Declarations",
                 content: (
                   <>
-                    <Typography className="mb-1" style={{ color: "var(--on-surface)" }}>There are two types of valid declarations:</Typography>
+                    <Typography className="mb-1" style={{ color: "var(--on-surface)" }}>Only valid declarations are accepted:</Typography>
                     <ul className="list-disc pl-5 space-y-1" style={{ color: "var(--on-surface)" }}>
-                      <li><strong>Set:</strong> All 4 cards have the same rank (e.g., four 8s)</li>
-                      <li><strong>Sequence:</strong> All 4 cards are of the same suit and in consecutive order (e.g., 5-6-7-8 of hearts)</li>
+                      <li>All cards in the player's hand are known</li>
+                      <li>The player has the lowest hand value among all players</li>
+                      <li>Ties are broken in the favor of the player who didn't declared</li>
                     </ul>
                   </>
                 ),

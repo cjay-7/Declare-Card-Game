@@ -235,7 +235,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           side === "right" ? "flex-row-reverse" : ""
         } ${isTheirTurn ? "border border-primary" : "border border-white/10"}`}
         style={{
-          gridRow: "1 / 3",
+          gridRow: "1 / -1",
           gridColumn: side === "left" ? 1 : 3,
           ...(isTheirTurn
             ? {
@@ -669,7 +669,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           } rounded-2xl p-2 md:p-3 overflow-y-auto`}
           style={{
             gridRow: 3,
-            gridColumn: "1 / -1",
+            gridColumn: leftOpponent ? 2 : 1,
             ...(isPlayerTurn
               ? {
                   backgroundColor: "rgba(245, 158, 11, 0.10)",

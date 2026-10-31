@@ -5,6 +5,8 @@ interface PlayerInfoProps {
   isHost: boolean;
   isCurrentTurn: boolean;
   isCurrentPlayer: boolean;
+  /** Render the plate rotated for side seats: "down" reads top-to-bottom, "up" bottom-to-top */
+  vertical?: "down" | "up";
 }
 
 // Generate consistent color for player based on name
@@ -31,13 +33,26 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
   isHost,
   isCurrentTurn,
   isCurrentPlayer,
+  vertical,
 }) => {
   const playerColor = getPlayerColor(name);
   
   return (
-    <div className="flex items-center min-w-0">
+    <div
+      className="flex items-center min-w-0"
+      style={
+        vertical
+          ? {
+              writingMode: "vertical-rl",
+              transform: vertical === "up" ? "rotate(180deg)" : undefined,
+            }
+          : undefined
+      }
+    >
       <div
-        className={`inline-flex min-w-0 items-center gap-2 rounded-full px-4 py-1 ${
+        className={`inline-flex min-w-0 items-center gap-2 rounded-full ${
+          vertical ? "px-1 py-4" : "px-4 py-1"
+        } ${
           isCurrentTurn
             ? "bg-primary text-on-primary"
             : "bg-surface-container-high text-on-surface"

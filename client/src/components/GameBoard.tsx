@@ -211,12 +211,71 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const opponents =
     gameState?.players.filter((p) => p.id !== myPlayer?.id) || [];
 
-  // One panel per opponent. With several opponents the panels sit side by side
-  // and each stacks its name plate above its hand to save width.
+  // Table seating: 2nd player across the top, 3rd on the left, 4th on the right.
+  // Any further players share the top row.
+  const leftOpponent = opponents[1] || null;
+  const rightOpponent = opponents[2] || null;
+  const topOpponents = [opponents[0], ...opponents.slice(3)].filter(
+    (o): o is (typeof opponents)[number] => Boolean(o)
+  );
+
+  // Side seat: narrow vertical panel, upright 2x2 hand, name plate rotated and
+  // placed on the edge facing the table.
+  const renderSideZone = (
+    opp: (typeof opponents)[number],
+    side: "left" | "right"
+  ) => {
+    const isTheirTurn =
+      gameState?.players[gameState.currentPlayerIndex]?.id === opp.id;
+
+    return (
+      <div
+        key={opp.id}
+        className={`transition-all duration-300 min-w-0 min-h-0 rounded-2xl p-2 overflow-y-auto flex items-center justify-center gap-2 ${
+          side === "right" ? "flex-row-reverse" : ""
+        } ${isTheirTurn ? "border border-primary" : "border border-white/10"}`}
+        style={{
+          gridRow: "1 / 3",
+          gridColumn: side === "left" ? 1 : 3,
+          ...(isTheirTurn
+            ? {
+                backgroundColor: "rgba(245, 158, 11, 0.10)",
+                boxShadow:
+                  side === "left"
+                    ? "inset -2px 0 0 0 var(--primary), inset -24px 0 32px -24px rgba(245, 158, 11, 0.25)"
+                    : "inset 2px 0 0 0 var(--primary), inset 24px 0 32px -24px rgba(245, 158, 11, 0.25)",
+              }
+            : { backgroundColor: "rgba(0, 0, 0, 0.28)" }),
+        }}
+      >
+        <div className="min-w-0">
+          {opp.hand.length > 0 && (
+            <HandGrid
+              cards={opp.hand}
+              playerId={opp.id}
+              isCurrentPlayer={false}
+              isPlayerTurn={false}
+            />
+          )}
+        </div>
+        <div className="shrink-0">
+          <PlayerInfo
+            name={opp.name}
+            isHost={opp.isHost || false}
+            isCurrentTurn={isTheirTurn}
+            isCurrentPlayer={false}
+            vertical={side === "left" ? "down" : "up"}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Top row panels: one per top-seat opponent, side by side.
   const renderOpponentZone = (opp: (typeof opponents)[number]) => {
     const isTheirTurn =
       gameState?.players[gameState.currentPlayerIndex]?.id === opp.id;
-    const stacked = opponents.length > 1;
+    const stacked = topOpponents.length > 1;
 
     return (
       <div
@@ -448,23 +507,32 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
       {/* Main Game Board - Split Screen Layout */}
       <div className="grid gap-2 p-2 md:p-3 overflow-hidden min-h-0 h-full"
-           style={{ gridTemplateRows: "minmax(0, 1fr) auto minmax(0, 1fr)" }}>
-        {/* OPPONENT ZONES (Top): one panel per opponent, side by side */}
-        {opponents.length > 0 ? (
+           style={{
+             gridTemplateRows: "minmax(0, 1fr) auto minmax(0, 1fr)",
+             gridTemplateColumns: `${leftOpponent ? "minmax(13rem, 17rem) " : ""}minmax(0, 1fr)${rightOpponent ? " minmax(13rem, 17rem)" : ""}`,
+           }}>
+        {/* SIDE SEATS (3rd player left, 4th player right) */}
+        {leftOpponent && renderSideZone(leftOpponent, "left")}
+        {rightOpponent && renderSideZone(rightOpponent, "right")}
+
+        {/* TOP SEAT(S) */}
+        {topOpponents.length > 0 ? (
           <div
             className="grid gap-2 min-h-0 overflow-x-auto"
             style={{
-              gridTemplateColumns: `repeat(${opponents.length}, minmax(${
-                opponents.length > 3 ? "11rem" : "0"
+              gridRow: 1,
+              gridColumn: leftOpponent ? 2 : 1,
+              gridTemplateColumns: `repeat(${topOpponents.length}, minmax(${
+                topOpponents.length > 2 ? "11rem" : "0"
               }, 1fr))`,
             }}
           >
-            {opponents.map((opp) => renderOpponentZone(opp))}
+            {topOpponents.map((opp) => renderOpponentZone(opp))}
           </div>
         ) : (
           <div
             className="rounded-2xl border border-white/10 p-3 flex flex-col items-center justify-center text-on-surface-variant"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.28)" }}
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.28)", gridRow: 1, gridColumn: 1 }}
           >
             <div className="text-lg mb-2">Waiting for another player...</div>
             <div className="text-sm">Share room ID: {initialRoomId}</div>
@@ -472,7 +540,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         )}
 
         {/* CENTER ZONE */}
-        <div className="px-3 py-1">
+        <div className="px-3 py-1" style={{ gridRow: 2, gridColumn: leftOpponent ? 2 : 1 }}>
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-3 gap-4 items-center">
               {/* Deck */}
@@ -599,14 +667,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               ? "border border-primary"
               : "border border-white/10"
           } rounded-2xl p-2 md:p-3 overflow-y-auto`}
-          style={
-            isPlayerTurn
+          style={{
+            gridRow: 3,
+            gridColumn: "1 / -1",
+            ...(isPlayerTurn
               ? {
                   backgroundColor: "rgba(245, 158, 11, 0.10)",
                   boxShadow: "inset 0 2px 0 0 var(--primary), inset 0 24px 32px -24px rgba(245, 158, 11, 0.25)",
                 }
-              : { backgroundColor: "rgba(0, 0, 0, 0.28)" }
-          }
+              : { backgroundColor: "rgba(0, 0, 0, 0.28)" }),
+          }}
         >
           <div className="max-w-4xl mx-auto h-full flex flex-col">
             <div className="flex items-start gap-3 md:gap-4">

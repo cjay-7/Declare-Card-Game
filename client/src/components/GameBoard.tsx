@@ -509,7 +509,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       <div className="grid gap-2 p-2 md:p-3 overflow-hidden min-h-0 h-full"
            style={{
              gridTemplateRows: "minmax(0, 1fr) auto minmax(0, 1fr)",
-             gridTemplateColumns: `${leftOpponent ? "minmax(13rem, 17rem) " : ""}minmax(0, 1fr)${rightOpponent ? " minmax(13rem, 17rem)" : ""}`,
+             gridTemplateColumns: `${leftOpponent ? "minmax(16.25rem, 21.25rem) " : ""}minmax(0, 1fr)${rightOpponent ? " minmax(16.25rem, 21.25rem)" : ""}`,
            }}>
         {/* SIDE SEATS (3rd player left, 4th player right) */}
         {leftOpponent && renderSideZone(leftOpponent, "left")}

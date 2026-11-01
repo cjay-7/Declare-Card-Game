@@ -11,6 +11,20 @@ const getSocketMode = (): "mock" | "real" => {
 
 let socketMode = getSocketMode();
 
+// Stable per-browser identity so the server can recognise us after a reload/reconnect
+const getClientId = (): string => {
+  try {
+    let id = localStorage.getItem("clientId");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("clientId", id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+};
+
 // For mock mode
 let currentPlayerId = "player1";
 let switcherAdded = false;
@@ -53,7 +67,7 @@ const initRealSocket = () => {
       timeout: 20000, // 20 second timeout (default is 20s but make it explicit)
       forceNew: false,
       // Send JWT token so server can attach userId
-      auth: token ? { token } : {},
+      auth: { clientId: getClientId(), ...(token ? { token } : {}) },
       // Enable debug logging in development
       ...(import.meta.env.DEV && { debug: true }),
     });
@@ -179,7 +193,7 @@ const socket = {
     if (socketMode !== "real") return;
     const token = localStorage.getItem("token");
     if (realSocket) {
-      realSocket.auth = token ? { token } : {};
+      realSocket.auth = { clientId: getClientId(), ...(token ? { token } : {}) };
       realSocket.disconnect().connect();
       console.log("🔄 Socket reconnected with fresh auth token");
     }

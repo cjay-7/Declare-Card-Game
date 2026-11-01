@@ -42,6 +42,10 @@ const io = new Server(server, {
 
 // Socket.IO auth middleware — attach userId if valid token provided
 io.use((socket, next) => {
+  const clientId = socket.handshake.auth?.clientId;
+  if (typeof clientId === "string" && clientId.length > 0 && clientId.length <= 100) {
+    socket.clientId = clientId;
+  }
   const token = socket.handshake.auth?.token;
   if (token) {
     const decoded = verifyToken(token);
@@ -64,6 +68,119 @@ const rooms = {};
 const eliminationLocks = {};
 // Fix #2: Track power card timeouts to prevent stuck turns
 const powerCardTimeouts = {}; // roomId -> { playerId -> timeoutId }
+
+// Grace periods so a reload / brief network drop doesn't cost a player their seat
+const WAITING_GRACE_MS = 60 * 1000; // lobby: keep seat this long after disconnect
+const TURN_GRACE_MS = 30 * 1000; // in game: wait this long before skipping a disconnected player's turn
+const ABANDON_GRACE_MS = 10 * 60 * 1000; // in game: reset to lobby if everyone stays gone this long
+const departureTimers = {}; // `${roomId}:${playerKey}` -> { turn, abandon, waiting }
+
+const playerKey = (player) => player.clientId || player.id;
+
+const clearDepartureTimers = (roomId, key) => {
+  const t = departureTimers[`${roomId}:${key}`];
+  if (!t) return;
+  Object.values(t).forEach((id) => clearTimeout(id));
+  delete departureTimers[`${roomId}:${key}`];
+};
+
+const setDepartureTimer = (roomId, key, name, ms, fn) => {
+  const k = `${roomId}:${key}`;
+  departureTimers[k] = departureTimers[k] || {};
+  clearTimeout(departureTimers[k][name]);
+  departureTimers[k][name] = setTimeout(fn, ms);
+};
+
+// Point an existing seat at a new socket id (the same person after reload/reconnect)
+const rebindPlayerId = (room, player, newId) => {
+  const oldId = player.id;
+  if (oldId === newId) return;
+  player.id = newId;
+  if (room.drawnCardPlayer === oldId) room.drawnCardPlayer = newId;
+  if (room.declarer === oldId) room.declarer = newId;
+  if (room.lastAction?.playerId === oldId) room.lastAction.playerId = newId;
+  if (room.lastAction?.targetPlayerId === oldId) room.lastAction.targetPlayerId = newId;
+};
+
+const broadcastRoom = (roomId) => {
+  const room = rooms[roomId];
+  if (!room) return;
+  io.to(roomId).emit("update-players", room.players);
+  io.to(roomId).emit("game-state-update", prepareGameStateForEmit(room));
+};
+
+const resetRoomToLobby = (room) => {
+  room.gameStatus = "waiting";
+  room.deck = [];
+  room.discardPile = [];
+  room.currentPlayerIndex = 0;
+  room.drawnCard = null;
+  room.drawnCardPlayer = null;
+  room.lastAction = null;
+  room.players.forEach((player) => {
+    player.hand = [];
+    player.score = 0; // Legacy field
+    player.roundScore = 0; // Reset round score
+    // Keep cumulativeScore - don't reset it
+    player.knownCards = [];
+    player.skippedTurn = false;
+    player.hasEliminatedThisRound = false;
+    player.activePower = null;
+    player.usingPower = false;
+  });
+};
+
+// Run when a player's socket drops. Marks them away right away; the heavier
+// consequences (losing the seat, skipping their turn) wait for a grace period.
+const handlePlayerDisconnected = (roomId, player) => {
+  const room = rooms[roomId];
+  if (!room) return;
+  player.connected = false;
+  const key = playerKey(player);
+  console.log(`Player ${player.name} disconnected from room: ${roomId}`);
+
+  if (room.gameStatus === "waiting") {
+    setDepartureTimer(roomId, key, "waiting", WAITING_GRACE_MS, () => {
+      const r = rooms[roomId];
+      if (!r) return;
+      const idx = r.players.findIndex((p) => playerKey(p) === key);
+      if (idx === -1 || r.players[idx].connected) return;
+      const wasHost = r.players[idx].isHost;
+      r.players.splice(idx, 1);
+      delete departureTimers[`${roomId}:${key}`];
+      if (r.players.length === 0) {
+        delete rooms[roomId];
+        console.log(`Room ${roomId} deleted - no players left`);
+        return;
+      }
+      if (wasHost) r.players[0].isHost = true;
+      broadcastRoom(roomId);
+    });
+  } else if (room.gameStatus === "playing") {
+    if (getCurrentPlayer(room) === player) {
+      setDepartureTimer(roomId, key, "turn", TURN_GRACE_MS, () => {
+        const r = rooms[roomId];
+        if (!r || r.gameStatus !== "playing") return;
+        const cur = getCurrentPlayer(r);
+        if (cur && playerKey(cur) === key && !cur.connected) {
+          moveToNextPlayer(r);
+          broadcastRoom(roomId);
+        }
+      });
+    }
+    if (room.players.every((p) => !p.connected)) {
+      setDepartureTimer(roomId, key, "abandon", ABANDON_GRACE_MS, () => {
+        const r = rooms[roomId];
+        if (r && r.gameStatus === "playing" && r.players.every((p) => !p.connected)) {
+          console.log(`All players gone from room ${roomId}, resetting to lobby`);
+          resetRoomToLobby(r);
+          broadcastRoom(roomId);
+        }
+      });
+    }
+  }
+  broadcastRoom(roomId);
+};
 
 // Helper function to ensure game state includes all required fields when emitting
 const prepareGameStateForEmit = (room) => {
@@ -218,19 +335,24 @@ io.on("connection", (socket) => {
       console.log(`🆕 Created new room: ${roomId}`);
     }
 
-    // Check if this socket ID is already in the room (reconnection check)
-    const existingPlayerIndex = rooms[roomId].players.findIndex(
-      (p) => p.id === socket.id
+    // Reconnection check: same stable clientId (reload / dropped connection) or same socket id
+    const room = rooms[roomId];
+    let existing = room.players.find(
+      (p) => p.id === socket.id || (socket.clientId && p.clientId === socket.clientId)
     );
-    if (existingPlayerIndex !== -1) {
-      // Same socket ID - player is rejoining from same device
+    if (existing) {
       console.log(`🔄 ${playerName} reconnected to room: ${roomId} (socketId: ${socket.id})`);
-      rooms[roomId].players[existingPlayerIndex].connected = true;
-      rooms[roomId].players[existingPlayerIndex].name = playerName; // Update name in case it changed
+      rebindPlayerId(room, existing, socket.id);
+      existing.connected = true;
+      existing.name = playerName; // Update name in case it changed
+      clearDepartureTimers(roomId, playerKey(existing));
+    } else if (room.gameStatus !== "waiting") {
+      // Game already running and this isn't a known player
+      socket.emit("error", { message: "Game already in progress" });
+      return;
     } else {
-      // New player joining (different socket ID = different device)
-      // Allow multiple players even with same name (different devices)
-      const isHost = rooms[roomId].players.length === 0;
+      // New player joining
+      const isHost = room.players.length === 0;
 
       const player = {
         id: socket.id,
@@ -245,10 +367,16 @@ io.on("connection", (socket) => {
         hasEliminatedThisRound: false,
         connected: true,
       };
+      // Stable identity; non-enumerable so it is never sent to other clients
+      Object.defineProperty(player, "clientId", {
+        value: socket.clientId || null,
+        writable: true,
+        enumerable: false,
+      });
 
-      rooms[roomId].players.push(player);
+      room.players.push(player);
       console.log(
-        `✅ [${rooms[roomId].players.length}] ${playerName} joined room: ${roomId} (socketId: ${socket.id}, isHost: ${isHost})`
+        `✅ [${room.players.length}] ${playerName} joined room: ${roomId} (socketId: ${socket.id}, isHost: ${isHost})`
       );
     }
 
@@ -1916,82 +2044,11 @@ io.on("connection", (socket) => {
       }
     }
 
-    // Check all rooms for this socket
     const roomId = socket.roomId;
     if (roomId && rooms[roomId]) {
-      // Find player in room
-      const playerIndex = rooms[roomId].players.findIndex(
-        (p) => p.id === socket.id
-      );
-      if (playerIndex !== -1) {
-        // Mark player as disconnected
-        rooms[roomId].players[playerIndex].connected = false;
-
-        console.log(
-          `Player ${rooms[roomId].players[playerIndex].name} disconnected from room: ${roomId}`
-        );
-
-        // If game is waiting, remove the player
-        if (rooms[roomId].gameStatus === "waiting") {
-          rooms[roomId].players.splice(playerIndex, 1);
-
-          // If no players left, delete the room
-          if (rooms[roomId].players.length === 0) {
-            delete rooms[roomId];
-            console.log(`Room ${roomId} deleted - no players left`);
-            return;
-          }
-
-          // If host left, assign a new host
-          if (playerIndex === 0 && rooms[roomId].players.length > 0) {
-            rooms[roomId].players[0].isHost = true;
-          }
-        }
-
-        // If it was current player's turn, move to next player
-        if (
-          rooms[roomId].currentPlayerIndex === playerIndex &&
-          rooms[roomId].gameStatus === "playing"
-        ) {
-          moveToNextPlayer(rooms[roomId]);
-        }
-
-        // Check if all players are disconnected
-        const allDisconnected = rooms[roomId].players.every(
-          (p) => !p.connected
-        );
-
-        if (allDisconnected && rooms[roomId].gameStatus === "playing") {
-          // Reset room to lobby state
-          console.log(
-            `All players disconnected from room ${roomId}, resetting to lobby`
-          );
-          rooms[roomId].gameStatus = "waiting";
-          rooms[roomId].deck = [];
-          rooms[roomId].discardPile = [];
-          rooms[roomId].currentPlayerIndex = 0;
-          rooms[roomId].drawnCard = null;
-          rooms[roomId].drawnCardPlayer = null;
-          rooms[roomId].lastAction = null;
-
-          // Reset player states (but preserve cumulative scores)
-          rooms[roomId].players.forEach((player) => {
-            player.hand = [];
-            player.score = 0; // Legacy field
-            player.roundScore = 0; // Reset round score
-            // Keep cumulativeScore - don't reset it
-            player.knownCards = [];
-            player.skippedTurn = false;
-            player.hasEliminatedThisRound = false;
-            player.activePower = null;
-            player.usingPower = false;
-          });
-        }
-
-        // Update players in room
-        io.to(roomId).emit("update-players", rooms[roomId].players);
-        io.to(roomId).emit("game-state-update", prepareGameStateForEmit(rooms[roomId]));
-      }
+      // Only act if this socket still owns a seat (a reload rebinds the seat to the new socket)
+      const player = rooms[roomId].players.find((p) => p.id === socket.id);
+      if (player) handlePlayerDisconnected(roomId, player);
     }
   });
 });

@@ -20,10 +20,25 @@ import NotificationSystem, {
 import socket from "./socket";
 import { Spinner, IconButton, Tooltip, Chip, Button, Typography } from "@material-tailwind/react";
 
+const SESSION_KEY = "declareSession";
+
+// The room we were in, so a reload drops us back into it instead of the lobby
+const loadSavedSession = (): { roomId: string; playerName: string } | null => {
+  if (socket.getMode() !== "real") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    return s?.roomId && s?.playerName ? s : null;
+  } catch {
+    return null;
+  }
+};
+
 function GameApp() {
   const { user, loading, logout } = useAuth();
-  const [joinedRoom, setJoinedRoom] = useState(false);
-  const [roomInfo, setRoomInfo] = useState({ roomId: "", playerName: "" });
+  const [saved] = useState(loadSavedSession);
+  const [joinedRoom, setJoinedRoom] = useState(!!saved);
+  const [roomInfo, setRoomInfo] = useState(saved ?? { roomId: "", playerName: "" });
   const [showTestPanel, setShowTestPanel] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [currentPlayer, setCurrentPlayer] = useState(socket.getCurrentPlayer());
@@ -99,6 +114,16 @@ function GameApp() {
 
     setRoomInfo({ roomId, playerName: finalPlayerName });
     setJoinedRoom(true);
+    if (socket.getMode() === "real") {
+      try {
+        localStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify({ roomId, playerName: finalPlayerName })
+        );
+      } catch {
+        // storage unavailable: just won't survive a reload
+      }
+    }
 
     // Show welcome notification
     addNotification({
@@ -106,6 +131,26 @@ function GameApp() {
       type: "success",
       duration: 3000,
     });
+  };
+
+  const handleLeaveRoom = () => {
+    socket.emit("leave-room", { roomId: roomInfo.roomId, playerId: socket.getId() });
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    setJoinedRoom(false);
+    setRoomInfo({ roomId: "", playerName: "" });
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    logout();
   };
 
   if (loading) {
@@ -170,7 +215,7 @@ function GameApp() {
                 path="/lobby"
                 element={
                   user ? (
-                    <Lobby onJoinRoom={handleJoinRoom} onLogout={logout} />
+                    <Lobby onJoinRoom={handleJoinRoom} onLogout={handleLogout} />
                   ) : (
                     <Navigate to="/login" replace />
                   )
@@ -184,6 +229,7 @@ function GameApp() {
                       key={`${roomInfo.roomId}-${currentPlayer}`}
                       initialRoomId={roomInfo.roomId}
                       initialPlayerName={roomInfo.playerName}
+                      onLeave={handleLeaveRoom}
                     />
                   ) : (
                     <Navigate to={user ? "/lobby" : "/login"} replace />

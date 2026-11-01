@@ -12,11 +12,13 @@ import PlayerInfo from "./PlayerInfo";
 interface GameBoardProps {
   initialRoomId: string;
   initialPlayerName: string;
+  onLeave?: () => void;
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({
   initialRoomId,
   initialPlayerName,
+  onLeave,
 }) => {
   const {
     setPlayerName,
@@ -84,6 +86,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     );
     
     // Ensure socket is connected before joining
+    let cleanupConnect = () => {};
     if (socket.getMode() === "real") {
       const joinRoom = () => {
         console.log(`[${currentPlayerId}] Emitting join-room:`, {
@@ -96,22 +99,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         });
       };
 
-      // Set up connection listener (only once)
-      let connectionListenerAdded = false;
-      const setupConnectionListener = () => {
-        if (connectionListenerAdded) return;
-        connectionListenerAdded = true;
-        
-        socket.on("connect", () => {
-          console.log(`[${currentPlayerId}] Socket connected, joining room now`);
-          joinRoom();
-        });
+      // Rejoin on every (re)connect so a dropped connection gets the seat back
+      const onConnect = () => {
+        console.log(`[${currentPlayerId}] Socket connected, joining room now`);
+        joinRoom();
       };
+      socket.on("connect", onConnect);
+      cleanupConnect = () => socket.off("connect", onConnect);
 
       const socketId = socket.getId();
       if (!socketId) {
         console.warn(`[${currentPlayerId}] Socket not connected yet, waiting for connection...`);
-        setupConnectionListener();
         
         // Also try after delays as fallback (Socket.io should auto-queue, but just in case)
         const retryDelays = [2000, 5000, 10000];
@@ -143,6 +141,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     return () => {
       // Only leave if component is actually being unmounted (not just player switching)
       console.log(`GameBoard unmounting for ${currentPlayerId}`);
+      cleanupConnect();
     };
   }, [
     initialPlayerName,
@@ -477,6 +476,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         height: "100dvh",
       }}
     >
+      {/* Leave room: clears the saved session so a reload won't rejoin */}
+      {onLeave && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("Leave this room? You can rejoin with the same room ID.")) onLeave();
+          }}
+          className="fixed top-2 right-2 z-40 rounded-full border border-outline px-3 py-1 text-xs bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
+        >
+          Leave room
+        </button>
+      )}
+
       {/* Game End Screen */}
       {forceShowEndScreen && (
         <div className="fixed inset-0 z-50">
